@@ -13,8 +13,8 @@ const {DataTypes, Model, Sequelize} = require('sequelize');
         cod_animal: { type: DataTypes.INTEGER.UNSIGNED, allowNull: false, unique: true, 
             references: { model: Model.Animal, key: 'cod_animal' }
         },
-        cod_perfil: { type: DataTypes.INTEGER.UNSIGNED, allowNull: false, 
-            references: { model: Model.PerfilUsuario, key: 'cod_perfil' }
+        cod_usuario: { type: DataTypes.INTEGER.UNSIGNED, allowNull: false, 
+            references: { model: Model.Usuario, key: 'cod_usuario' }
         },
         cod_foto_animal: { type: DataTypes.INTEGER.UNSIGNED, allowNull: false, unique: true ,  // Unique para restringir o uso da mesma foto em múltiplos anúncios.
             references: { model: Model.FotoAnimal, key: 'cod_foto_animal' }

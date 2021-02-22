@@ -12,13 +12,18 @@
     const autenticadorJWT = require('./api/middlewares/autenticador-jwt');  // Middleware - Utiliza o módulo "jsonwebtoken" para verificar em cada requisição se uma rota possui restrições de acesso e se o Token de Acesso está presente nos Headers e é válido.
 
 // Conexão com o Banco de Dados MySQL.
-    db.connection;  // Instância da conexão atual.
+    db.connection;          // Instância da conexão atual.
     db.checkConnection();   // Verificação da conexão.
     // ormModelChecker();   // Realiza um [ SELECT * ] limitado à 1 resultado em cada um dos models da lista "./api/models".
 
 // Importação dos grupos de rotas.
-    const rotaPerfis = require('./api/routes/perfis');
     const rotaAutenticacaoAPI = require('./api/routes/autenticacao_api');
+
+    const rotaContas = require('./api/routes/contas');
+    const rotaUsuarios = require('./api/routes/usuarios');
+    const rotaEnderecos = require('./api/routes/enderecos');
+
+    
 
 // Middlewares.
     app.use(logger('dev'));     // Em todas as requisições, Morgan fará a análise e entregará dados sobre ela no console do servidor, por fim passará a requisição adiante.
@@ -52,12 +57,28 @@
     app.use(bodyParser.json());                             // Extrai os campos da requisição no formato JSON.
 
 // Rotas que vão gerenciar as requisições.
-    app.use('/perfis', rotaPerfis);
     app.use('/autenticacao_api', rotaAutenticacaoAPI);
+
+    app.use('/contas', rotaContas);
+    app.use('/usuarios/enderecos', rotaEnderecos);
+    app.use('/usuarios', rotaUsuarios);
+
+    /* Observações sobre Conflito de Rotas
+
+       Três formas de resolver rotas conflitantes:
+       Caso 01 - Se "/usuarios/" estiver acima de "/usuario/enderecos", use RegEx para a requisição adiante caso o parâmetro não fique de acordo com o dado esperado em "usuarios/:parametro").
+       Caso 02 - Se não queira ou possa utilizar a solução acima, coloque as rotas mais específicas como "/usuarios/enderecos" ou "usuarios/anuncios" acima das menos específicas.
+       Caso 03 - O uso de Nesting de Routers também é possível, porém apenas em casos como "/usuarios/:idUsuario/anuncios/:idAnuncio". Como estamos usando muitas Query Strings, isso não nos ajuda.
+    */
+    
+    
+    
+
+    
 
 // Middlewares Gerenciadores de Erros.
 
-    // Se a aplicação procurou por uma rota que não existe na lista acima, entregaremos um erro.
+    // Se uma requisição procurou por uma rota que não existe na lista acima, entregaremos um erro 404 (Recurso não encontrado).
     app.use((req, res, next) => {  
         const error = new Error('Recurso não encontrado.');
 
@@ -66,17 +87,24 @@
         next(error);            // Em situações onde erros existem, é necessário passá-lo como parâmetro para o middleware em "next();".
     });
 
-    // Se alguma requisição respondeu com um erro, trataremos esse erro de forma personalizada. (Express errorHandling)
+    /* 
+        Esse middleware trata erros enviados via "next()" durante os blocos [ catch ] das rotas acima.
+
+        É extremamente útil quando você não sabe exatamente qual tipo de erro pode acontecer em um processamento nas rotas,
+        quando aplicado nos blocos [ catch ], permite capturar esses erros inesperados.
+
+        A utilização de um middleware com 4 parâmetros é uma característica dos Error Handlers do Express.
+    */
     app.use((error, req, res, next) => {    // Perceba: Middleware com 4 parâmetros, o 1º sendo "error".
 
         console.error('Um erro inesperado ocorreu!\n', error);
 
-        res.status(error.status || 500);    // Se o erro gerado, não apresentar um código de status http, use 500 - (Internal Server Error).
+        res.status(error.status || 500);    // Se o erro gerado não apresentar um código de status http, use 500 - (Internal Server Error).
 
         res.json({      // Aqui é a resposta que entregaremos à aplicação em caso de erro, pode ser personalizada.
 
             error: {
-                mensagem: error.message  // O atributo "message" de erros quase sempre estara presente, não gerando exceções.
+                mensagem: error.message  // O atributo "mensagem" de erros quase sempre estara presente, não gerando exceções.
             }
 
         });

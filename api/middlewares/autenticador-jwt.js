@@ -40,7 +40,7 @@ module.exports = (req, res, next) => {
     } catch (error) {
 
         return res.status(401).json({
-            mensagem: 'A autenticação falhou ou é inválida.'
+            mensagem: 'A autenticação do cliente falhou ou é inválida.'
         });
 
     }

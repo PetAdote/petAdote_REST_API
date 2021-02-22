@@ -1,16 +1,18 @@
 // Importações.
-    const {DataTypes, Sequelize} = require('sequelize');
+    const {DataTypes, Sequelize, Model} = require('sequelize');
 
 // Instância da conexão com a Database.
     const {connection} = require('../../configs/database');
 
-// Definição do Model 'PerfilUsuario' para 'tbl_perfil_usuario'.
-    const PerfilUsuario = connection.define('PerfilUsuario', {
+    // Models das Associações (Chaves Estrangeiras).
+    // ...
 
-        cod_perfil: { type: DataTypes.INTEGER.UNSIGNED, allowNull: false, unique: true, autoIncrement: true,
+// Definição do Model 'Usuario' para 'tbl_usuario'.
+    const Usuario = connection.define('Usuario', {
+
+        cod_usuario: { type: DataTypes.INTEGER.UNSIGNED, allowNull: false, unique: true, autoIncrement: true,
             primaryKey: true
         },
-        tipo_cadastro: { type: DataTypes.ENUM(['local', 'facebook', 'google']), allowNull: false },
         primeiro_nome: { type: DataTypes.STRING(100), allowNull: false },
         sobrenome: { type: DataTypes.STRING(100), allowNull: false },
         cpf: { type: DataTypes.STRING(14), allowNull: false, unique: true },
@@ -28,8 +30,11 @@
         data_modificacao: { type: DataTypes.DATE, allowNull: false, defaultValue: Sequelize.NOW }
 
     }, {
-        tableName: 'tbl_perfil_usuario',
+        tableName: 'tbl_usuario',
     });
 
+    // Associações
+    // ...
+
 // Exportação.
-module.exports = PerfilUsuario;
+module.exports = Usuario;

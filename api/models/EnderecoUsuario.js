@@ -4,14 +4,17 @@ const {DataTypes, Model} = require('sequelize');
 // Instância da conexão com a Database.
     const {connection} = require('../../configs/database');
 
+    // Models das Associações (Chaves Estrangeiras).
+    const Usuario = require('./Usuario');
+
 // Definição do Model 'EnderecoUsuario' para 'tbl_end_usuario'.
     const EnderecoUsuario = connection.define('EnderecoUsuario', {
 
         cod_end_usuario: { type: DataTypes.INTEGER.UNSIGNED, allowNull: false, unique: true, autoIncrement: true,
             primaryKey: true
         },
-        cod_perfil: { type: DataTypes.INTEGER.UNSIGNED, allowNull: false, unique: true, 
-            references: { model: Model.PerfilUsuario, key: 'cod_perfil' }
+        cod_usuario: { type: DataTypes.INTEGER.UNSIGNED, allowNull: false, unique: true, 
+            references: { model: Model.Usuario, key: 'cod_usuario' }
         },
         cep: { type: DataTypes.STRING(9), allowNull: false },
         logradouro: { type: DataTypes.STRING(100), allowNull: false },
@@ -23,6 +26,14 @@ const {DataTypes, Model} = require('sequelize');
 
     }, {
         tableName: 'tbl_end_usuario',
+    });
+
+    // Associações.
+    EnderecoUsuario.belongsTo(Usuario, {
+        foreignKey: {
+            name: 'cod_usuario',
+            allowNull: false
+        }
     });
 
 // Exportação.

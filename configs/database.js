@@ -32,7 +32,8 @@
             console.log('[DB] Conexão estabelecida...');
         })
         .catch((error) => {
-            console.log('[DB] Conexão falhou...\n', error);
+            console.error('[DB] Conexão falhou, reinicie o servidor...\n', error);
+            process.exit(0);    // Finaliza a execução do Node.js se algum erro acontecer ao conectar ao Banco de Dados.
         });
     }
 
