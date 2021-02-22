@@ -13,8 +13,8 @@ const {DataTypes, Model} = require('sequelize');
         cod_anuncio: { type: DataTypes.INTEGER.UNSIGNED, allowNull: false, 
             references: { model: Model.Anuncio, key: 'cod_anuncio' }
         },
-        cod_perfil: { type: DataTypes.INTEGER.UNSIGNED, allowNull: false, 
-            references: { model: Model.PerfilUsuario, key: 'cod_perfil' }
+        cod_usuario: { type: DataTypes.INTEGER.UNSIGNED, allowNull: false, 
+            references: { model: Model.Usuario, key: 'cod_usuario' }
         }
 
     }, {

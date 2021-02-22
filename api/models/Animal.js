@@ -10,11 +10,11 @@ const {DataTypes, Model, Sequelize} = require('sequelize');
         cod_animal: { type: DataTypes.INTEGER.UNSIGNED, allowNull: false, unique: true, autoIncrement: true,
             primaryKey: true
         },
-        cod_perfil_dono: { type: DataTypes.INTEGER.UNSIGNED, allowNull: false,
-            references: { model: Model.PerfilUsuario, key: 'cod_perfil' }
+        cod_dono: { type: DataTypes.INTEGER.UNSIGNED, allowNull: false,
+            references: { model: Model.Usuario, key: 'cod_usuario' }
         },
-        cod_perfil_dono_antigo: { type: DataTypes.INTEGER.UNSIGNED, 
-            references: { model: Model.PerfilUsuario, key: 'cod_perfil' }
+        cod_dono_antigo: { type: DataTypes.INTEGER.UNSIGNED, 
+            references: { model: Model.Usuario, key: 'cod_usuario' }
         },
         estado_adocao: { type: DataTypes.ENUM('Sob proteção', 'Em anúncio', 'Em processo adotivo', 'Adotado'), allowNull: false, defaultValue: 'Sob proteção'},
         nome: { type: DataTypes.STRING(100), allowNull: false },

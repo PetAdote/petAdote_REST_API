@@ -13,8 +13,8 @@ const {DataTypes, Model, Sequelize} = require('sequelize');
         cod_conversa: { type: DataTypes.INTEGER.UNSIGNED, allowNull: false, 
             references: { model: Model.Conversa, key: 'cod_conversa' }
         },
-        cod_perfil: { type: DataTypes.INTEGER.UNSIGNED, allowNull: false, 
-            references: { model: Model.PerfilUsuario, key: 'cod_perfil' }
+        cod_usuario: { type: DataTypes.INTEGER.UNSIGNED, allowNull: false, 
+            references: { model: Model.Usuario, key: 'cod_usuario' }
         },
         resposta: { type: DataTypes.TEXT, allowNull: false },
         data_criacao: { type: DataTypes.DATE, allowNull: false, defaultValue: Sequelize.NOW },

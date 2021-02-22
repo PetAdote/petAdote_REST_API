@@ -10,11 +10,11 @@ const {DataTypes, Model, Sequelize} = require('sequelize');
         cod_seguida: { type: DataTypes.INTEGER.UNSIGNED, allowNull: false, unique: true, autoIncrement: true,
             primaryKey: true
         },
-        perfil_seguidor: { type: DataTypes.INTEGER.UNSIGNED, allowNull: false, 
-            references: { model: Model.PerfilUsuario, key: 'cod_perfil' }
+        seguidor: { type: DataTypes.INTEGER.UNSIGNED, allowNull: false, 
+            references: { model: Model.Usuario, key: 'cod_usuario' }
         },
-        perfil_seguido: { type: DataTypes.INTEGER.UNSIGNED, allowNull: false, 
-            references: { model: Model.PerfilUsuario, key: 'cod_perfil' }
+        seguido: { type: DataTypes.INTEGER.UNSIGNED, allowNull: false, 
+            references: { model: Model.Usuario, key: 'cod_usuario' }
         },
         data_criacao: { type: DataTypes.DATE, allowNull: false, defaultValue: Sequelize.NOW }
 

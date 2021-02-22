@@ -10,11 +10,11 @@ const {DataTypes, Model} = require('sequelize');
         cod_bloqueio: { type: DataTypes.INTEGER.UNSIGNED, allowNull: false, unique: true, autoIncrement: true,
             primaryKey: true
         },
-        perfil_bloqueante: { type: DataTypes.INTEGER.UNSIGNED, allowNull: false, 
-            references: { model: Model.PerfilUsuario, key: 'cod_perfil' }
+        bloqueante: { type: DataTypes.INTEGER.UNSIGNED, allowNull: false, 
+            references: { model: Model.Usuario, key: 'cod_usuario' }
         },
-        perfil_bloqueado: { type: DataTypes.INTEGER.UNSIGNED, allowNull: false, 
-            references: { model: Model.PerfilUsuario, key: 'cod_perfil' }
+        bloqueado: { type: DataTypes.INTEGER.UNSIGNED, allowNull: false, 
+            references: { model: Model.Usuario, key: 'cod_usuario' }
         }
 
     }, {

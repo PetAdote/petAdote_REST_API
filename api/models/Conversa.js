@@ -10,11 +10,11 @@ const {DataTypes, Model} = require('sequelize');
         cod_conversa: { type: DataTypes.INTEGER.UNSIGNED, allowNull: false, unique: true, autoIncrement: true,
             primaryKey: true
         },
-        cod_perfil_usuario01: { type: DataTypes.INTEGER.UNSIGNED, allowNull: false, 
-            references: { model: Model.PerfilUsuario, key: 'cod_perfil' }
+        cod_usuario01: { type: DataTypes.INTEGER.UNSIGNED, allowNull: false, 
+            references: { model: Model.Usuario, key: 'cod_usuario' }
         },
-        cod_perfil_usuario02: { type: DataTypes.INTEGER.UNSIGNED, allowNull: false, 
-            references: { model: Model.PerfilUsuario, key: 'cod_perfil' }
+        cod_usuario02: { type: DataTypes.INTEGER.UNSIGNED, allowNull: false, 
+            references: { model: Model.Usuario, key: 'cod_usuario' }
         }
 
     }, {
