@@ -100,7 +100,6 @@
         console.error('Um erro inesperado ocorreu!\n', error);
 
         req.pause();
-        
         res.status(error.status || 500);    // Se o erro gerado não apresentar um código de status http, use 500 - (Internal Server Error).
 
         res.json({      // Aqui é a resposta que entregaremos à aplicação em caso de erro, pode ser personalizada.

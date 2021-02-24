@@ -1,10 +1,7 @@
 // Importações.
     const express = require('express');
     const router = express.Router();
-
-    const multer = require('multer');
-    const multerCfg = require('../middlewares/multer');
-
+    
 // const controller = require('../controllers/contas');   // TODO...
 
     // Importação dos Models...
@@ -250,153 +247,127 @@ router.get('/', (req, res, next) => {
     
 });
 
-router.post('/', (req, res, next) => {
+router.post('/', (req, res, next) => {   // Cria os dados básicos do usuário: Conta, dados, endereço.
 
-    if (req.headers['file-size']){
-        console.log('Headers contém "File-Size".')
+    /*  Validação do tamanho do conteúdo do Request via Headers. (Verifica apenas o Content-Length - Header que pode ser adulterado por usuários mal intencionados)
+        Se essa validação permitir que o arquivo passe, o Formidable vai iniciar o download do arquivo...
 
-        if(Number(req.headers['file-size']) > (1 * 1024 * 1024)){
-            console.log('O arquivo é maior que o limite')
-            console.log('FileSizeTooLarge - inRequest: ', req.headers['file-size']);
-            console.log('FileSizeTooLarge? ', Number(req.headers['file-size']) > (1 * 1024 * 1024));
-            // console.log('Options? : ', req.headers)
-
-            req.pause();
-            res.status = 400;
-            return res.json({
-                mensagem: 'Algo deu errado'
-            });
-
-        } else {
-            console.log('O arquivo é menor que o limite')
-            console.log('FileSizeTooLarge - inRequest: ', req.headers['file-size']);
-            console.log('FileSizeTooLarge? ', Number(req.headers['file-size']) > (1 * 1024 * 1024))
-
-            next();
-        }
-    } else {
-        console.log('Header "File-size" não foi enviado ou não contém um número. Verificando Content-Length');
-
-        if (!req.headers['file-size']){
-            if (Number(req.headers['content-length']) > (1.5 * 1024 * 1024)){
-                req.pause();
-                res.status = 400;
-                return res.json({
-                    mensagem: 'Arquivo grande demais detectado'
-                });
-            }
-        }
-        
-        next();
+        Porém a mesma restrição é aplicada diretamente na verificação do progresso do upload, se o progresso ultrapassar o limite de tamanho
+        o usuário receberá uma mensagem de falha com Status 413 (Payload Too Large). */
+    if (Number(req.headers['content-length']) > (1.5 * 1024 * 1024)){
+        req.pause();
+        res.status = 400;
+        return res.json({
+            mensagem: 'O arquivo é grande demais. Suportamos arquivos de até 1mb.'
+        });
     }
 
-}, 
-multer(multerCfg).any(),
-(req, res, next) => {   // Cria os dados básicos do usuário: Conta, dados, endereço.
+    //  Instância de recebimento de um formulário (multipart/form-data) com o Formidable.
+    const incomingForm = new formidable.IncomingForm({ 
+        uploadDir: path.resolve(__dirname, '../uploads/tmp'),
+        maxFileSize: 1 * 1024 * 1024,                           // Limita o tamanho do arquivo em Megabytes. Envia um erro.
+        keepExtensions: true 
+    });
 
-    console.log('Contas - req.body: ', req.body);
-    console.log('Contas - req.file: ', req.files);
 
-    res.status(200).json({
-        mensagem: 'Cheguei no Contas.'
+    /*  'fileFieldName' vai receber o nome do campo de arquivo do formulário que iniciou essa requisição.
+        Isso será extremamente importante para acessarmos diretamente os dados do arquivo enviado em um objeto, diminuindo redundâncias. 
+        Essa parte é atribuída ao detectar um arquivo no Chunk do Buffer de Request do Multipart/form-data.
+        Lembrando que receberemos apenas 1 arquivo nessa rota. */
+
+    var fileFieldName = undefined;    
+    
+
+
+    /*  Sobrescrevendo o tratamento do Formidable sobre o Buffer enviado pelo formulário do tipo Multipart/form-data...
+        Essa parte é similar à um Event Listener para cada "Chunk" do Buffer do Request e só é executada se a função "parse" do Formidable estiver presente. */
+    incomingForm.onPart = (part) => {
+        let validMimes = [
+            "image/jpeg",
+            "image/gif",
+            "image/png",
+            "image/bmp"
+        ];
+
+        if(part.mime !== null && !validMimes.includes(part.mime)){
+
+            console.log('Nome Original do arquivo inválido: ', part.filename);
+            console.log('Mimetype do arquivo inválido: ', part.mime);
+
+            req.pause();                                                                            // Pausa a Request Stream.
+            return res.status(406).json({                                                           // Retorna uma mensagem "return" evita a execução de processos posteriores.
+                mensagem: 'O arquivo não aparenta ser uma imagem. Por favor, envie uma imagem.'
+            });
+            // FINALMENTE UM MÉTODO EFICAZ DE ENVIAR UMA MENSAGEM E ACABAR COM A REQUEST \o/
+
+        }
+        
+        if (part.filename === ''){
+            return false;                   // Se a parte enviar um campo de arquivo vazio/nulo... Simplesmente ignoramos.
+        }
+
+        if(part.filename !== undefined){    // É necessário pegar o nome do campo que enviou o arquivo para facilitar o tratamento dos dados posteriormente.
+            fileFieldName = part.name;
+            console.log('fileFieldName: ', part.name);
+        }
+
+        incomingForm.handlePart(part);  // É importante deixar que o Formidable gerencie as outras partes da Stream do Buffer da requisição.
+
+    };
+
+    /*  Nesse ponto a requisição terá concluído a recepção do Buffer e poderemos analisar/efetivar os dados.
+        Inclusive, aqui podemos tratar erros específicos ou desconhecidos.
+        
+        O ideal é fazer os processamentos/efetivação dos dados na finalização do tratamento do Formidable.  */
+    incomingForm.parse(req, (err, fields, files) => {
+        if (err) {
+
+            if(err.message.indexOf('maxFileSize exceeded') !== -1){
+                console.log('Parser Error: Arquivo grande demais sendo limitado!')
+
+                req.pause();
+                return res.status(413).json({
+                    mensagem: 'ParseError: O tamanho do arquivo enviado é grande demais. Aceitamos arquivos de até 1mb.'
+                });
+                
+            }
+
+            console.log('Parser Error: ', err.message);
+
+        }
+
+        console.log('Fields: ', fields);
+        console.log('Files: ', files[fileFieldName] ? files[fileFieldName].name : files);
+
+        req.body.fields = fields;
+        req.body.files = files[fileFieldName] ? files[fileFieldName] : files;
     })
 
+    /*  Verificação do Progresso do Upload do multipart/form-data.
+        Pode ser utilizada para criar barras de progresso.          */
 
+    incomingForm.on('progress', (bytesReceived, bytesExpected) => {
+        if (bytesReceived === 0){
+            console.log('bytesExpected: ', bytesExpected);
+        }
+        console.log('bytesReceived: ', bytesReceived);
+    })
+    
+    /*  Após as validações do "incomingForm.parse" terminarem temos certeza de que os dados estão em nossas mãos
+        assim, podemos realizar qualquer procedimento posterior para efetivar esses dados na conta do usuário.       */
+    incomingForm.on('end', () => {
+        console.log('Body: ', req.body);
 
-
-
-
-
-    //---------------------------------------------------------------------------------------------
-    // // Formidable em um estado relativamente "OK".
-
-    // const incomingForm = new formidable.IncomingForm({ 
-    //     uploadDir: path.resolve(__dirname, '../uploads'),
-    //     maxFileSize: 324 * 1024,                           // Limita o tamanho do arquivo em Megabytes. Envia um erro.
-    //     keepExtensions: true 
-    // });
-
-
-    // // Para coletar arquivos válidos...
-    // // Faça com que os Clientes coletem os meta-dados do arquivo primeiro...
-    // //      Se os meta-dados estiverem de acordo, só então receberemos o arquivo.
-    // // Assim não será necessário verificar o arquivo durante o envio do mesmo, verificamos ele diretamente.
-
-    // incomingForm.onPart = (part) => {
-
-    //     if(part.mime !== null && !part.mime.includes("image/")){
-    //         console.log('Nome Original do arquivo inválido: ', part.filename);
-    //         console.log('Mimetype do arquivo inválido: ', part.mime);
-
-    //         res.status(406).json({                                  // Envia resposta.
-    //             mensagem: 'O arquivo enviado é inválido.'
-    //         });
-    //         req.socket.destroy();                                   // Destroi a Stream de requisições (O Web Socket);
-    //         // FINALMENTE UM MÉTODO EFICAZ DE ENVIAR UMA MENSAGEM E ACABAR COM A REQUEST \o/
-            
-    //     } else if(part.filename === ''){
-
-    //         return;
-    //         //console.log('O front-end enviou um campo de arquivo, sem arquivo. Ignorando boundary...');
-            
-    //     } else {
-
-    //         incomingForm.handlePart(part);  // Tudo que não cair nessas validações, deixe o Formidable gerenciar.
-
-    //     }
-    // };
-
-    // incomingForm.parse(req, (err, fields, files) => {
-    //     if (err) {
-    //         console.log(err.message);
-
-    //         if(err.message.indexOf('maxFileSize exceeded') !== -1){
-
-    //             console.log('Arquivo grande demais sendo limitado!')
-    //             res.status(413).json({
-    //                 mensagem: 'O tamanho do arquivo enviado é grande demais. Aceitamos arquivos de até 1mb.'
-    //             });
-    //             return req.socket.destroy();
-                
-    //         } else {
-                
-    //         }
-
-    //     }
-
-    //     console.log('Fields: ', fields);
-    //     console.log('Files: ', files.name);
-
-
-    //     // req.body.fields = fields;
-    //     // req.body.files = files;
-    // })
-
-    // // Verificação do Progresso do Upload do multipart/form-data.
-
-    // incomingForm.on('progress', (bytesReceived, bytesExpected) => {
-    //     if (bytesReceived === 0){
-    //         console.log('bytesExpected: ', bytesExpected);
-    //     }
-    //     console.log('bytesReceived: ', bytesReceived);
-    // })
-
-    // incomingForm.on('error', (error) => {
-    //     console.log('Error: ', error.message);
-
+        /*  Realize o processamento da imagem e armazene ela no diretório final "imagens".
+            Aqui é interessante verificar os binários do arquivo para identificar se realmente é uma imagem antes de fazer qualquer processamento nela.
+            Se não o usuário forjou os dados e o arquivo não for uma imagem, envie a resposta de arquivos inválidos e remova o arquivo da pasta tmp.    */
         
 
-    //     res.status(406).json({ 
-    //         mensagem: 'Algo inesperado aconteceu ao receber os dados do usuário.'
-    //     });
-    // });
-    
-    // incomingForm.on('end', () => {
-    //     console.log('Body: ', req.body);
-    //     res.status(200).json({
-    //         mensagem: 'A entrega do formulário foi concluída em "contas.js" na REST API.'
-    //     });
-    // })
+        // Retorne a resposta após concluir tudo.
+        res.status(200).json({
+            mensagem: 'A entrega do formulário foi concluída em contas.js na REST API.'
+        });
+    })
     
 
 });
