@@ -6,10 +6,10 @@
 
 // Instância do Sequelize ORM.
 
-    let dbUser = readlineSync.question('[Database] Nome de usuario: ');
-    let dbPass = readlineSync.question('[Database] Senha: ', { hideEchoBack: true });
+    // let dbUser = readlineSync.question('[Database] Nome de usuario: ');
+    // let dbPass = readlineSync.question('[Database] Senha: ', { hideEchoBack: true });
 
-    const connection = new Sequelize('db_petAdote', dbUser, dbPass, {
+    const connection = new Sequelize('db_petAdote', 'dba', 'dba_petAdote', {
         host: '127.0.0.1',
         port: '3316',       // Porta de Reverse Proxy -- Direciona ao serviço corrente na porta 3306 (mysql) na máquina virtual.
         dialect: 'mysql',
@@ -29,11 +29,19 @@
     const checkConnection = () => {
         connection.authenticate()
         .then((res) => {
-            console.log('[DB] Conexão estabelecida...');
+            console.log('[Database] Conexão estabelecida...');
         })
         .catch((error) => {
-            console.error('[DB] Conexão falhou, reinicie o servidor...\n', error);
+            
+            if (error.original['code'] === 'ER_ACCESS_DENIED_ERROR') {
+                readlineSync.question('[DatabaseError] Credenciais invalidas, tente novamente ao reiniciar o servidor. Pressione [Enter] para encerrar o servidor.');
+                return process.exit(0);    // Finaliza a execução do Node.js se algum erro acontecer ao conectar ao Banco de Dados.
+            }
+            
+            console.error('[DatabaseError] A conexao falhou, verifique o erro e reinicie o servidor...\n', error);
+            readlineSync.question('Por favor, pressione [Enter] para encerrar o servidor.');
             process.exit(0);    // Finaliza a execução do Node.js se algum erro acontecer ao conectar ao Banco de Dados.
+            
         });
     }
 

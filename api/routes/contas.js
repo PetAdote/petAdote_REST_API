@@ -2,6 +2,9 @@
     const express = require('express');
     const router = express.Router();
 
+    const multer = require('multer');
+    const multerCfg = require('../middlewares/multer');
+
 // const controller = require('../controllers/contas');   // TODO...
 
     // Importação dos Models...
@@ -240,16 +243,163 @@ router.get('/', (req, res, next) => {
     .catch((error) => {
 
         console.error('[GET: /contas/] Algo inesperado aconteceu ao buscar os dados das contas dos usuários.\n', error);
-        return next( new Error('Algo inesperado aconteceu ao buscar os dados das contas dos usuários. Entre em contato com o administrador.\n', error) );
+        return next( new Error('Algo inesperado aconteceu ao buscar os dados das contas dos usuários. Entre em contato com o administrador.') );
 
     });
 
     
 });
 
-// router.post('/', (req, res, next) => {   // Cria os dados básicos do usuário: Conta, dados, endereço.
+router.post('/', (req, res, next) => {
 
-// });
+    if (req.headers['file-size']){
+        console.log('Headers contém "File-Size".')
+
+        if(Number(req.headers['file-size']) > (1 * 1024 * 1024)){
+            console.log('O arquivo é maior que o limite')
+            console.log('FileSizeTooLarge - inRequest: ', req.headers['file-size']);
+            console.log('FileSizeTooLarge? ', Number(req.headers['file-size']) > (1 * 1024 * 1024));
+            // console.log('Options? : ', req.headers)
+
+            req.pause();
+            res.status = 400;
+            return res.json({
+                mensagem: 'Algo deu errado'
+            });
+
+        } else {
+            console.log('O arquivo é menor que o limite')
+            console.log('FileSizeTooLarge - inRequest: ', req.headers['file-size']);
+            console.log('FileSizeTooLarge? ', Number(req.headers['file-size']) > (1 * 1024 * 1024))
+
+            next();
+        }
+    } else {
+        console.log('Header "File-size" não foi enviado ou não contém um número. Verificando Content-Length');
+
+        if (!req.headers['file-size']){
+            if (Number(req.headers['content-length']) > (1.5 * 1024 * 1024)){
+                req.pause();
+                res.status = 400;
+                return res.json({
+                    mensagem: 'Arquivo grande demais detectado'
+                });
+            }
+        }
+        
+        next();
+    }
+
+}, 
+multer(multerCfg).any(),
+(req, res, next) => {   // Cria os dados básicos do usuário: Conta, dados, endereço.
+
+    console.log('Contas - req.body: ', req.body);
+    console.log('Contas - req.file: ', req.files);
+
+    res.status(200).json({
+        mensagem: 'Cheguei no Contas.'
+    })
+
+
+
+
+
+
+
+    //---------------------------------------------------------------------------------------------
+    // // Formidable em um estado relativamente "OK".
+
+    // const incomingForm = new formidable.IncomingForm({ 
+    //     uploadDir: path.resolve(__dirname, '../uploads'),
+    //     maxFileSize: 324 * 1024,                           // Limita o tamanho do arquivo em Megabytes. Envia um erro.
+    //     keepExtensions: true 
+    // });
+
+
+    // // Para coletar arquivos válidos...
+    // // Faça com que os Clientes coletem os meta-dados do arquivo primeiro...
+    // //      Se os meta-dados estiverem de acordo, só então receberemos o arquivo.
+    // // Assim não será necessário verificar o arquivo durante o envio do mesmo, verificamos ele diretamente.
+
+    // incomingForm.onPart = (part) => {
+
+    //     if(part.mime !== null && !part.mime.includes("image/")){
+    //         console.log('Nome Original do arquivo inválido: ', part.filename);
+    //         console.log('Mimetype do arquivo inválido: ', part.mime);
+
+    //         res.status(406).json({                                  // Envia resposta.
+    //             mensagem: 'O arquivo enviado é inválido.'
+    //         });
+    //         req.socket.destroy();                                   // Destroi a Stream de requisições (O Web Socket);
+    //         // FINALMENTE UM MÉTODO EFICAZ DE ENVIAR UMA MENSAGEM E ACABAR COM A REQUEST \o/
+            
+    //     } else if(part.filename === ''){
+
+    //         return;
+    //         //console.log('O front-end enviou um campo de arquivo, sem arquivo. Ignorando boundary...');
+            
+    //     } else {
+
+    //         incomingForm.handlePart(part);  // Tudo que não cair nessas validações, deixe o Formidable gerenciar.
+
+    //     }
+    // };
+
+    // incomingForm.parse(req, (err, fields, files) => {
+    //     if (err) {
+    //         console.log(err.message);
+
+    //         if(err.message.indexOf('maxFileSize exceeded') !== -1){
+
+    //             console.log('Arquivo grande demais sendo limitado!')
+    //             res.status(413).json({
+    //                 mensagem: 'O tamanho do arquivo enviado é grande demais. Aceitamos arquivos de até 1mb.'
+    //             });
+    //             return req.socket.destroy();
+                
+    //         } else {
+                
+    //         }
+
+    //     }
+
+    //     console.log('Fields: ', fields);
+    //     console.log('Files: ', files.name);
+
+
+    //     // req.body.fields = fields;
+    //     // req.body.files = files;
+    // })
+
+    // // Verificação do Progresso do Upload do multipart/form-data.
+
+    // incomingForm.on('progress', (bytesReceived, bytesExpected) => {
+    //     if (bytesReceived === 0){
+    //         console.log('bytesExpected: ', bytesExpected);
+    //     }
+    //     console.log('bytesReceived: ', bytesReceived);
+    // })
+
+    // incomingForm.on('error', (error) => {
+    //     console.log('Error: ', error.message);
+
+        
+
+    //     res.status(406).json({ 
+    //         mensagem: 'Algo inesperado aconteceu ao receber os dados do usuário.'
+    //     });
+    // });
+    
+    // incomingForm.on('end', () => {
+    //     console.log('Body: ', req.body);
+    //     res.status(200).json({
+    //         mensagem: 'A entrega do formulário foi concluída em "contas.js" na REST API.'
+    //     });
+    // })
+    
+
+});
 
 // router.patch('/'/*, controller.conta_updateOne*/);
 
