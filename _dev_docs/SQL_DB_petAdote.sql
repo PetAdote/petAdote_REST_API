@@ -36,6 +36,7 @@ CREATE TABLE tbl_usuario (
     background_perfil VARCHAR(200) NOT NULL DEFAULT 'bg_perfil_default.jpg',
     esta_ativo TINYINT UNSIGNED NOT NULL DEFAULT 0,
     ong_ativo TINYINT UNSIGNED NOT NULL DEFAULT 0,
+    e_admin TINYINT UNSIGNED NOT NULL DEFAULT 0,
     qtd_seguidores INT UNSIGNED NOT NULL DEFAULT 0,
     qtd_seguidos INT UNSIGNED NOT NULL DEFAULT 0,
     qtd_denuncias INT UNSIGNED NOT NULL DEFAULT 0,
@@ -304,13 +305,13 @@ SELECT * FROM tbl_conta_google;
 
 SELECT * FROM tbl_end_usuario;
 
-# SET FOREIGN_KEY_CHECKS = 0;
-# TRUNCATE tbl_usuario;
-# TRUNCATE tbl_conta_local;
-# TRUNCATE tbl_conta_facebook;
-# TRUNCATE tbl_conta_google;
-# TRUNCATE tbl_end_usuario;
-# SET FOREIGN_KEY_CHECKS = 1;
+SET FOREIGN_KEY_CHECKS = 0;
+TRUNCATE tbl_usuario;
+TRUNCATE tbl_conta_local;
+TRUNCATE tbl_conta_facebook;
+TRUNCATE tbl_conta_google;
+TRUNCATE tbl_end_usuario;
+SET FOREIGN_KEY_CHECKS = 1;
 
 SELECT 	pu.*,
 		al.*,

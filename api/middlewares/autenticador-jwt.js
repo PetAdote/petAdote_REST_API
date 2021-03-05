@@ -11,6 +11,12 @@ const jwt = require('jsonwebtoken');
         > [ http://localhost:3000/autenticacao_api/?cliente=MeuIdComoCliente&senha=MinhaSenhaComoCliente ]
 
     Devem também verificar se o Token expirou antes de fazer tais requisições. (Atualmente o Token é válido por 1 hora).
+
+    ------------------------------------------------------------------------------------------------------------------------------------------
+    É interessante que a REST armazene os Tokens que foram entregues temporáriamente na memória local, utilizando por exemplo o Redis.
+    Assim podemos controlar melhor os Tokens e fazer sistemas de Logout, onde o usuário, ao se desconectar de um Cliente, teria seu Token de Acesso revogado na REST.
+    Até que o mesmo alcance a data de expiração, onde poderiamos excluí-lo da memória.
+    
 */
 
 
@@ -31,9 +37,9 @@ module.exports = (req, res, next) => {
 
         const decoded = jwt.verify(token, process.env.JWT_KEY);     // O módulo "jsonwebtoken" verifica o token de acesso e retorna os dados do token.
 
-        req.dadosCliente = decoded;     // Agora o objeto 'dadosCliente' da requisição possuirá os dados do usuário "autenticado" atribuidos ao Token na rota "autenticacao_api.js" e esses dados poderão ser usados nas rotas protegidas.
+        req.dadosAuthToken = decoded;     // Agora o objeto 'dadosAuthToken' da requisição possuirá os dados do usuário "autenticado" atribuidos ao Token na rota "autenticacao_api.js" e esses dados poderão ser usados nas rotas protegidas.
 
-        // console.log('[Middleware_autenticadorJWT] dadosCliente:', req.dadosCliente);
+        // console.log('[Middleware_autenticadorJWT] dadosAuthToken:', req.dadosAuthToken);
 
         return next();
 

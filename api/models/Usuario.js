@@ -23,6 +23,7 @@
         background_perfil: { type: DataTypes.STRING(200), allowNull: false, defaultValue: 'bg_perfil_default.jpg' },
         esta_ativo: { type: DataTypes.TINYINT.UNSIGNED, allowNull: false, defaultValue: 0 },
         ong_ativo: { type: DataTypes.TINYINT.UNSIGNED, allowNull: false, defaultValue: 0 },
+        e_admin: { type: DataTypes.TINYINT.UNSIGNED, allowNull: false, defaultValue: 0 },
         qtd_seguidores: { type: DataTypes.INTEGER.UNSIGNED, allowNull: false, defaultValue: 0 },
         qtd_seguidos: { type: DataTypes.INTEGER.UNSIGNED, allowNull: false, defaultValue: 0 },
         qtd_denuncias: { type: DataTypes.INTEGER.UNSIGNED, allowNull: false, defaultValue: 0 },

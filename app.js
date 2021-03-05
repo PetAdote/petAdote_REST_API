@@ -18,12 +18,11 @@
 
 // Importação dos grupos de rotas.
     const rotaAutenticacaoAPI = require('./api/routes/autenticacao_api');
+    const rotaAutenticacaoUsuario = require('./api/routes/autenticacao_usuario');
 
     const rotaContas = require('./api/routes/contas');
     const rotaUsuarios = require('./api/routes/usuarios');
     const rotaEnderecos = require('./api/routes/enderecos');
-
-    
 
 // Middlewares.
     app.use(logger('dev'));     // Em todas as requisições, Morgan fará a análise e entregará dados sobre ela no console do servidor, por fim passará a requisição adiante.
@@ -53,11 +52,12 @@
 
     app.use(autenticadorJWT);
 
-    app.use(bodyParser.urlencoded({ extended: true }));     // Se false, não receberá "rich data" (Textos RTF???).
-    app.use(bodyParser.json());                             // Extrai os campos da requisição no formato JSON para o objeto "req.body".
+    app.use(express.urlencoded({ extended: true }));     // Se false, não receberá "rich data" (Textos RTF???).
+    app.use(express.json());                             // Extrai os campos da requisição no formato JSON para o objeto "req.body".
 
 // Rotas que vão gerenciar as requisições.
     app.use('/autenticacao_api', rotaAutenticacaoAPI);
+    app.use('/autenticacao_usuario', rotaAutenticacaoUsuario);
 
     app.use('/contas', rotaContas);
     app.use('/usuarios/enderecos', rotaEnderecos);
