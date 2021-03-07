@@ -29,8 +29,6 @@
 
     const sequelize = require('../../configs/database').connection;
 
-    const jwt = require('jsonwebtoken');
-
 // TODO... A maioria dessas importações irão para os controllers. Estão aqui só durante a fase inicial de testes.
 
 // Rotas.
@@ -264,12 +262,12 @@ router.post('/', async (req, res, next) => {   // Cria os dados básicos do usu�
     // Lista de campos obrigatórios.
     let requiredFields = [
         'email',
-        'emailRec',
+        'email_recuperacao',
         'senha',
-        'confirmaSenha',
-        'primeiroNome',
+        'confirma_senha',
+        'primeiro_nome',
         'sobrenome',
-        'dataNascimento',
+        'data_nascimento',
         'cpf',
         'telefone',
         'cep',
@@ -338,13 +336,13 @@ router.post('/', async (req, res, next) => {   // Cria os dados básicos do usu�
         }
     
     // Validação básica do e-mail de recuperação.
-        if (req.body.emailRec === req.body.email){
+        if (req.body.email_recuperacao === req.body.email){
             return res.status(400).json({
                 mensagem: 'EMAIL DE RECUPERACAO - Identico ao email'
             })
         }
 
-        if (!req.body.emailRec.match(/^([\w\d-+.]{1,64})(@[\w\d-]+)((?:\.\w+)+)$/g)){
+        if (!req.body.email_recuperacao.match(/^([\w\d-+.]{1,64})(@[\w\d-]+)((?:\.\w+)+)$/g)){
             return res.status(400).json({
                 mensagem: 'EMAIL DE RECUPERACAO - Formato invalido',
                 exemplo: 'emailRecuperacao@dominio.com'
@@ -380,7 +378,7 @@ router.post('/', async (req, res, next) => {   // Cria os dados básicos do usu�
             })
         }
 
-        if (req.body.senha != req.body.confirmaSenha){
+        if (req.body.senha != req.body.confirma_senha){
             // console.log('Erro: A confirmação de senha está diferente da senha.');
             return res.status(400).json({
                 mensagem: 'CONFIRMACAO SENHA - Esta diferente da senha'
@@ -389,15 +387,15 @@ router.post('/', async (req, res, next) => {   // Cria os dados básicos do usu�
 
     // Campos relacionados aos DADOS DO USUÁRIO.
     // Validação do primeiro nome.
-        if (req.body.primeiroNome.length === 0){
+        if (req.body.primeiro_nome.length === 0){
             // console.log('Erro: Nome vazio.');
             return res.status(400).json({
                 mensagem: 'PRIMEIRO NOME - Esta vazio'
             })
         } else {
-            // console.log('Nome: [' + req.body.primeiroNome + ']');
+            // console.log('Nome: [' + req.body.primeiro_nome + ']');
 
-            if (req.body.primeiroNome.match(/\s{2}|[^A-Za-zÀ-ÖØ-öø-ÿ ,.'-]+/g)){  // Anterior: /\s{2}|[^a-zà-ü ,.'-]+/gi
+            if (req.body.primeiro_nome.match(/\s{2}|[^A-Za-zÀ-ÖØ-öø-ÿ ,.'-]+/g)){  // Anterior: /\s{2}|[^a-zà-ü ,.'-]+/gi
                 // console.log('Erro: Espaços excessivos ou caracteres inválidos detectados!');
                 return res.status(400).json({
                     mensagem: 'PRIMEIRO NOME - Espacos excessivos ou caracteres invalidos detectados'
@@ -425,14 +423,14 @@ router.post('/', async (req, res, next) => {   // Cria os dados básicos do usu�
         }
 
     // Validação da data de nascimento.
-        if (req.body.dataNascimento.length === 0){
+        if (req.body.data_nascimento.length === 0){
             // console.log('Erro: Data de nascimento vazia.');
             return res.status(400).json({
                 mensagem: 'DATA DE NASCIMENTO - Esta vazia'
             })
         } else {
-            // console.log('Data de Nascimento: [' + req.body.dataNascimento + ']');
-            if (!req.body.dataNascimento.match(/^(\d{4})\-([1][0-2]|[0][1-9])\-([0][1-9]|[1-2]\d|[3][0-1])$/g)){
+            // console.log('Data de Nascimento: [' + req.body.data_nascimento + ']');
+            if (!req.body.data_nascimento.match(/^(\d{4})\-([1][0-2]|[0][1-9])\-([0][1-9]|[1-2]\d|[3][0-1])$/g)){
                 // console.log('Erro: Formato inválido de data!');
                 return res.status(400).json({
                     mensagem: 'DATA DE NASCIMENTO - Formato invalido de data',
@@ -441,34 +439,34 @@ router.post('/', async (req, res, next) => {   // Cria os dados básicos do usu�
             }
 
             // Verificação de ano bissexto
-            let dataNascimento = req.body.dataNascimento.split('-');
-            if(dataNascimento[0][2] == 0 && dataNascimento[0][3] == 0){
-                if (dataNascimento[0] % 400 == 0){
+            let data_nascimento = req.body.data_nascimento.split('-');
+            if(data_nascimento[0][2] == 0 && data_nascimento[0][3] == 0){
+                if (data_nascimento[0] % 400 == 0){
                     // console.log('Ano bissexto % 400');
-                    if (dataNascimento[1] == 02 && dataNascimento[2] > 29){
+                    if (data_nascimento[1] == 02 && data_nascimento[2] > 29){
                         return res.status(400).json({
                             mensagem: 'DATA DE NASCIMENTO - Dia inválido para ano bissexto.',
                         });
                     }
                 } else {
                     // console.log('Ano não-bissexto % 400');
-                    if (dataNascimento[1] == 02 && dataNascimento[2] > 28){
+                    if (data_nascimento[1] == 02 && data_nascimento[2] > 28){
                         return res.status(400).json({
                             mensagem: 'DATA DE NASCIMENTO - Dia inválido para ano não-bissexto.',
                         });
                     }
                 }
             } else {
-                if (dataNascimento[0] % 4 == 0){
+                if (data_nascimento[0] % 4 == 0){
                     // console.log('Ano bissexto % 4');
-                    if (dataNascimento[1] == 02 && dataNascimento[2] > 29){
+                    if (data_nascimento[1] == 02 && data_nascimento[2] > 29){
                         return res.status(400).json({
                             mensagem: 'DATA DE NASCIMENTO - Dia inválido para ano bissexto.',
                         });
                     }
                 } else {
                     // console.log('Ano não-bissexto % 4');
-                    if (dataNascimento[1] == 02 && dataNascimento[2] > 28){
+                    if (data_nascimento[1] == 02 && data_nascimento[2] > 28){
                         return res.status(400).json({
                             mensagem: 'DATA DE NASCIMENTO - Dia inválido para ano não-bissexto.',
                         });
@@ -478,7 +476,7 @@ router.post('/', async (req, res, next) => {   // Cria os dados básicos do usu�
             // Fim da verificação de ano bissexto.
 
             // Verificação de idade do usuário. Se tive menos que 10 anos não poderá se cadastrar.
-            if (dataNascimento[0] > (new Date().getFullYear() - 10)){
+            if (data_nascimento[0] > (new Date().getFullYear() - 10)){
                 return res.status(400).json({
                     mensagem: 'DATA DE NASCIMENTO - Usuário possui menos que 10 anos, portanto nao podera cadastrar',
                 });
@@ -815,18 +813,24 @@ router.post('/', async (req, res, next) => {   // Cria os dados básicos do usu�
     //------------------------------------------------------------------------------------------------------
 
     // Início do processamento dos dados para criação da conta do usuário.
-    // console.log('Dados recebidos com sucesso: ', req.body);
+
+        // console.log('Dados recebidos com sucesso: ', req.body);
 
     // Criptografando a senha do usuário...
 
+        // TODO...
+
     // Concluíndo o cadastro.
+
+    let idUsuario = undefined;
+
     try {
-        const result = await sequelize.transaction( async (transaction) => {
+        await sequelize.transaction( async (transaction) => {
 
             const usuario = await Usuario.create({
-                primeiro_nome: req.body.primeiroNome,
+                primeiro_nome: req.body.primeiro_nome,
                 sobrenome: req.body.sobrenome,
-                data_nascimento: req.body.dataNascimento,
+                data_nascimento: req.body.data_nascimento,
                 cpf: req.body.cpf,
                 telefone: req.body.telefone,
                 descricao: req.body.descricao || null
@@ -836,7 +840,7 @@ router.post('/', async (req, res, next) => {   // Cria os dados básicos do usu�
                 email: req.body.email,
                 cod_usuario: usuario.cod_usuario,
                 senha: req.body.senha,
-                email_recuperacao: req.body.emailRec
+                email_recuperacao: req.body.email_recuperacao
             });
 
             const endUsuario = await EnderecoUsuario.create({
@@ -848,16 +852,18 @@ router.post('/', async (req, res, next) => {   // Cria os dados básicos do usu�
                 estado: req.body.estado
             });
 
-            console.log('usuario: ', usuario.get({ plain: true }));
-            console.log('contaUsuario: ', contaUsuario.get({ plain: true }));
-            console.log('endUser: ', endUsuario.get({ plain: true }));
-            console.log('transactionId: ', transaction.id)            
+            idUsuario = usuario.cod_usuario;
+            // console.log('usuario: ', usuario.get({ plain: true }));
+            // console.log('contaUsuario: ', contaUsuario.get({ plain: true }));
+            // console.log('endUser: ', endUsuario.get({ plain: true }));
+            // console.log('transactionId: ', transaction.id);            
 
         });
+
         // Auto-Commit
     } catch (err) {
         // Auto-Rollback
-        console.log(err);
+        return next(new Error('Algo inesperado aconteceu ao cadastrar os dados do novo usuário. Entre em contato com o administrador.'));
     }
     
     // Coleta do Token de Acesso para autenticação inicial ou inclusão de dados adicionais ao cadastro do usuário pelo Cliente.
@@ -873,14 +879,15 @@ router.post('/', async (req, res, next) => {   // Cria os dados básicos do usu�
         // console.log(res.data);
         return res.data.token;
     }).catch((err) => {
-        console.log(err);
+        return next(new Error('Algo inesperado aconteceu ao autenticar o novo usuário. Entre em contato com o administrador.'));
     })
 
 
     // Conclusão da recepção e processamento do formulário de cadastro.
     
     return res.status(200).json({
-        mensagem: 'Novo usuário cadastrado com sucesso. Utilize o Token temporário abaixo para incluir dados adicionais ao cadastro do usuário.',
+        mensagem: 'Novo usuário cadastrado com sucesso. Utilize o ID e o Token temporário abaixo para incluir dados adicionais ao cadastro do usuário.',
+        idUsuario: idUsuario,
         tokenUsuario: accessTokenUsuario
     });
     

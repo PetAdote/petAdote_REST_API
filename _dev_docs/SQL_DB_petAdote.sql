@@ -305,12 +305,20 @@ SELECT * FROM tbl_conta_google;
 
 SELECT * FROM tbl_end_usuario;
 
+SELECT * FROM tbl_bloqueio;
+
+# INSERT INTO tbl_bloqueio
+#	(bloqueante, bloqueado)
+# VALUES
+#	(1, 2);
+
 SET FOREIGN_KEY_CHECKS = 0;
 TRUNCATE tbl_usuario;
 TRUNCATE tbl_conta_local;
 TRUNCATE tbl_conta_facebook;
 TRUNCATE tbl_conta_google;
 TRUNCATE tbl_end_usuario;
+TRUNCATE tbl_bloqueio;
 SET FOREIGN_KEY_CHECKS = 1;
 
 SELECT 	pu.*,
