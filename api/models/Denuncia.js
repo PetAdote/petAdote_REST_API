@@ -19,7 +19,7 @@ const {DataTypes, Model, Sequelize} = require('sequelize');
             references: { model: Model.Usuario, key: 'cod_usuario' }
         },
         descricao: { type: DataTypes.STRING(255), allowNull: false },
-        data_criacao: { type: DataTypes.DATE, allowNull: false, defaultValue: moment().utc(true) },
+        data_criacao: { type: DataTypes.DATE, allowNull: false, defaultValue: moment().utc(true).format() },
         esta_fechada: { type: DataTypes.TINYINT.UNSIGNED, allowNull: false, defaultValue: 0 }
 
     }, {

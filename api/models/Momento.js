@@ -20,7 +20,7 @@ const moment = require('moment-timezone');
         },
         descricao: { type: DataTypes.STRING(255) },
         qtd_visualizacao: { type: DataTypes.INTEGER.UNSIGNED, allowNull: false, defaultValue: 0 },
-        data_criacao: { type: DataTypes.DATE, allowNull: false, defaultValue: moment().utc(true) }
+        data_criacao: { type: DataTypes.DATE, allowNull: false, defaultValue: moment().utc(true).format() }
 
     }, {
         tableName: 'tbl_momento',

@@ -18,7 +18,7 @@ const moment = require('moment-timezone');
         seguido: { type: DataTypes.INTEGER.UNSIGNED, allowNull: false, 
             references: { model: Model.Usuario, key: 'cod_usuario' }
         },
-        data_criacao: { type: DataTypes.DATE, allowNull: false, defaultValue: moment().utc(true) }
+        data_criacao: { type: DataTypes.DATE, allowNull: false, defaultValue: moment().utc(true).format() }
 
     }, {
         tableName: 'tbl_seguida',

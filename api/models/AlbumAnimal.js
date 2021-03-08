@@ -16,7 +16,7 @@ const moment = require('moment-timezone');
             references: { model: Model.Animal, key: 'cod_animal' }
         },
         titulo_album: { type: DataTypes.STRING(100), allowNull: false },
-        data_criacao: { type: DataTypes.DATE, allowNull: false, defaultValue: moment().utc(true) }
+        data_criacao: { type: DataTypes.DATE, allowNull: false, defaultValue: moment().utc(true).format() }
 
     }, {
         tableName: 'tbl_album_animal',

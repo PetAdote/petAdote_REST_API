@@ -20,7 +20,7 @@ const moment = require('moment-timezone');
         },
         nome_unico_foto: { type: DataTypes.STRING(255), allowNull: false, unique: true },
         descricao: { type: DataTypes.STRING(255) },
-        data_criacao: { type: DataTypes.DATE, allowNull: false, defaultValue: moment().utc(true) }
+        data_criacao: { type: DataTypes.DATE, allowNull: false, defaultValue: moment().utc(true).format() }
 
     }, {
         tableName: 'tbl_foto_animal',

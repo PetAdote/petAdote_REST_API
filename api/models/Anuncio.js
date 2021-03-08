@@ -24,7 +24,7 @@ const moment = require('moment-timezone');
         qtd_visualizacao: { type: DataTypes.INTEGER.UNSIGNED, allowNull: false, defaultValue: 0 },
         qtd_avaliacoes: { type: DataTypes.INTEGER.UNSIGNED, allowNull: false, defaultValue: 0 },
         estado_adocao: { type: DataTypes.ENUM('Me adote!', 'Fui adotado!')},
-        data_criacao: { type: DataTypes.DATE, allowNull: false, defaultValue: moment().utc(true) }
+        data_criacao: { type: DataTypes.DATE, allowNull: false, defaultValue: moment().utc(true).format() }
 
     }, {
         tableName: 'tbl_anuncio',

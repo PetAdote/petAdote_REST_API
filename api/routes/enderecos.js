@@ -25,8 +25,6 @@ const path = require('path');               // 'path' do Node para gerenciar cam
 const util = require('util');               // 'util' do Node para analisar objetos complexos e outras utilidades.
 const uuid = require('uuid');               // 'uuid' para criar os nomes únicos dos arquivos.
 
-const formidable = require('formidable');   // 'formidable' para receber dados via POST de um formulário com encode 'multipart/form-data' (XMLHttpRequest).
-
 const sharp = require('sharp');             // 'sharp' para processar imagens.
 
 const bcrypt = require('bcrypt');           // 'bcrypt' para "hashear" as senhas dos usuários antes de enviá-las ao DB.

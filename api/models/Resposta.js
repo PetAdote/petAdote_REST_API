@@ -19,7 +19,7 @@ const moment = require('moment-timezone');
             references: { model: Model.Usuario, key: 'cod_usuario' }
         },
         resposta: { type: DataTypes.TEXT, allowNull: false },
-        data_criacao: { type: DataTypes.DATE, allowNull: false, defaultValue: moment().utc(true) },
+        data_criacao: { type: DataTypes.DATE, allowNull: false, defaultValue: moment().utc(true).format() },
         data_visualizacao: { type: DataTypes.DATE }
 
     }, {

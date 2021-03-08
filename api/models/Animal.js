@@ -30,8 +30,8 @@ const moment = require('moment-timezone');
         detalhes_comportamento: { type: DataTypes.STRING(255), allowNull: false },
         detalhes_saude: { type: DataTypes.STRING(255), allowNull: false },
         historia: { type: DataTypes.TEXT },
-        data_criacao: { type: DataTypes.DATE, allowNull: false, defaultValue: moment().utc(true) },
-        data_modificacao: { type: DataTypes.DATE, allowNull: false, defaultValue: moment().utc(true) }
+        data_criacao: { type: DataTypes.DATE, allowNull: false, defaultValue: moment().utc(true).format() },
+        data_modificacao: { type: DataTypes.DATE, allowNull: false, defaultValue: moment().utc(true).format() }
 
     }, {
         tableName: 'tbl_animal',

@@ -18,7 +18,7 @@ const moment = require('moment-timezone');
         cod_usuario: { type: DataTypes.INTEGER.UNSIGNED, allowNull: false, 
             references: { model: Model.Usuario, key: 'cod_usuario' }
         },
-        data_candidatura: { type: DataTypes.DATE, allowNull: false, defaultValue: moment().utc(true) },
+        data_candidatura: { type: DataTypes.DATE, allowNull: false, defaultValue: moment().utc(true).format() },
         estado_candidatura: { type: DataTypes.ENUM('Em avaliação', 'Candidatura aceita', 'Candidatura rejeitada'), allowNull: false, defaultValue: 'Em avaliação' }
 
     }, {

@@ -19,8 +19,6 @@
     const util = require('util');               // 'util' do Node para analisar objetos complexos e outras utilidades.
     const uuid = require('uuid');               // 'uuid' para criar os nomes únicos dos arquivos.
 
-    const formidable = require('formidable');   // 'formidable' para receber dados via POST de um formulário com encode 'multipart/form-data' (XMLHttpRequest).
-
     const sharp = require('sharp');             // 'sharp' para processar imagens.
 
     const bcrypt = require('bcrypt');           // 'bcrypt' para "hashear" as senhas dos usuários antes de enviá-las ao DB.
@@ -487,7 +485,7 @@ router.post('/', async (req, res, next) => {   // Cria os dados básicos do usu�
     if (req.body.cpf.length !== 14){
         // console.log('Erro: CPF vazio ou incompleto.');
         return res.status(400).json({
-            mensagem: 'CPF - Esta vazio ou incompleto',
+            mensagem: 'CPF - Esta vazio, incompleto ou em um formato incorreto',
             exemplo: '123.123.123-12'
         })
     } else {
@@ -594,7 +592,7 @@ router.post('/', async (req, res, next) => {   // Cria os dados básicos do usu�
             }
             
         } else {
-            console.log(`Erro: O CPF [${req.body.cpf}] é inválido!`)
+            // console.log(`Erro: O CPF [${req.body.cpf}] é inválido!`)
             return res.status(400).json({
                 mensagem: 'CPF - Invalido'
             })
@@ -767,11 +765,11 @@ router.post('/', async (req, res, next) => {   // Cria os dados básicos do usu�
         })
     }
 
-    if (!infoCEP.bairro.toLowerCase().includes(req.body.bairro.toLowerCase())){
-        return res.status(400).json({
-            mensagem: 'BAIRRO - O bairro informado nao esta de acordo com o CEP'
-        })
-    }
+    // if (!infoCEP.bairro.toLowerCase().includes(req.body.bairro.toLowerCase())){
+    //     return res.status(400).json({
+    //         mensagem: 'BAIRRO - O bairro informado nao esta de acordo com o CEP'
+    //     })
+    // }
 
     // Validação da cidade
     if (req.body.cidade.length === 0 || req.body.cidade.length > 100){
@@ -804,6 +802,8 @@ router.post('/', async (req, res, next) => {   // Cria os dados básicos do usu�
 
     // Fim da validação dos campos obrigatórios.
     // Validação de campos opcionais.
+
+    // Validação da descrição do usuário.
     if (req.body.descricao && req.body.descricao.length > 255){
         return res.status(400).json({
             mensagem: 'DESCRICAO - Possui mais do que 255 caracteres.'

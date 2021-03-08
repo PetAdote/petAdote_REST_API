@@ -18,8 +18,8 @@ const moment = require('moment-timezone');
         conteudo_texto: { type: DataTypes.TEXT, allowNull: false },
         qtd_visualizacao: { type: DataTypes.INTEGER.UNSIGNED, allowNull: false, defaultValue: 0 },
         qtd_avaliacoes: { type: DataTypes.INTEGER.UNSIGNED, allowNull: false, defaultValue: 0 },
-        data_criacao: { type: DataTypes.DATE, allowNull: false, defaultValue: moment().utc(true) },
-        data_modificacao: { type: DataTypes.DATE, allowNull: false, defaultValue: moment().utc(true) }
+        data_criacao: { type: DataTypes.DATE, allowNull: false, defaultValue: moment().utc(true).format() },
+        data_modificacao: { type: DataTypes.DATE, allowNull: false, defaultValue: moment().utc(true).format() }
 
     }, {
         tableName: 'tbl_postagem',
