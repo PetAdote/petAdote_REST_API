@@ -1,6 +1,8 @@
 // Importações.
     const {DataTypes, Sequelize, Model} = require('sequelize');
 
+    const moment = require('moment-timezone');
+
 // Instância da conexão com a Database.
     const {connection} = require('../../configs/database');
 
@@ -19,15 +21,16 @@
         telefone: { type: DataTypes.STRING(17), allowNull: false },
         data_nascimento: { type: DataTypes.DATEONLY, allowNull: false },
         descricao: { type: DataTypes.STRING(255) },
-        foto_usuario: { type: DataTypes.STRING(200), allowNull: false, defaultValue: 'avatar_default.jpg' },
-        background_perfil: { type: DataTypes.STRING(200), allowNull: false, defaultValue: 'bg_perfil_default.jpg' },
+        foto_usuario: { type: DataTypes.STRING(200), allowNull: false, defaultValue: 'avatar_default.jpeg' },
+        banner_usuario: { type: DataTypes.STRING(200), allowNull: false, defaultValue: 'banner_default.jpeg' },
         esta_ativo: { type: DataTypes.TINYINT.UNSIGNED, allowNull: false, defaultValue: 0 },
         ong_ativo: { type: DataTypes.TINYINT.UNSIGNED, allowNull: false, defaultValue: 0 },
+        e_admin: { type: DataTypes.TINYINT.UNSIGNED, allowNull: false, defaultValue: 0 },
         qtd_seguidores: { type: DataTypes.INTEGER.UNSIGNED, allowNull: false, defaultValue: 0 },
         qtd_seguidos: { type: DataTypes.INTEGER.UNSIGNED, allowNull: false, defaultValue: 0 },
         qtd_denuncias: { type: DataTypes.INTEGER.UNSIGNED, allowNull: false, defaultValue: 0 },
-        data_criacao: { type: DataTypes.DATE, allowNull: false, defaultValue: Sequelize.NOW },
-        data_modificacao: { type: DataTypes.DATE, allowNull: false, defaultValue: Sequelize.NOW }
+        data_criacao: { type: DataTypes.DATE, allowNull: false, defaultValue: moment().utc(true).format() },
+        data_modificacao: { type: DataTypes.DATE, allowNull: false, defaultValue: moment().utc(true).format() }
 
     }, {
         tableName: 'tbl_usuario',

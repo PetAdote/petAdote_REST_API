@@ -18,12 +18,11 @@
 
 // Importação dos grupos de rotas.
     const rotaAutenticacaoAPI = require('./api/routes/autenticacao_api');
+    const rotaAutenticacaoUsuario = require('./api/routes/autenticacao_usuario');
 
     const rotaContas = require('./api/routes/contas');
     const rotaUsuarios = require('./api/routes/usuarios');
     const rotaEnderecos = require('./api/routes/enderecos');
-
-    
 
 // Middlewares.
     app.use(logger('dev'));     // Em todas as requisições, Morgan fará a análise e entregará dados sobre ela no console do servidor, por fim passará a requisição adiante.
@@ -32,11 +31,11 @@
 
         res.header('Access-Control-Allow-Origin', '*');     // Aceite todas origens '*', ou por exemplo: 'http://localhost:4000' - minha aplicação web (client web) local que roda na porta 4000.
         res.header('Access-Control-Allow-Headers', 
-        'Origin, X-Requested-With, Content-Type, Accept, Authorization')    // '*' ou Restrição de quais HTTP Headers podem ser adicionados ao request.
+        'Origin, X-Requested-With, Content-Type, Accept, Authorization, File-Size')    // '*' ou Restrição de quais HTTP Headers podem ser adicionados ao request.
 
         if (req.method === 'OPTIONS'){  // Sempre que um request modificador (POST, PUT, ...) é enviado, um método OPTIONS é enviado primeiro pelos navegadores, para identificar se tal request pode ser feito ou não.
             res.header('Access-Control-Allow-Methods',
-            'GET, POST, PUT, PATCH, DELETE, ');
+            'GET, POST, PUT, PATCH, DELETE');
 
             return res.status(200).json({});        // Como nesse caso, o navegador só quer uma resposta dos métodos HTTP que ele pode utilizar. Respondemos apenas com a modificação do Header.
         }
@@ -53,11 +52,12 @@
 
     app.use(autenticadorJWT);
 
-    app.use(bodyParser.urlencoded({ extended: false }));    // Se false, não receberá "rich data" (Textos RTF???).
-    app.use(bodyParser.json());                             // Extrai os campos da requisição no formato JSON.
+    app.use(express.urlencoded({ extended: true }));     // Se false, não receberá "rich data" (Textos RTF???).
+    app.use(express.json());                             // Extrai os campos da requisição no formato JSON para o objeto "req.body".
 
 // Rotas que vão gerenciar as requisições.
     app.use('/autenticacao_api', rotaAutenticacaoAPI);
+    app.use('/autenticacao_usuario', rotaAutenticacaoUsuario);
 
     app.use('/contas', rotaContas);
     app.use('/usuarios/enderecos', rotaEnderecos);
@@ -99,6 +99,7 @@
 
         console.error('Um erro inesperado ocorreu!\n', error);
 
+        req.pause();
         res.status(error.status || 500);    // Se o erro gerado não apresentar um código de status http, use 500 - (Internal Server Error).
 
         res.json({      // Aqui é a resposta que entregaremos à aplicação em caso de erro, pode ser personalizada.

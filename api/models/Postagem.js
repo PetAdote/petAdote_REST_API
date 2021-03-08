@@ -1,6 +1,8 @@
 // Importações.
 const {DataTypes, Model, Sequelize} = require('sequelize');
 
+const moment = require('moment-timezone');
+
 // Instância da conexão com a Database.
     const {connection} = require('../../configs/database');
 
@@ -16,8 +18,8 @@ const {DataTypes, Model, Sequelize} = require('sequelize');
         conteudo_texto: { type: DataTypes.TEXT, allowNull: false },
         qtd_visualizacao: { type: DataTypes.INTEGER.UNSIGNED, allowNull: false, defaultValue: 0 },
         qtd_avaliacoes: { type: DataTypes.INTEGER.UNSIGNED, allowNull: false, defaultValue: 0 },
-        data_criacao: { type: DataTypes.DATE, allowNull: false, defaultValue: Sequelize.NOW },
-        data_modificacao: { type: DataTypes.DATE, allowNull: false, defaultValue: Sequelize.NOW }
+        data_criacao: { type: DataTypes.DATE, allowNull: false, defaultValue: moment().utc(true).format() },
+        data_modificacao: { type: DataTypes.DATE, allowNull: false, defaultValue: moment().utc(true).format() }
 
     }, {
         tableName: 'tbl_postagem',

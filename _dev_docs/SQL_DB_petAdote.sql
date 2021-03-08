@@ -32,10 +32,11 @@ CREATE TABLE tbl_usuario (
     telefone VARCHAR(17) NOT NULL,
     data_nascimento DATE NOT NULL,
     descricao VARCHAR(255),
-	foto_usuario VARCHAR(200) NOT NULL DEFAULT 'avatar_default.jpg',
-    background_perfil VARCHAR(200) NOT NULL DEFAULT 'bg_perfil_default.jpg',
+	foto_usuario VARCHAR(200) NOT NULL DEFAULT 'avatar_default.jpeg',
+    banner_usuario VARCHAR(200) NOT NULL DEFAULT 'banner_default.jpeg',
     esta_ativo TINYINT UNSIGNED NOT NULL DEFAULT 0,
     ong_ativo TINYINT UNSIGNED NOT NULL DEFAULT 0,
+    e_admin TINYINT UNSIGNED NOT NULL DEFAULT 0,
     qtd_seguidores INT UNSIGNED NOT NULL DEFAULT 0,
     qtd_seguidos INT UNSIGNED NOT NULL DEFAULT 0,
     qtd_denuncias INT UNSIGNED NOT NULL DEFAULT 0,
@@ -304,13 +305,21 @@ SELECT * FROM tbl_conta_google;
 
 SELECT * FROM tbl_end_usuario;
 
-# SET FOREIGN_KEY_CHECKS = 0;
-# TRUNCATE tbl_usuario;
-# TRUNCATE tbl_conta_local;
-# TRUNCATE tbl_conta_facebook;
-# TRUNCATE tbl_conta_google;
-# TRUNCATE tbl_end_usuario;
-# SET FOREIGN_KEY_CHECKS = 1;
+SELECT * FROM tbl_bloqueio;
+
+# INSERT INTO tbl_bloqueio
+#	(bloqueante, bloqueado)
+# VALUES
+#	(1, 2);
+
+SET FOREIGN_KEY_CHECKS = 0;
+TRUNCATE tbl_usuario;
+TRUNCATE tbl_conta_local;
+TRUNCATE tbl_conta_facebook;
+TRUNCATE tbl_conta_google;
+TRUNCATE tbl_end_usuario;
+TRUNCATE tbl_bloqueio;
+SET FOREIGN_KEY_CHECKS = 1;
 
 SELECT 	pu.*,
 		al.*,
