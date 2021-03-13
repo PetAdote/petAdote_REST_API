@@ -84,6 +84,11 @@ router.get('/', (req, res, next) => {
 
         } catch (error) {
             console.error('[/contas/?codUsuario=] Algo inesperado aconteceu ao buscar a conta de um usuário.\n', error);
+
+            // let erro = new Error('Mensagem...');
+            // erro.status(500);
+            // next(erro)
+
             return next( new Error('Algo inesperado aconteceu ao buscar a conta de um usuário. Entre em contato com o administrador.'));
         }
 
@@ -293,6 +298,17 @@ router.post('/', async (req, res, next) => {   // Cria os dados básicos do usu�
     }
 
     //------------------------------------------------------------------------------------------------------
+    // Normalização de Campos recebidos.
+
+    // console.log('Antes do processamento: ', req.body);
+
+    Object.entries(req.body).forEach((pair) => {        // Todo campo se tornará uma String e não possuirá espaços "     " no começo ou no fim.
+        req.body[pair[0]] = String(pair[1]).trim();
+    });
+
+    // console.log('Depois do processamento: ', req.body);
+
+    //------------------------------------------------------------------------------------------------------
     // Validação dos Campos Obrigatórios.
 
     // Campos relacionados à CONTA DO USUÁRIO.
@@ -476,17 +492,23 @@ router.post('/', async (req, res, next) => {   // Cria os dados básicos do usu�
             // Verificação de idade do usuário. Se tive menos que 10 anos não poderá se cadastrar.
             if (data_nascimento[0] > (new Date().getFullYear() - 10)){
                 return res.status(400).json({
-                    mensagem: 'DATA DE NASCIMENTO - Usuário possui menos que 10 anos, portanto nao podera cadastrar',
+                    mensagem: 'DATA DE NASCIMENTO - Usuário possui menos que 10 anos, portanto nao podera cadastrar'
                 });
+            }
+            
+            if (data_nascimento[0] < 1900){
+                return res.status(400).json({
+                    mensagem: 'DATA DE NASCIMENTO - Ano de nascimento inválido, digite um valor acima de 1900'
+                })
             }
         }
 
     // Validação de CPF.
-    if (req.body.cpf.length !== 14){
+    if (!req.body.cpf.match(/^\d{3}[.]\d{3}[.]\d{3}[-]\d{2}$|^\d{11}$/g)){
         // console.log('Erro: CPF vazio ou incompleto.');
         return res.status(400).json({
             mensagem: 'CPF - Esta vazio, incompleto ou em um formato incorreto',
-            exemplo: '123.123.123-12'
+            exemplo: '123.123.123-12 ou 12312312312'
         })
     } else {
         // console.log('CPF: [' + req.body.cpf + ']');
@@ -571,25 +593,23 @@ router.post('/', async (req, res, next) => {   // Cria os dados básicos do usu�
         if (cpfDigits.indexOf(cpfFirstVerificationDigit, 9) != -1 && cpfDigits.indexOf(cpfSecondVerificationDigit, 10) != -1){
             // console.log(`O CPF [${req.body.cpf}] é válido!`);
 
+            // Reconstruindo o CPF no formato padrão definido para o Banco de Dados.
+            req.body.cpf = `${cpfDigitsArray.slice(0,3).join('')}.${cpfDigitsArray.slice(3,6).join('')}.${cpfDigitsArray.slice(6,9).join('')}-${cpfDigitsArray.slice(9).join('')}`;
+
             // Verificação do [ORM] sobre o CPF -- Caso o CPF já tenha sido utilizado, o usuário não poderá continuar o cadastro.
-            const isCPFLivre = await Usuario.findOne({ where: { cpf: req.body.cpf } }).then((res) => {
-                if (res === null || res === undefined || res === ''){
+            await Usuario.findOne({ where: { cpf: req.body.cpf } })
+            .then((result) => {
+                if (result === null || result === undefined || result === ''){
                     // console.log('[ORM] CPF livre!');
                     return true;
                 } else {
                     // console.log('[ORM] Esse CPF não está livre!');
-                    return false;
+                    return res.status(409).json({
+                        mensagem: 'CPF - Em Uso'
+                    });
                 }
             });
 
-            // console.log('[ORM] O CPF está livre? ', isCPFLivre);
-
-            if (!isCPFLivre){
-                // console.log('O CPF não está livre. Enviando resposta ao front-end');
-                return res.status(409).json({
-                    mensagem: 'CPF - Em Uso'
-                });
-            }
             
         } else {
             // console.log(`Erro: O CPF [${req.body.cpf}] é inválido!`)
@@ -603,17 +623,18 @@ router.post('/', async (req, res, next) => {   // Cria os dados básicos do usu�
     }
 
     // Validação do telefone.
-    if (!(req.body.telefone.length === 15 || req.body.telefone.length === 14 )){
+    if (!req.body.telefone.match(/^\(?[0]?(\d{2})\)?\s?((?:[9])?\d{4})[-]?(\d{4})$/g)){
         // console.log('Erro: Telefone vazio ou incompleto.');
         return res.status(400).json({
-            mensagem: 'TELEFONE - Esta vazio ou incompleto',
-            exemplo: '(12) 91234-1234 ou (12) 1234-1234'
-        })
+            mensagem: 'TELEFONE - O formato digitado é inválido, o telefone deve possuir DDD e 9 ou 8 dígitos.',
+            exemplo: '(012) 1234-1234 / (12) 91234-1234 / 012 1234-1234 / 12 91234-1234 / 01212341234 / 12912341234 / etc...'
+        })  
     } else {
         // console.log('Telefone: [' + req.body.telefone + ']');
         
         // Outra forma de utilizar RegEx. :D
-        let telValidationRegEx = /^\((\d{2})\) ((?:[9])?\d{4}-\d{4})$/g;   // Entrada esperada: "(00) 91234-1234" ou "(00) 1234-1234";
+        //let telValidationRegEx = /^\((\d{2})\) ((?:[9])?\d{4}-\d{4})$/g;   // Entrada esperada: "(00) 91234-1234" ou "(00) 1234-1234";
+        let telValidationRegEx = /^\(?[0]?(\d{2})\)?\s?((?:[9])?\d{4})[-]?(\d{4})$/g;     // O usuário poderá digitar o telefone da forma que desejar. Contanto que tenha apenas o DDD e 8 ou 9 dígitos.
         let telValidationMatchesArray = telValidationRegEx.exec(String(req.body.telefone));
 
         let telDDD;
@@ -621,12 +642,12 @@ router.post('/', async (req, res, next) => {   // Cria os dados básicos do usu�
 
         if (telValidationMatchesArray){
             telDDD = telValidationMatchesArray[1];  // Capturando os agrupamentos da RegEx.
-            telNum = telValidationMatchesArray[2];
+            telNum = `${telValidationMatchesArray[2]}-${telValidationMatchesArray[3]}`;
         } else {
             // console.log('Erro: O formato do número está incorreto!');
             return res.status(400).json({
-                mensagem: 'TELEFONE - Formato invalido, verifique o numero pos DDD, celulares possuem o digito 9 e residenciais nao.',
-                exemplo: '(12) 91234-1234 ou (12) 1234-1234'
+                mensagem: 'TELEFONE - O formato digitado é inválido, o telefone deve possuir DDD e 9 ou 8 dígitos.',
+                exemplo: '(012) 1234-1234 / (12) 91234-1234 / 012 1234-1234 / 12 91234-1234 / 01212341234 / 12912341234 / etc...'
             })
         }
 
@@ -709,18 +730,22 @@ router.post('/', async (req, res, next) => {   // Cria os dados básicos do usu�
             })
         }
 
+        // Se todas as restrições passaram, o telefone é válido.
+        // Reconstruindo o telefone no formato padrão definido para o Banco de Dados.
+        req.body.telefone = `(${telDDD}) ${telNum}`
+
     }
 
     // Campos relacionados ao ENDEREÇO DO USUÁRIO.
     // Validação simples do CEP
-    if (!req.body.cep.match(/^\d{5}(?:\-?)\d{3}$/)){
+    if (!String(req.body.cep).match(/^\d{5}(?:\-?)\d{3}$/)){
         return res.status(400).json({
             mensagem: 'CEP - Formato invalido',
             exemplo: '12345-123 ou 12345123'
         })
     }
 
-    if (req.body.cep.length === 9){
+    if (String(req.body.cep).length === 9){
         req.body.cep = req.body.cep.replace('-', '')
     }
 
@@ -801,6 +826,9 @@ router.post('/', async (req, res, next) => {   // Cria os dados básicos do usu�
     }
 
     // Fim da validação dos campos obrigatórios.
+
+    //------------------------------------------------------------------------------------------------------
+
     // Validação de campos opcionais.
 
     // Validação da descrição do usuário.
@@ -809,12 +837,21 @@ router.post('/', async (req, res, next) => {   // Cria os dados básicos do usu�
             mensagem: 'DESCRICAO - Possui mais do que 255 caracteres.'
         })
     }
-    //
+
     //------------------------------------------------------------------------------------------------------
 
     // Início do processamento dos dados para criação da conta do usuário.
 
         // console.log('Dados recebidos com sucesso: ', req.body);
+
+    // Tentativas de solução do problema com o DATETIME nos registros do banco de dados.
+        // console.log('newDate ',new Date());
+        // console.log('moment', moment());
+        // console.log('IANA', Intl.DateTimeFormat().resolvedOptions().hour)
+        // console.log('offsetMoment', moment().format('Z'))
+
+        // Problema identificado: Está nas configurações do Sequelize.
+        // Problema resolvido: Timezone foi configurado corretamente.
 
     // Criptografando a senha do usuário...
 
@@ -861,8 +898,9 @@ router.post('/', async (req, res, next) => {   // Cria os dados básicos do usu�
         });
 
         // Auto-Commit
-    } catch (err) {
+    } catch (error) {
         // Auto-Rollback
+        console.log('Algo inesperado aconteceu ao cadastrar os dados do novo usuário.', error)
         return next(new Error('Algo inesperado aconteceu ao cadastrar os dados do novo usuário. Entre em contato com o administrador.'));
     }
     
@@ -875,21 +913,31 @@ router.post('/', async (req, res, next) => {   // Cria os dados básicos do usu�
             'email': req.body.email,
             'senha': req.body.senha
         }
-    }).then((res) => {
+    }).then((result) => {
         // console.log(res.data);
-        return res.data.token;
-    }).catch((err) => {
+        return result.data.token;
+    }).catch((error) => {
+        console.log('Algo inesperado aconteceu ao autenticar o novo usuário.', error)
         return next(new Error('Algo inesperado aconteceu ao autenticar o novo usuário. Entre em contato com o administrador.'));
     })
 
 
     // Conclusão da recepção e processamento do formulário de cadastro.
+
+    Usuario.findByPk(idUsuario, {
+        attributes: ['data_criacao']
+    }).then((result) => {
+        console.log('DataCriacao', result.data_criacao);
+        console.log('typeOfData: ', typeof (result.data_criacao));
+    })
     
     return res.status(200).json({
         mensagem: 'Novo usuário cadastrado com sucesso. Utilize o ID e o Token temporário abaixo para incluir dados adicionais ao cadastro do usuário.',
-        idUsuario: idUsuario,
+        cod_usuario: idUsuario,
         tokenUsuario: accessTokenUsuario
     });
+
+    
     
 
 });

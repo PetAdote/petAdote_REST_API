@@ -4,6 +4,8 @@
 
     const readlineSync = require('readline-sync');  // [npm/readline-sync] Permite a captura de user input no terminal. Se você está utilizando o "nodemon" para monitorar alterações, vá até "package.json" e execute o processo inicial da segiunte maneira [ nodemon --no-stdin ./server.js ]. Caso contrário os inputs de usuário serão ignorados.
 
+    const moment = require('moment');
+
 // Instância do Sequelize ORM.
 
     // let dbUser = readlineSync.question('[Database] Nome de usuario: ');
@@ -13,6 +15,14 @@
         host: '127.0.0.1',
         port: '3316',       // Porta de Reverse Proxy -- Direciona ao serviço corrente na porta 3306 (mysql) na máquina virtual.
         dialect: 'mysql',
+        dialectOptions: {
+            typeCast: (field, next) => {            // Por padrão, uma consulta com o Sequelize que retorna um DATETIME entregará o dado no padrão ISO8601 (UTC). Desejamos receber os dados sempre da forma que estão no banco de dados, então devemos sobrepor a entrega desse tipo de campo.
+                if (field.type === 'DATETIME'){
+                    return field.string()
+                }
+                return next()
+            }
+        },
         pool: {
             max: 100,
             min: 0,
@@ -21,8 +31,9 @@
         },
         define: {   // Opções das definições de Models.
             freezeTableName: true,
-            timestamps: false
+            timestamps: false,
         },
+        timezone: moment().format('Z'),     // Ajusta o horário salvo no banco de dados conforme o offset local (No caso do horário BR: GMT-03:00). O moment detecta horário de verão.
         logging: (msg) => { console.log(msg) }
     });
 

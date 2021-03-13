@@ -30,19 +30,19 @@ router.post('/', async (req, res, next) => {     // Verifica se o usuário está
             ,
             nest: true,
             raw: true
-        }).then((res) => {
+        }).then((result) => {
             // Usuário encontrado.
             // console.log(res);
             usuario = { 
-                cod_usuario: res.cod_usuario,
+                cod_usuario: result.cod_usuario,
                 tipo_cadastro: 'local',
-                esta_ativo: res.Usuario.esta_ativo,
-                ong_ativo: res.Usuario.ong_ativo,
-                e_admin: res.Usuario.e_admin
+                esta_ativo: result.Usuario.esta_ativo,
+                ong_ativo: result.Usuario.ong_ativo,
+                e_admin: result.Usuario.e_admin
             }
-        }).catch((err) => {
+        }).catch((error) => {
             // Usuário não encontrado.
-            console.log(err);
+            console.log(error);
         })
     }
 
@@ -65,6 +65,7 @@ router.post('/', async (req, res, next) => {     // Verifica se o usuário está
 
         return res.header('Authorization', `Bearer ${tokenUsuario}`).status(200).json({
             mensagem: 'Usuário autenticado com sucesso.',
+            cod_usuario: usuario.cod_usuario,
             token: tokenUsuario
         });
 

@@ -25,9 +25,9 @@
     const util = require('util');               // 'util' do Node para analisar objetos complexos e outras utilidades.
     const uuid = require('uuid');               // 'uuid' para criar os nomes únicos dos arquivos.
 
-    const moment = require('moment-timezone');  // 'moment-timezone' para capturar o horário local do sistema (não UTC).
+    const moment = require('moment');   // 'moment' para capturar o horário local do sistema (não UTC).
 
-    const bcrypt = require('bcrypt');           // 'bcrypt' para "hashear" as senhas dos usuários antes de enviá-las ao DB.
+    const bcrypt = require('bcrypt');   // 'bcrypt' para "hashear" as senhas dos usuários antes de enviá-las ao DB.
 
     const multer = require('multer');   // 'multer' para receber dados via POST de um formulário com encode 'multipart/form-data' (XMLHttpRequest).
 
@@ -214,7 +214,7 @@
         if (!req.headers['content-type'].includes('multipart/form-data')){
 
             let operacoes = {
-                data_modificacao: moment().utc(true).format()
+                data_modificacao: new Date()
             };
 
             let allowedFields = [
@@ -234,12 +234,16 @@
 
             // console.log('body', req.body);
 
+            //------------------------------------------------------------------------------------------------------
+            // Normalização dos campos recebidos 
+
             Object.entries(req.body).forEach((pair) => {
-                if (allowedFields.includes(pair[0])){       // Não será possível modificar valores que não estiverem na lista "allowedFields" via Clientes.
-                    operacoes[pair[0]] = pair[1];
+                if (allowedFields.includes(pair[0])){               // Não será possível modificar valores que não estiverem na lista "allowedFields" via Clientes.
+                    operacoes[pair[0]] = String(pair[1]).trim();    // Todo campo será tratado como uma String e não possuirá espaços no começo e no fim.
                 }
             });
 
+            //------------------------------------------------------------------------------------------------------
             // Validação das operações de alteração de campos.
             console.log('Operacoes de atualização: ', operacoes);
 
@@ -326,15 +330,21 @@
                                 mensagem: 'DATA DE NASCIMENTO - Usuário possui menos que 10 anos, portanto nao podera cadastrar',
                             });
                         }
+
+                        if (data_nascimento[0] < 1900){
+                            return res.status(400).json({
+                                mensagem: 'DATA DE NASCIMENTO - Ano de nascimento inválido, digite um valor acima de 1900'
+                            })
+                        }
                     }
                 }
 
                 // Validação de CPF.
                 if (operacoes.cpf){
-                    if (operacoes.cpf.length !== 14){
+                    if (!req.body.cpf.match(/^\d{3}[.]\d{3}[.]\d{3}[-]\d{2}$|^\d{11}$/g)){
                         return res.status(400).json({
                             mensagem: 'CPF - Esta vazio, incompleto ou em um formato incorreto',
-                            exemplo: '123.123.123-12'
+                            exemplo: '123.123.123-12 ou 12312312312'
                         })
                     } else {
                         // Análise do CPF digitado pelo usuário.
@@ -395,24 +405,24 @@
                         // Verificação final do CPF digitado pelo usuário, para permitir o envio dos dados ao Back-end.
 
                         if (cpfDigits.indexOf(cpfFirstVerificationDigit, 9) != -1 && cpfDigits.indexOf(cpfSecondVerificationDigit, 10) != -1){
+
+                            // Reconstruindo o CPF no formato padrão definido para o Banco de Dados.
+                            operacoes.cpf = `${cpfDigitsArray.slice(0,3).join('')}.${cpfDigitsArray.slice(3,6).join('')}.${cpfDigitsArray.slice(6,9).join('')}-${cpfDigitsArray.slice(9).join('')}`;
+
                             // Verificação do [ORM] sobre o CPF -- Caso o CPF já tenha sido utilizado, o usuário não poderá continuar a alteração
-                            const isCPFLivre = await Usuario.findOne({ where: { cpf: operacoes.cpf } }).then((res) => {
-                                if (res === null || res === undefined || res === ''){
+                            const isCPFLivre = await Usuario.findOne({ where: { cpf: operacoes.cpf } })
+                            .then((result) => {
+                                if (result === null || result === undefined || result === ''){
                                     // console.log('[ORM] CPF livre!');
                                     return true;
                                 } else {
                                     // console.log('[ORM] Esse CPF não está livre!');
+                                    return res.status(409).json({
+                                        mensagem: 'CPF - Em Uso'
+                                    });
                                     return false;
                                 }
                             });
-
-                            // console.log('[ORM] O CPF está livre? ', isCPFLivre);
-                            if (!isCPFLivre){
-                                // console.log('O CPF não está livre. Enviando resposta ao front-end');
-                                return res.status(409).json({
-                                    mensagem: 'CPF - Em Uso'
-                                });
-                            }
                             
                         } else {
                             // console.log(`Erro: O CPF [${operacoes.cpf}] é inválido!`)
@@ -426,14 +436,15 @@
 
                 // Validação do telefone.
                 if (operacoes.telefone){
-                    if (!(operacoes.telefone.length === 15 || operacoes.telefone.length === 14 )){
+                    if (!operacoes.telefone.match(/^\(?[0]?(\d{2})\)?\s?((?:[9])?\d{4})[-]?(\d{4})$/g)){
                         return res.status(400).json({
                             mensagem: 'TELEFONE - Esta vazio ou incompleto',
                             exemplo: '(12) 91234-1234 ou (12) 1234-1234'
                         })
                     } else {
                         // Outra forma de utilizar RegEx. :D
-                        let telValidationRegEx = /^\((\d{2})\) ((?:[9])?\d{4}-\d{4})$/g;   // Entrada esperada: "(00) 91234-1234" ou "(00) 1234-1234";
+                        // let telValidationRegEx = /^\((\d{2})\) ((?:[9])?\d{4}-\d{4})$/g;   // Entrada esperada: "(00) 91234-1234" ou "(00) 1234-1234";
+                        let telValidationRegEx = /^\(?[0]?(\d{2})\)?\s?((?:[9])?\d{4})[-]?(\d{4})$/g;     // O usuário poderá digitar o telefone da forma que desejar. Contanto que tenha apenas o DDD e 8 ou 9 dígitos.
                         let telValidationMatchesArray = telValidationRegEx.exec(String(operacoes.telefone));
 
                         let telDDD;
@@ -441,12 +452,12 @@
 
                         if (telValidationMatchesArray){
                             telDDD = telValidationMatchesArray[1];  // Capturando os agrupamentos da RegEx.
-                            telNum = telValidationMatchesArray[2];
+                            telNum = `${telValidationMatchesArray[2]}-${telValidationMatchesArray[3]}`;
                         } else {
                             // console.log('Erro: O formato do número está incorreto!');
                             return res.status(400).json({
-                                mensagem: 'TELEFONE - Formato invalido, verifique o numero pos DDD, celulares possuem o digito 9 e residenciais nao.',
-                                exemplo: '(12) 91234-1234 ou (12) 1234-1234'
+                                mensagem: 'TELEFONE - O formato digitado é inválido, o telefone deve possuir DDD e 9 ou 8 dígitos.',
+                                exemplo: '(012) 1234-1234 / (12) 91234-1234 / 012 1234-1234 / 12 91234-1234 / 01212341234 / 12912341234 / etc...'
                             })
                         }
 
@@ -517,8 +528,13 @@
                             })
                         }
 
+                        // Se todas as restrições passaram, o telefone é válido.
+                        // Reconstruindo o telefone no formato padrão definido para o Banco de Dados.
+                        operacoes.telefone = `(${telDDD}) ${telNum}`
+
+
                     }
-                }
+                };
 
                 // Validação da descrição
                 if (operacoes.descricao){
@@ -527,6 +543,129 @@
                             mensagem: 'DESCRICAO - Possui mais do que 255 caracteres.'
                         })
                     }
+                }
+
+                // Validação para "esta_ativo".
+                if (operacoes.esta_ativo){
+                    let allowedValues = [
+                        '0',
+                        '1'
+                    ]
+
+                    if (!allowedValues.includes((operacoes.esta_ativo))){
+                        return res.status(400).json({
+                            mensagem: 'ESTA_ATIVO - Apenas aceitamos os valores (0 ou 1)'
+                        })
+                    }
+                }
+
+                // Validação para "ong_ativo".
+                if (operacoes.ong_ativo){
+                    let allowedValues = [
+                        '0',
+                        '1'
+                    ]
+
+                    if (!allowedValues.includes((operacoes.ong_ativo))){
+                        return res.status(400).json({
+                            mensagem: 'ONG_ATIVO - Apenas aceitamos os valores (0 ou 1)'
+                        })
+                    }
+                }
+
+                // Validação para "e_admin".
+                if (operacoes.e_admin){
+                    let allowedValues = [
+                        '0',
+                        '1'
+                    ]
+
+                    if (!allowedValues.includes((operacoes.e_admin))){
+                        return res.status(400).json({
+                            mensagem: 'E_ADMIN - Apenas aceitamos os valores (0 ou 1)'
+                        })
+                    }
+                }
+
+                // Validação para "qtd_seguidores"
+                if (operacoes.qtd_seguidores){
+                    let allowedValues = [
+                        '-1',
+                        '1'
+                    ]
+
+                    if (!allowedValues.includes(operacoes.qtd_seguidores)){
+                        return res.status(400).json({
+                            mensagem: 'QTD_SEGUIDORES - Para aumentar os seguidores envie o valor 1, para diminuir envie o valor -1'
+                        })
+                    }
+
+                    return await Usuario.findByPk(req.params.codUsuario, {
+                        attributes: ['qtd_seguidores'],
+                        raw: true
+                    }).then((result) => {
+                        if (result.qtd_seguidores == 0 && operacoes.qtd_seguidores == -1){
+                            return res.status(406).json({
+                                mensagem: 'QTD_SEGUIDORES - Não é possível fazer com que o usuário tenha uma quantidade negativa de seguidores'
+                            });
+                        }
+
+                        operacoes.qtd_seguidores = Number(result.qtd_seguidores + Number(operacoes.qtd_seguidores));
+                    })
+                }
+
+                // Validação para "qtd_seguidos"
+                if (operacoes.qtd_seguidos){
+                    let allowedValues = [
+                        '-1',
+                        '1'
+                    ]
+
+                    if (!allowedValues.includes(operacoes.qtd_seguidos)){
+                        return res.status(400).json({
+                            mensagem: 'QTD_SEGUIDOS - Para aumentar a quantidade de seguidos envie o valor 1, para diminuir envie o valor -1'
+                        })
+                    }
+
+                    return await Usuario.findByPk(req.params.codUsuario, {
+                        attributes: ['qtd_seguidos'],
+                        raw: true
+                    }).then((result) => {
+                        if (result.qtd_seguidos == 0 && operacoes.qtd_seguidos == -1){
+                            return res.status(406).json({
+                                mensagem: 'QTD_SEGUIDOS - Não é possível fazer com que o usuário tenha uma quantidade negativa de seguidos'
+                            });
+                        }
+
+                        operacoes.qtd_seguidos = Number(result.qtd_seguidos + Number(operacoes.qtd_seguidos));
+                    })
+                }
+
+                // Validação para "qtd_seguidos"
+                if (operacoes.qtd_denuncias){
+                    let allowedValues = [
+                        '-1',
+                        '1'
+                    ]
+
+                    if (!allowedValues.includes(operacoes.qtd_denuncias)){
+                        return res.status(400).json({
+                            mensagem: 'QTD_DENUNCIAS - Para aumentar a quantidade de denuncias envie o valor 1, para diminuir envie o valor -1'
+                        })
+                    }
+
+                    return await Usuario.findByPk(req.params.codUsuario, {
+                        attributes: ['qtd_denuncias'],
+                        raw: true
+                    }).then((result) => {
+                        if (result.qtd_denuncias == 0 && operacoes.qtd_denuncias == -1){
+                            return res.status(406).json({
+                                mensagem: 'QTD_DENUNCIAS - Não é possível fazer com que o usuário tenha uma quantidade negativa de denúncias'
+                            });
+                        }
+
+                        operacoes.qtd_denuncias = Number(result.qtd_denuncias + Number(operacoes.qtd_denuncias));
+                    })
                 }
                 
             // Fim das validações de alteração de campos.
@@ -571,6 +710,7 @@
         }
         // Fim do tratamento de alterações nos campos.
 
+        //------------------------------------------------------------------------------------------------------
         // Tratando alterações nos arquivos (Imagens).
         if (req.headers['content-type'].includes('multipart/form-data')){
 
@@ -684,7 +824,7 @@
                     let oldUserAvatar = avatarUsuario.foto_usuario;
                     let oldUserAvatarPath = path.resolve(__dirname, '../uploads/images/usersAvatar/', oldUserAvatar);
 
-                    let newFileName = `avatar_${uuid.v4()}-${moment().utc(true).unix()}.jpeg`;
+                    let newFileName = `avatar_${uuid.v4()}-${moment().unix()}.jpeg`;
                     let newFilePath = path.resolve(__dirname, '../uploads/tmp/', newFileName);
                     let finalFileDest = path.resolve(__dirname, '../uploads/images/usersAvatar/', newFileName);
 
@@ -705,7 +845,10 @@
 
                             fs.unlinkSync(req.files.foto_usuario[0].path);  // Deleta o arquivo original enviado pelo usuário do servidor.
                             
-                            await Usuario.update({ foto_usuario: newFileName }, {   // Atualiza o nome do avatar do usuário no banco de dados.
+                            await Usuario.update({ 
+                                foto_usuario: newFileName,
+                                data_modificacao: new Date()
+                             }, {   // Atualiza o nome do avatar do usuário no banco de dados.
                                 where: { cod_usuario: req.params.codUsuario },
                                 limit: 1
                             })
@@ -752,7 +895,7 @@
                     let oldUserBanner = bannerUsuario.banner_usuario;
                     let oldUserBannerPath = path.resolve(__dirname, '../uploads/images/usersBanner/', oldUserBanner);
 
-                    let newFileName = `banner_${uuid.v4()}-${moment().utc(true).unix()}.jpeg`;
+                    let newFileName = `banner_${uuid.v4()}-${moment().unix()}.jpeg`;
                     let newFilePath = path.resolve(__dirname, '../uploads/tmp/', newFileName);
                     let finalFileDest = path.resolve(__dirname, '../uploads/images/usersBanner/', newFileName);
 
@@ -773,7 +916,10 @@
 
                             fs.unlinkSync(req.files.banner_usuario[0].path);  // Deleta o arquivo original enviado pelo usuário do servidor.
                             
-                            await Usuario.update({ banner_usuario: newFileName }, {   // Atualiza o nome do avatar do usuário no banco de dados.
+                            await Usuario.update({ 
+                                banner_usuario: newFileName,
+                                data_modificacao: new Date()
+                             }, {   // Atualiza o nome do avatar do usuário no banco de dados.
                                 where: { cod_usuario: req.params.codUsuario },
                                 limit: 1
                             })

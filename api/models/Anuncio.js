@@ -1,8 +1,6 @@
 // Importações.
 const {DataTypes, Model, Sequelize} = require('sequelize');
 
-const moment = require('moment-timezone');
-
 // Instância da conexão com a Database.
     const {connection} = require('../../configs/database');
 
@@ -24,7 +22,7 @@ const moment = require('moment-timezone');
         qtd_visualizacao: { type: DataTypes.INTEGER.UNSIGNED, allowNull: false, defaultValue: 0 },
         qtd_avaliacoes: { type: DataTypes.INTEGER.UNSIGNED, allowNull: false, defaultValue: 0 },
         estado_adocao: { type: DataTypes.ENUM('Me adote!', 'Fui adotado!')},
-        data_criacao: { type: DataTypes.DATE, allowNull: false, defaultValue: moment().utc(true).format() }
+        data_criacao: { type: DataTypes.DATE, allowNull: false, defaultValue: Sequelize.NOW }
 
     }, {
         tableName: 'tbl_anuncio',
