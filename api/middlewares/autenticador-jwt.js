@@ -47,7 +47,8 @@ module.exports = (req, res, next) => {
 
         req.pause();
         return res.status(401).json({
-            mensagem: 'A autenticação do cliente falhou ou é inválida.'
+            mensagem: 'A autenticação do cliente falhou ou está inválida.',
+            code: 'INVALID_OR_EXPIRED_AUTH'
         });
 
     }

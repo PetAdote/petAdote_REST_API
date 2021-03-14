@@ -1,8 +1,6 @@
 // Importações.
     const {DataTypes, Sequelize, Model} = require('sequelize');
 
-    const moment = require('moment-timezone');
-
 // Instância da conexão com a Database.
     const {connection} = require('../../configs/database');
 
@@ -29,8 +27,8 @@
         qtd_seguidores: { type: DataTypes.INTEGER.UNSIGNED, allowNull: false, defaultValue: 0 },
         qtd_seguidos: { type: DataTypes.INTEGER.UNSIGNED, allowNull: false, defaultValue: 0 },
         qtd_denuncias: { type: DataTypes.INTEGER.UNSIGNED, allowNull: false, defaultValue: 0 },
-        data_criacao: { type: DataTypes.DATE, allowNull: false, defaultValue: moment().utc(true).format() },
-        data_modificacao: { type: DataTypes.DATE, allowNull: false, defaultValue: moment().utc(true).format() }
+        data_criacao: { type: DataTypes.DATE, allowNull: false, defaultValue: Sequelize.NOW },
+        data_modificacao: { type: DataTypes.DATE, allowNull: false, defaultValue: Sequelize.NOW }
 
     }, {
         tableName: 'tbl_usuario',

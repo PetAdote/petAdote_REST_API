@@ -39,6 +39,7 @@ router.get('/', (req, res, next) => {     // Entrega o Token de autenticação a
     } else {
         return res.status(401).json({
             mensagem: 'Autenticação inválida!',
+            code: 'INVALID_API_CREDENTIALS',
             exemplo: `${req.protocol}://${req.get('host')}/autenticacao_api/?cliente=SeuID&senha=SuaSenha`
         });
     }

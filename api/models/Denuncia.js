@@ -4,8 +4,6 @@ const {DataTypes, Model, Sequelize} = require('sequelize');
 // Instância da conexão com a Database.
     const {connection} = require('../../configs/database');
 
-    const moment = require('moment-timezone');
-
 // Definição do Model 'Denuncia' para 'tbl_denuncia'.
     const Denuncia = connection.define('Denuncia', {
 
@@ -19,7 +17,7 @@ const {DataTypes, Model, Sequelize} = require('sequelize');
             references: { model: Model.Usuario, key: 'cod_usuario' }
         },
         descricao: { type: DataTypes.STRING(255), allowNull: false },
-        data_criacao: { type: DataTypes.DATE, allowNull: false, defaultValue: moment().utc(true).format() },
+        data_criacao: { type: DataTypes.DATE, allowNull: false, defaultValue: Sequelize.NOW },
         esta_fechada: { type: DataTypes.TINYINT.UNSIGNED, allowNull: false, defaultValue: 0 }
 
     }, {

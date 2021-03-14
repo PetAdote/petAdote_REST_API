@@ -1,8 +1,6 @@
 // Importações.
 const {DataTypes, Model, Sequelize} = require('sequelize');
 
-const moment = require('moment-timezone');
-
 // Instância da conexão com a Database.
     const {connection} = require('../../configs/database');
 
@@ -16,7 +14,7 @@ const moment = require('moment-timezone');
             references: { model: Model.Animal, key: 'cod_animal' }
         },
         titulo_album: { type: DataTypes.STRING(100), allowNull: false },
-        data_criacao: { type: DataTypes.DATE, allowNull: false, defaultValue: moment().utc(true).format() }
+        data_criacao: { type: DataTypes.DATE, allowNull: false, defaultValue: Sequelize.NOW }
 
     }, {
         tableName: 'tbl_album_animal',
