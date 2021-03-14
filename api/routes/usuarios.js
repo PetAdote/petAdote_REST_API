@@ -64,7 +64,12 @@
         .catch((error) => {
 
             console.log(`GET: '/usuarios/' - Algo deu errado... \n`, error);
-            return next( new Error('Algo inesperado aconteceu ao buscar a lista de usuários. Entre em contato com o administrador.') );
+
+            let customErr = new Error('Algo inesperado aconteceu ao buscar a lista de usuários. Entre em contato com o administrador.');
+            customErr.status = 500;
+            customErr.code = 'INTERNAL_SERVER_ERROR';
+
+            return next( customErr );
 
         });
 
@@ -74,7 +79,8 @@
 
         if (req.params.codUsuario.match(/[^\d]+/g)){
             return res.status(400).json({
-                mensagem: "Requisição inválida - O ID de um Usuario deve conter apenas dígitos."
+                mensagem: "Requisição inválida - O ID de um Usuario deve conter apenas dígitos.",
+                code: 'INVALID_REQUESTED_ID'
             });
         }
 
@@ -100,12 +106,18 @@
             })
             .catch((error) => {
                 console.log(`GET: '/usuarios/:codUsuario' - Algo deu errado... \n`, error);
-                return next( new Error('Algo inesperado aconteceu ao verificar se o usuário requisitante está bloqueado. Entre em contato com o administrador.') );
+
+                let customErr = new Error('Algo inesperado aconteceu ao verificar se o usuário requisitante está bloqueado. Entre em contato com o administrador.');
+                customErr.status = 500;
+                customErr.code = 'INTERNAL_SERVER_ERROR';
+
+                return next( customErr );
             });
 
             if (estaBloqueado) {
                 return res.status(401).json({
-                    mensagem: "Não foi possível acessar os dados desse usuário."
+                    mensagem: "Não foi possível acessar os dados desse usuário.",
+                    code: 'ACCESS_TO_RESOURCE_NOT_ALLOWED'
                 });
             }
         }
@@ -184,14 +196,20 @@
 
             } else {
                 return res.status(404).json({
-                    mensagem: 'Nenhum usuário com esse ID foi encontrado.'
+                    mensagem: 'Nenhum usuário com esse ID foi encontrado.',
+                    code: 'RESOURCE_NOT_FOUND'
                 });
             }
 
         })
         .catch((error) => {
             console.log(`GET: '/usuarios/:codUsuario' - Algo deu errado... \n`, error);
-            return next( new Error('Algo inesperado aconteceu ao buscar os dados do usuário. Entre em contato com o administrador.') );
+
+            let customErr = new Error('Algo inesperado aconteceu ao buscar os dados do usuário. Entre em contato com o administrador.');
+            customErr.status = 500;
+            customErr.code = 'INTERNAL_SERVER_ERROR';
+
+            return next( customErr );
         });
 
     });
@@ -200,14 +218,184 @@
 
         if (req.params.codUsuario.match(/[^\d]+/g)){
             return res.status(400).json({
-                mensagem: "Requisição inválida - O ID de um Usuario deve conter apenas dígitos."
+                mensagem: "Requisição inválida - O ID de um Usuário deve conter apenas dígitos.",
+                code: 'INVALID_REQUEST_ID'
             });
         }
 
-        // TODO... Limitar acesso apenas ao dono do recurso
+        // O usuário existe?
+        let usuarioExiste = await Usuario.findByPk(req.params.codUsuario)
+        .then((result) => {
+
+            if (result){
+                return true;
+            } else {
+                return false;
+            }
+
+        })
+        .catch((error) => {
+            console.log(`PATCH: '/usuarios/:codUsuario' - Algo deu errado... \n`, error);
+
+            let customErr = new Error('Algo inesperado aconteceu ao verificar se o usuário existe. Entre em contato com o administrador.');
+            customErr.status = 500;
+            customErr.code = 'INTERNAL_SERVER_ERROR';
+
+            return next( customErr );
+        })
+
+        if (!usuarioExiste){
+            // console.log('RESULT VAZIO')
+            return res.status(404).json({
+                mensagem: 'Usuário não encontrado.',
+                code: 'RESOURCE_NOT_FOUND'
+            })
+        }
+
+        // Restrições de acesso à rota --- Apenas as Aplicações Pet Adote, Administradores e o Dono do recurso poderão modificar dados.
+        if (!req.dadosAuthToken){   // Se não houver autenticação, não permita o acesso.
+            return res.status(401).json({
+                mensagem: 'Requisição inválida - Você não possui o nível de acesso adequado para esse recurso.',
+                code: 'ACCESS_TO_RESOURCE_NOT_ALLOWED'
+            });
+        } else {
+
+            let { usuario } = req.dadosAuthToken;
+
+            // Se o Requisitante possuir um ID diferente do ID requisitado e não for um administrador, não permita o acesso.
+            if (usuario && (usuario.cod_usuario != req.params.codUsuario && usuario.e_admin == 0)){
+                return res.status(401).json({
+                    mensagem: 'Requisição inválida - Você não possui o nível de acesso adequado para esse recurso.',
+                    code: 'ACCESS_TO_RESOURCE_NOT_ALLOWED'
+                });
+            }
+
+            // Se o Cliente não for do tipo Pet Adote, não permita o acesso.
+            if (req.dadosAuthToken.tipo_cliente !== 'Pet Adote'){
+                return res.status(401).json({
+                    mensagem: 'Requisição inválida - Você não possui o nível de acesso adequado para esse recurso.',
+                    code: 'ACCESS_TO_RESOURCE_NOT_ALLOWED'
+                });
+            }
+
+        }
+        // Fim das restrições de acesso à rota.
+
+        // Retrocedendo o avatar ou o banner do usuário para o padrão.
+        if (req.query.setDefault === 'avatar'){
+
+            let { foto_usuario } = await Usuario.findByPk(req.params.codUsuario, {
+                attributes: ['foto_usuario'],
+                raw: true
+            })
+            .then((result) => {
+                return result;
+            })
+            .catch((error) => {
+                console.log('Algo inesperado aconteceu ao buscar o usuário para retornar seu avatar ao padrão.', error);
+
+                let customErr = new Error('Algo inesperado aconteceu ao buscar o usuário para retornar seu avatar ao padrão. Entre em contato com o administrador.');
+                customErr.status = 500;
+                customErr.code = 'INTERNAL_SERVER_ERROR';
+
+                return next( customErr );
+            })
+
+            if (foto_usuario) {
+
+                Usuario.update({ 
+                    foto_usuario: 'avatar_default.jpeg',
+                    data_modificacao: new Date()
+                 }, {
+                    where: { cod_usuario: req.params.codUsuario },
+                    limit: 1
+                })
+                .then((result) => {
+
+                    if (foto_usuario !== 'avatar_default.jpeg'){
+                        fs.unlink(path.resolve(__dirname, '../uploads/images/usersAvatar/', foto_usuario), () => {});
+                    }
+
+                    return res.status(200).json({
+                        mensagem: 'O avatar do usuário foi redefinido para o padrão.'
+                    });
+                    
+                })
+                .catch((error) => {
+                    console.log('Algo inesperado aconteceu ao retornar o avatar do usuário ao padrão.', error);
+
+                    let customErr = new Error('Algo inesperado aconteceu ao retornar o avatar do usuário ao padrão. Entre em contato com o administrador.');
+                    customErr.status = 500;
+                    customErr.code = 'INTERNAL_SERVER_ERROR';
+
+                    return next( customErr );
+                })
+
+            }
+
+            return; // Necessário pois os processamentos para esse caso, acabam nesse ponto.
+
+        }
+
+        if (req.query.setDefault === 'banner'){
+
+            let { banner_usuario } = await Usuario.findByPk(req.params.codUsuario, {
+                attributes: ['banner_usuario'],
+                raw: true
+            })
+            .then((result) => {
+                return result;
+            })
+            .catch((error) => {
+                console.log('Algo inesperado aconteceu ao buscar o usuário para retornar seu banner ao padrão.', error);
+
+                let customErr = new Error('Algo inesperado aconteceu ao buscar o usuário para retornar seu banner ao padrão. Entre em contato com o administrador.');
+                customErr.status = 500;
+                customErr.code = 'INTERNAL_SERVER_ERROR';
+
+                return next( customErr );
+            })
+
+            if (banner_usuario) {
+
+                Usuario.update({ 
+                    banner_usuario: 'banner_default.jpeg',
+                    data_modificacao: new Date()
+                 }, {
+                    where: { cod_usuario: req.params.codUsuario },
+                    limit: 1
+                })
+                .then((result) => {
+
+                    if (banner_usuario !== 'banner_default.jpeg'){
+                        fs.unlink(path.resolve(__dirname, '../uploads/images/usersBanner/', banner_usuario), () => {});
+                    }
+
+                    return res.status(200).json({
+                        mensagem: 'O banner do usuário foi redefinido para o padrão.'
+                    });
+                    
+                })
+                .catch((error) => {
+                    console.log('Algo inesperado aconteceu ao retornar o banner do usuário ao padrão.', error);
+
+                    let customErr = new Error('Algo inesperado aconteceu ao retornar o banner do usuário ao padrão. Entre em contato com o administrador.');
+                    customErr.status = 500;
+                    customErr.code = 'INTERNAL_SERVER_ERROR';
+
+                    return next( customErr );
+                })
+
+            }
+
+            return; // Necessário pois os processamentos para esse caso, acabam nesse ponto.
+        }
+
+        // O pacote da requisição tem conteúdo?
         if (!req.headers['content-type']){
             return res.status(400).json({
-                mensagem: 'Dados não encontrados na requisição'
+                mensagem: 'Dados não encontrados na requisição',
+                code: 'INVALID_REQUEST_CONTENT'
             })
         }
         // Tratando alterações nos campos.
@@ -240,23 +428,42 @@
             Object.entries(req.body).forEach((pair) => {
                 if (allowedFields.includes(pair[0])){               // Não será possível modificar valores que não estiverem na lista "allowedFields" via Clientes.
                     operacoes[pair[0]] = String(pair[1]).trim();    // Todo campo será tratado como uma String e não possuirá espaços no começo e no fim.
+
+                    let partes = undefined;
+
+                    switch(pair[0]){
+                        case 'descricao': break;
+                        default:
+                            partes = pair[1].trim().split(' ');     // Caso ainda existirem, removerá os espaços excessívos do Início/Fim em substrings.
+
+                            partes.forEach((parte, index) => {
+                                if (parte){
+                                    partes[index] = parte[0].toUpperCase() + parte.substr(1);
+                                }
+                            })
+
+                            operacoes[pair[0]] = partes.join(' ');
+                            break;
+                    }
                 }
             });
 
             //------------------------------------------------------------------------------------------------------
             // Validação das operações de alteração de campos.
-            console.log('Operacoes de atualização: ', operacoes);
+            // console.log('Início das Operacoes de atualização: ', operacoes);
 
                 // Validação do primeiro nome.
                 if (operacoes.primeiro_nome){
                     if (operacoes.primeiro_nome.length === 0){
                         return res.status(400).json({
-                            mensagem: 'PRIMEIRO NOME - Esta vazio'
+                            mensagem: 'PRIMEIRO NOME - Está vazio.',
+                            code: 'INVALID_PRIMEIRO_NOME_LENGTH'
                         })
                     } else {
                         if (operacoes.primeiro_nome.match(/\s{2}|[^A-Za-zÀ-ÖØ-öø-ÿ ,.'-]+/g)){
                             return res.status(400).json({
-                                mensagem: 'PRIMEIRO NOME - Espacos excessivos ou caracteres invalidos detectados'
+                                mensagem: 'PRIMEIRO NOME - Espaços excessivos ou caracteres inválidos detectados.',
+                                code: 'INVALID_PRIMEIRO_NOME_INPUT'
                             })
                         }
                     }
@@ -266,12 +473,14 @@
                 if (operacoes.sobrenome){
                     if (operacoes.sobrenome.length === 0){
                         return res.status(400).json({
-                            mensagem: 'SOBRENOME - Esta vazio'
+                            mensagem: 'SOBRENOME - Está vazio.',
+                            code: 'INVALID_SOBRENOME_LENGTH'
                         })
                     } else {
                         if (operacoes.sobrenome.match(/\s|[^A-Za-zÀ-ÖØ-öø-ÿ ,.'-]+/g)){
                             return res.status(400).json({
-                                mensagem: 'SOBRENOME - Espacos excessivos ou caracteres invalidos detectados'
+                                mensagem: 'SOBRENOME - Espaços excessivos ou caracteres inválidos detectados.',
+                                code: 'INVALID_SOBRENOME_INPUT'
                             })
                         }
                     }
@@ -281,12 +490,14 @@
                 if (operacoes.data_nascimento){
                     if (operacoes.data_nascimento.length === 0){
                         return res.status(400).json({
-                            mensagem: 'DATA DE NASCIMENTO - Esta vazia'
+                            mensagem: 'DATA DE NASCIMENTO - Está vazia.',
+                            code: 'INVALID_DATA_NASCIMENTO_LENGTH'
                         })
                     } else {
                         if (!operacoes.data_nascimento.match(/^(\d{4})\-([1][0-2]|[0][1-9])\-([0][1-9]|[1-2]\d|[3][0-1])$/g)){
                             return res.status(400).json({
-                                mensagem: 'DATA DE NASCIMENTO - Formato invalido de data',
+                                mensagem: 'DATA DE NASCIMENTO - Formato inválido de data.',
+                                code: 'INVALID_DATA_NASCIMENTO_INPUT',
                                 exemplo: 'aaaa-mm-dd'
                             })
                         }
@@ -298,12 +509,14 @@
                                 if (data_nascimento[1] == 02 && data_nascimento[2] > 29){
                                     return res.status(400).json({
                                         mensagem: 'DATA DE NASCIMENTO - Dia inválido para ano bissexto.',
+                                        code: 'INVALID_DATA_NASCIMENTO_FOR_LEAP_YEAR'
                                     });
                                 }
                             } else {
                                 if (data_nascimento[1] == 02 && data_nascimento[2] > 28){
                                     return res.status(400).json({
                                         mensagem: 'DATA DE NASCIMENTO - Dia inválido para ano não-bissexto.',
+                                        code: 'INVALID_DATA_NASCIMENTO_FOR_COMMON_YEAR'
                                     });
                                 }
                             }
@@ -312,12 +525,14 @@
                                 if (data_nascimento[1] == 02 && data_nascimento[2] > 29){
                                     return res.status(400).json({
                                         mensagem: 'DATA DE NASCIMENTO - Dia inválido para ano bissexto.',
+                                        code: 'INVALID_DATA_NASCIMENTO_FOR_LEAP_YEAR'
                                     });
                                 }
                             } else {
                                 if (data_nascimento[1] == 02 && data_nascimento[2] > 28){
                                     return res.status(400).json({
                                         mensagem: 'DATA DE NASCIMENTO - Dia inválido para ano não-bissexto.',
+                                        code: 'INVALID_DATA_NASCIMENTO_FOR_COMMON_YEAR'
                                     });
                                 }
                             }
@@ -327,13 +542,15 @@
                         // Verificação de idade do usuário. Se tive menos que 10 anos não poderá se cadastrar.
                         if (data_nascimento[0] > (new Date().getFullYear() - 10)){
                             return res.status(400).json({
-                                mensagem: 'DATA DE NASCIMENTO - Usuário possui menos que 10 anos, portanto nao podera cadastrar',
+                                mensagem: 'DATA DE NASCIMENTO - Usuário possui menos que 10 anos, portanto não podera cadastrar.',
+                                code: 'FORBIDDEN_USER_AGE'
                             });
                         }
 
                         if (data_nascimento[0] < 1900){
                             return res.status(400).json({
-                                mensagem: 'DATA DE NASCIMENTO - Ano de nascimento inválido, digite um valor acima de 1900'
+                                mensagem: 'DATA DE NASCIMENTO - Ano de nascimento inválido, digite um valor acima de 1900.',
+                                code: 'INVALID_DATA_NASCIMENTO_INPUT'
                             })
                         }
                     }
@@ -343,7 +560,8 @@
                 if (operacoes.cpf){
                     if (!req.body.cpf.match(/^\d{3}[.]\d{3}[.]\d{3}[-]\d{2}$|^\d{11}$/g)){
                         return res.status(400).json({
-                            mensagem: 'CPF - Esta vazio, incompleto ou em um formato incorreto',
+                            mensagem: 'CPF - Está vazio, incompleto ou em um formato incorreto.',
+                            code: 'INVALID_CPF_INPUT',
                             exemplo: '123.123.123-12 ou 12312312312'
                         })
                     } else {
@@ -352,7 +570,8 @@
 
                         if (cpfDigits.match(/^(.)\1{2,}$/g)){
                             return res.status(400).json({
-                                mensagem: 'CPF - Invalido, todos os digitos sao iguais'
+                                mensagem: 'CPF - Inválido, todos os dígitos são iguais.',
+                                code: 'CPF_DIGITS_ARE_REPEATING'
                             })
                         }
                         
@@ -410,24 +629,28 @@
                             operacoes.cpf = `${cpfDigitsArray.slice(0,3).join('')}.${cpfDigitsArray.slice(3,6).join('')}.${cpfDigitsArray.slice(6,9).join('')}-${cpfDigitsArray.slice(9).join('')}`;
 
                             // Verificação do [ORM] sobre o CPF -- Caso o CPF já tenha sido utilizado, o usuário não poderá continuar a alteração
-                            const isCPFLivre = await Usuario.findOne({ where: { cpf: operacoes.cpf } })
+                            await Usuario.findOne({ where: { cpf: operacoes.cpf } })
                             .then((result) => {
                                 if (result === null || result === undefined || result === ''){
                                     // console.log('[ORM] CPF livre!');
                                     return true;
                                 } else {
                                     // console.log('[ORM] Esse CPF não está livre!');
+                                    if (result.cpf === operacoes.cpf){
+                                        return true;
+                                    }
                                     return res.status(409).json({
-                                        mensagem: 'CPF - Em Uso'
+                                        mensagem: 'CPF - Em Uso.',
+                                        code: 'CPF_ALREADY_TAKEN'
                                     });
-                                    return false;
                                 }
                             });
                             
                         } else {
                             // console.log(`Erro: O CPF [${operacoes.cpf}] é inválido!`)
                             return res.status(400).json({
-                                mensagem: 'CPF - Invalido'
+                                mensagem: 'CPF - Inválido.',
+                                code: 'INVALID_CPF'
                             })
                         }
 
@@ -438,7 +661,8 @@
                 if (operacoes.telefone){
                     if (!operacoes.telefone.match(/^\(?[0]?(\d{2})\)?\s?((?:[9])?\d{4})[-]?(\d{4})$/g)){
                         return res.status(400).json({
-                            mensagem: 'TELEFONE - Esta vazio ou incompleto',
+                            mensagem: 'TELEFONE - Está vazio ou incompleto.',
+                            code: 'INVALID_TELEFONE_INPUT',
                             exemplo: '(12) 91234-1234 ou (12) 1234-1234'
                         })
                     } else {
@@ -457,6 +681,7 @@
                             // console.log('Erro: O formato do número está incorreto!');
                             return res.status(400).json({
                                 mensagem: 'TELEFONE - O formato digitado é inválido, o telefone deve possuir DDD e 9 ou 8 dígitos.',
+                                code: 'INVALID_TELEFONE_INPUT',
                                 exemplo: '(012) 1234-1234 / (12) 91234-1234 / 012 1234-1234 / 12 91234-1234 / 01212341234 / 12912341234 / etc...'
                             })
                         }
@@ -464,13 +689,15 @@
                         if (telNum.indexOf('9') == 0 && telNum.length == 10){
                             if (telNum.match(/^(?:9?(\d{4})\-\1)$/)){
                                 return res.status(400).json({
-                                    mensagem: 'TELEFONE - Numero de celular com muitos digitos repetidos'
+                                    mensagem: 'TELEFONE - Número de celular com muitos dígitos repetidos.',
+                                    code: 'TELEFONE_DIGITS_ARE_REPEATING'
                                 })
                             }
                         } else {
                             if (telNum.match(/^(?:(\d{4})\-\1)$/)){
                                 return res.status(400).json({
-                                    mensagem: 'TELEFONE - Numero fixo com muitos digitos repetidos'
+                                    mensagem: 'TELEFONE - Número fixo com muitos dígitos repetidos.',
+                                    code: 'TELEFONE_DIGITS_ARE_REPEATING'
                                 })
                             }
                         }
@@ -524,7 +751,8 @@
                         if (!isDDDValid){
                             // console.log('Erro: O DDD não pertence a nenhum estado brasileiro.');
                             return res.status(400).json({
-                                mensagem: 'TELEFONE - O DDD nao pertence a nenhum estado brasileiro'
+                                mensagem: 'TELEFONE - O DDD não pertence a nenhum estado brasileiro.',
+                                code: 'INVALID_TELEFONE_DDD'
                             })
                         }
 
@@ -540,7 +768,8 @@
                 if (operacoes.descricao){
                     if (operacoes.descricao.length > 255){
                         return res.status(400).json({
-                            mensagem: 'DESCRICAO - Possui mais do que 255 caracteres.'
+                            mensagem: 'DESCRICAO - Possui mais do que 255 caracteres.',
+                            code: 'INVALID_DESCRICAO_LENGTH'
                         })
                     }
                 }
@@ -554,7 +783,8 @@
 
                     if (!allowedValues.includes((operacoes.esta_ativo))){
                         return res.status(400).json({
-                            mensagem: 'ESTA_ATIVO - Apenas aceitamos os valores (0 ou 1)'
+                            mensagem: 'ESTA_ATIVO - Apenas aceitamos os valores (0 ou 1).',
+                            code: 'INVALID_ESTA_ATIVO_INPUT'
                         })
                     }
                 }
@@ -568,7 +798,8 @@
 
                     if (!allowedValues.includes((operacoes.ong_ativo))){
                         return res.status(400).json({
-                            mensagem: 'ONG_ATIVO - Apenas aceitamos os valores (0 ou 1)'
+                            mensagem: 'ONG_ATIVO - Apenas aceitamos os valores (0 ou 1).',
+                            code: 'INVALID_ONG_ATIVO_INPUT'
                         })
                     }
                 }
@@ -582,7 +813,8 @@
 
                     if (!allowedValues.includes((operacoes.e_admin))){
                         return res.status(400).json({
-                            mensagem: 'E_ADMIN - Apenas aceitamos os valores (0 ou 1)'
+                            mensagem: 'E_ADMIN - Apenas aceitamos os valores (0 ou 1).',
+                            code: 'INVALID_E_ADMIN_INPUT'
                         })
                     }
                 }
@@ -596,17 +828,19 @@
 
                     if (!allowedValues.includes(operacoes.qtd_seguidores)){
                         return res.status(400).json({
-                            mensagem: 'QTD_SEGUIDORES - Para aumentar os seguidores envie o valor 1, para diminuir envie o valor -1'
+                            mensagem: 'QTD_SEGUIDORES - Para aumentar os seguidores envie o valor 1, para diminuir envie o valor -1.',
+                            code: 'INVALID_QTD_SEGUIDORES_INPUT'
                         })
                     }
 
-                    return await Usuario.findByPk(req.params.codUsuario, {
+                    await Usuario.findByPk(req.params.codUsuario, {
                         attributes: ['qtd_seguidores'],
                         raw: true
                     }).then((result) => {
                         if (result.qtd_seguidores == 0 && operacoes.qtd_seguidores == -1){
                             return res.status(406).json({
-                                mensagem: 'QTD_SEGUIDORES - Não é possível fazer com que o usuário tenha uma quantidade negativa de seguidores'
+                                mensagem: 'QTD_SEGUIDORES - Não é possível fazer com que o usuário tenha uma quantidade negativa de seguidores.',
+                                code: 'VALUE_GOING_BELLOW_ZERO'
                             });
                         }
 
@@ -623,17 +857,19 @@
 
                     if (!allowedValues.includes(operacoes.qtd_seguidos)){
                         return res.status(400).json({
-                            mensagem: 'QTD_SEGUIDOS - Para aumentar a quantidade de seguidos envie o valor 1, para diminuir envie o valor -1'
+                            mensagem: 'QTD_SEGUIDOS - Para aumentar a quantidade de seguidos envie o valor 1, para diminuir envie o valor -1.',
+                            code: 'INVALID_QTD_SEGUIDOS_INPUT'
                         })
                     }
 
-                    return await Usuario.findByPk(req.params.codUsuario, {
+                    await Usuario.findByPk(req.params.codUsuario, {
                         attributes: ['qtd_seguidos'],
                         raw: true
                     }).then((result) => {
                         if (result.qtd_seguidos == 0 && operacoes.qtd_seguidos == -1){
                             return res.status(406).json({
-                                mensagem: 'QTD_SEGUIDOS - Não é possível fazer com que o usuário tenha uma quantidade negativa de seguidos'
+                                mensagem: 'QTD_SEGUIDOS - Não é possível fazer com que o usuário tenha uma quantidade negativa de seguidos.',
+                                code: 'VALUE_GOING_BELLOW_ZERO'
                             });
                         }
 
@@ -650,17 +886,19 @@
 
                     if (!allowedValues.includes(operacoes.qtd_denuncias)){
                         return res.status(400).json({
-                            mensagem: 'QTD_DENUNCIAS - Para aumentar a quantidade de denuncias envie o valor 1, para diminuir envie o valor -1'
+                            mensagem: 'QTD_DENUNCIAS - Para aumentar a quantidade de denúncias envie o valor 1, para diminuir envie o valor -1.',
+                            code: 'INVALID_QTD_DENUNCIAS_INPUT'
                         })
                     }
 
-                    return await Usuario.findByPk(req.params.codUsuario, {
+                    await Usuario.findByPk(req.params.codUsuario, {
                         attributes: ['qtd_denuncias'],
                         raw: true
                     }).then((result) => {
                         if (result.qtd_denuncias == 0 && operacoes.qtd_denuncias == -1){
                             return res.status(406).json({
-                                mensagem: 'QTD_DENUNCIAS - Não é possível fazer com que o usuário tenha uma quantidade negativa de denúncias'
+                                mensagem: 'QTD_DENUNCIAS - Não é possível fazer com que o usuário tenha uma quantidade negativa de denúncias.',
+                                code: 'VALUE_GOING_BELLOW_ZERO'
                             });
                         }
 
@@ -672,7 +910,7 @@
 
             // Início da efetivação das alterações.
 
-            return await Usuario.update(operacoes, { 
+            await Usuario.update(operacoes, { 
                 where: { cod_usuario: req.params.codUsuario },
                 limit: 1
             })
@@ -693,7 +931,12 @@
                 .catch((error) => {
 
                     // console.log(`PATCH: "/usuarios/${req.params.codUsuario}" - Algo inesperado aconteceu ao buscar os dados atualizados do usuário: `, error);
-                    return next( new Error('Algo inesperado aconteceu ao buscar os dados atualizados do usuário. Entre em contato com o administrador.') );
+
+                    let customErr = new Error('Algo inesperado aconteceu ao buscar os dados atualizados do usuário. Entre em contato com o administrador.');
+                    customErr.status = 500;
+                    customErr.code = 'INTERNAL_SERVER_ERROR';
+
+                    return next( customErr );
 
                 })
 
@@ -701,7 +944,12 @@
             .catch((errorUpdate) => {
 
                 // console.log(`PATCH: "/usuarios/${req.params.codUsuario}" - Algo inesperado aconteceu: `, errorUpdate);
-                return next( new Error('Algo inesperado aconteceu ao atualizar os dados do usuário. Entre em contato com o administrador.') );
+
+                let customErr = new Error('Algo inesperado aconteceu ao atualizar os dados do usuário. Entre em contato com o administrador.');
+                customErr.status = 500;
+                customErr.code = 'INTERNAL_SERVER_ERROR';
+
+                return next( customErr );
 
             })
 
@@ -717,7 +965,8 @@
             if (Number(req.headers['content-length']) > (3 * 1024 * 1024)){
                 req.pause();
                 return res.status(413).json({
-                    mensagem: 'O arquivo é grande demais. Suportamos arquivos de até 3mb.'
+                    mensagem: 'O arquivo é grande demais. Suportamos arquivos de até 3mb.',
+                    code: 'FILE_SIZE_TOO_LARGE'
                 });
             }
             
@@ -749,7 +998,8 @@
                         console.log('O mimetype é inválido!');
                         req.pause();
                         res.status(406).json({
-                            mensagem: 'Arquivo inválido, não aceitamos esse mimetype.'
+                            mensagem: 'Arquivo inválido, não aceitamos esse mimetype.',
+                            code: 'INVALID_FILE_MIME'
                         })
                         return cb(null, false);
                     }
@@ -769,33 +1019,47 @@
                 if (err instanceof multer.MulterError){
                     if (err.code === 'LIMIT_FILE_COUNT'){
                         return res.status(400).json({
-                            mensagem: 'Por favor envie um arquivo (imagem) por requisicao.'
+                            mensagem: 'Por favor envie um arquivo (imagem) por requisição.',
+                            code: err.code
                         })
                     }
 
                     if (err.code === 'LIMIT_FILE_SIZE'){
                         return res.status(413).json({
-                            mensagem: 'O arquivo é grande demais. Suportamos arquivos (imagens) de até 3mb.'
+                            mensagem: 'O arquivo é grande demais. Suportamos arquivos (imagens) de até 3mb.',
+                            code: err.code
                         })
                     }
 
                     if (err.code === 'LIMIT_UNEXPECTED_FILE'){
                         return res.status(400).json({
-                            mensagem: 'Campo de arquivo inválido, por favor envie uma imagem.'
+                            mensagem: 'Campo de arquivo inválido, por favor envie uma imagem.',
+                            code: err.code
                         })
                     }
 
                     if (err.code === 'LIMIT_FIELD_COUNT'){
                         return res.status(400).json({
-                            mensagem: 'Envie apenas campos de arquivos, sem campos de texto.'
+                            mensagem: 'Envie apenas campos de arquivos, sem campos de texto.',
+                            code: err.code
                         })
                     }
 
-                    return console.log('multerError:', err);
+                    console.log('multerError:', err);
+                    let customErr = new Error('Algo inesperado aconteceu ao verificar o arquivo enviado pelo usuário. Entre em contato com o administrador.');
+                    customErr.status = 500;
+                    customErr.code = 'INTERNAL_SERVER_MODULE_ERROR';
+                    return next( customErr );
 
 
                 } else if (err) {
-                    return console.log('commonErr: ', err)
+                    console.log('commonErr: ', err);
+
+                    let customErr = new Error('Algo inesperado aconteceu ao verificar o arquivo enviado pelo usuário. Entre em contato com o administrador.');
+                    customErr.status = 500;
+                    customErr.code = 'INTERNAL_SERVER_MODULE_ERROR';
+
+                    return next( customErr );
                 }
 
                 console.log('body', req.body)
@@ -803,7 +1067,8 @@
 
                 if (Object.keys(req.files).length === 0){
                     return res.status(400).json({
-                        mensagem: 'Campo de arquivo vazio detectado, por favor envie uma imagem.'
+                        mensagem: 'Campo de arquivo vazio detectado, por favor envie uma imagem.',
+                        code: 'INVALID_FILE_INPUT'
                     })
                 }
 
@@ -840,7 +1105,13 @@
                     }).toFile(newFilePath, async (err, info) => { // Cria o arquivo otimizado a partir do original enviado pelo usuário.
                         if (err){
                             // console.log('Algo deu errado ao processar o avatar do usuário: ', err);
-                            return next( new Error('Algo inesperado aconteceu ao processar o avatar do usuário. Entre em contato com o administrador.') );
+
+                            let customErr = new Error('Algo inesperado aconteceu ao processar o avatar do usuário. Entre em contato com o administrador.');
+                            customErr.status = 500;
+                            customErr.code = 'INTERNAL_SERVER_MODULE_ERROR';
+
+                            return next( customErr );
+
                         } else {
 
                             fs.unlinkSync(req.files.foto_usuario[0].path);  // Deleta o arquivo original enviado pelo usuário do servidor.
@@ -860,20 +1131,30 @@
                                 mv(newFilePath, finalFileDest, (error) => {
                                     if (error){
                                         console.log('Algo deu errado ao mover o avatar do usuário do diretório temporário para o final.', error);
-                                        return next( new Error('Algo inesperado aconteceu ao armazenar o avatar do usuário. Entre em contato com o administrador.') );
+
+                                        let customErr = new Error('Algo inesperado aconteceu ao armazenar o avatar do usuário. Entre em contato com o administrador.');
+                                        customErr.status = 500;
+                                        customErr.code = 'INTERNAL_SERVER_MODULE_ERROR';
+
+                                        return next( customErr );
                                     }
                                 })
 
                             })
                             .catch((error) => {
                                 console.log('Algo deu errado ao atualizar o avatar do usuário no banco de dados: ', error);
-                                return next( new Error('Algo inesperado aconteceu ao atualizar o avatar do usuário. Entre em contato com o administrador.') );
+
+                                let customErr = new Error('Algo inesperado aconteceu ao atualizar o avatar do usuário. Entre em contato com o administrador.');
+                                customErr.status = 500;
+                                customErr.code = 'INTERNAL_SERVER_ERROR';
+
+                                return next( customErr );
                             })
                             
                             console.log('Processamento do avatar do usuário concluído!');
                             
                             return res.status(200).json({
-                                mensagem: 'O avatar do usuário foi atualizado com sucesso',
+                                mensagem: 'O avatar do usuário foi atualizado com sucesso.',
                                 avatar: newFileName
                             })
                         }
@@ -899,7 +1180,7 @@
                     let newFilePath = path.resolve(__dirname, '../uploads/tmp/', newFileName);
                     let finalFileDest = path.resolve(__dirname, '../uploads/images/usersBanner/', newFileName);
 
-                    console.log('Iniciando processamento do banner do usuário');
+                    console.log('Iniciando processamento do banner do usuário.');
 
                     sharp(req.files.banner_usuario[0].path).resize({
                         width: 1920,
@@ -911,7 +1192,12 @@
                     }).toFile(newFilePath, async (err, info) => {
                         if (err){
                             // console.log('Algo deu errado ao processar o banner do usuário: ', err);
-                            return next( new Error('Algo inesperado aconteceu ao processar o banner do usuário. Entre em contato com o administrador.') );
+
+                            let customErr = new Error('Algo inesperado aconteceu ao processar o banner do usuário. Entre em contato com o administrador.');
+                            customErr.status = 500;
+                            customErr.code = 'INTERNAL_SERVER_MODULE_ERROR';
+
+                            return next( customErr );
                         } else {
 
                             fs.unlinkSync(req.files.banner_usuario[0].path);  // Deleta o arquivo original enviado pelo usuário do servidor.
@@ -931,20 +1217,30 @@
                                 mv(newFilePath, finalFileDest, (error) => {
                                     if (error){
                                         console.log('Algo deu errado ao mover a imagem de banner do usuário do diretório temporário para o final.', error);
-                                        return next( new Error('Algo inesperado aconteceu ao armazenar o banner do usuário. Entre em contato com o administrador.') );
+
+                                        let customErr = new Error('Algo inesperado aconteceu ao armazenar o banner do usuário. Entre em contato com o administrador.');
+                                        customErr.status = 500;
+                                        customErr.code = 'INTERNAL_SERVER_MODULE_ERROR';
+
+                                        return next( customErr );
                                     }
                                 })
 
                             })
                             .catch((error) => {
-                                console.log('Algo deu errado ao atualizar o avatar do usuário no banco de dados: ', error);
-                                return next( new Error('Algo inesperado aconteceu ao atualizar o avatar do usuário. Entre em contato com o administrador.') );
+                                console.log('Algo deu errado ao atualizar o banner do usuário no banco de dados: ', error);
+
+                                let customErr = new Error('Algo inesperado aconteceu ao atualizar o banner do usuário. Entre em contato com o administrador.');
+                                customErr.status = 500;
+                                customErr.code = 'INTERNAL_SERVER_ERROR';
+
+                                return next( customErr );
                             })
                             
-                            console.log('Processamento do avatar do usuário concluído!');
+                            console.log('Processamento do banner do usuário concluído!');
                             
                             return res.status(200).json({
-                                mensagem: 'O banner do usuário foi atualizado com sucesso',
+                                mensagem: 'O banner do usuário foi atualizado com sucesso.',
                                 banner: newFileName
                             })
                         }

@@ -8,10 +8,10 @@
 
 // Instância do Sequelize ORM.
 
-    // let dbUser = readlineSync.question('[Database] Nome de usuario: ');
-    // let dbPass = readlineSync.question('[Database] Senha: ', { hideEchoBack: true });
+    let dbUser = readlineSync.question('[Database] Nome de usuario: ');
+    let dbPass = readlineSync.question('[Database] Senha: ', { hideEchoBack: true });
 
-    const connection = new Sequelize('db_petAdote', 'dba', 'dba_petAdote', {
+    const connection = new Sequelize('db_petAdote', dbUser, dbPass, {
         host: '127.0.0.1',
         port: '3316',       // Porta de Reverse Proxy -- Direciona ao serviço corrente na porta 3306 (mysql) na máquina virtual.
         dialect: 'mysql',

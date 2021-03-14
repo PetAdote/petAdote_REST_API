@@ -83,6 +83,7 @@
         const error = new Error('Recurso não encontrado.');
 
         error.status = 404;     // Perceba que estamos atribuindo uma das propriedades de "Error", status, como 404 (Not found).
+        error.code = 'RESOURCE_NOT_FOUND'
 
         next(error);            // Em situações onde erros existem, é necessário passá-lo como parâmetro para o middleware em "next();".
     });
@@ -105,7 +106,8 @@
         res.json({      // Aqui é a resposta que entregaremos à aplicação em caso de erro, pode ser personalizada.
 
             error: {
-                mensagem: error.message  // O atributo "mensagem" de erros quase sempre estara presente, não gerando exceções.
+                mensagem: error.message,  // O atributo "message" de erros quase sempre estara presente, não gerando exceções.
+                code: error.code || null
             }
 
         });
