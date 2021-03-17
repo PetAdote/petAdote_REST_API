@@ -3,9 +3,9 @@ const jwt = require('jsonwebtoken');
 
 /* Observações...
     A autenticação JWT envolve a variável de ambiente [ JWT_KEY ].
-    A rota pública de autenticação dos clientes.
-    A utilização desse middleware como um middleware de nível global (inserido em app.js) devido às restrições do negócio, porém é
-    possível aplicá-lo à rotas específicas.
+    É a rota pública de autenticação dos clientes.
+    Esse middleware é utilizado à nível global (inserido em app.js) devido às restrições do negócio (Todas rotas devem ser protegidas),
+    porém é possível aplicá-lo à rotas específicas.
 
     Com a autenticaão JWT em ação, clientes deverão pedir um Token de Acesso na rota de autenticação para realizarem requisições à REST API.
         > [ http://localhost:3000/autenticacao_api/?cliente=MeuIdComoCliente&senha=MinhaSenhaComoCliente ]
@@ -24,6 +24,10 @@ const jwt = require('jsonwebtoken');
 module.exports = (req, res, next) => {
 
     if (req.url.match(/^\/autenticacao_api/)){   // Como a rota de autenticação deverá ser a única rota acessível à qualquer um, simplesmente passamos ela adiante, caso uma requisição chegue para ela.
+        return next();
+    }
+
+    if (req.url.match(/^\/contas\/ativacao\//)){   // Uma vez que a ativação da conta do usuário ocorre via e-mail. A requisição vem de uma fonte externa sem Token de Acesso atribuído. Então o end-point deverá ser público.
         return next();
     }
 

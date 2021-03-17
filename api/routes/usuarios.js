@@ -253,7 +253,7 @@
         }
 
         // Restrições de acesso à rota --- Apenas as Aplicações Pet Adote, Administradores e o Dono do recurso poderão modificar dados.
-        if (!req.dadosAuthToken){   // Se não houver autenticação, não permita o acesso.
+        if (!req.dadosAuthToken){   // Se não houver autenticação da aplicação, não permita o acesso.
             return res.status(401).json({
                 mensagem: 'Requisição inválida - Você não possui o nível de acesso adequado para esse recurso.',
                 code: 'ACCESS_TO_RESOURCE_NOT_ALLOWED'

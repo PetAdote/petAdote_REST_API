@@ -60,7 +60,7 @@ router.post('/', async (req, res, next) => {     // Verifica se o usuário está
                 // O e-mail está vinculado à uma conta. Verifique se a senha está correta.
                 if (bcrypt.compareSync(req.body.senha, result.senha)){
 
-                    // A senha é válida, usuário autêntico.
+                    // A senha é válida, usuário autêntico. Montando os dados do usuário que incrementarão o Token.
                     usuario = { 
                         cod_usuario: result.cod_usuario,
                         tipo_cadastro: 'local',
@@ -116,20 +116,33 @@ router.post('/', async (req, res, next) => {     // Verifica se o usuário está
     // Atribuição do Token de Acesso do Usuário.
     if (usuario){
 
-        // O usuário é autêntico. Gerando o Token de Acesso.
-        const tokenUsuario = jwt.sign({
-            cod_cliente: req.dadosAuthToken.cod_cliente,
-            tipo_cliente: req.dadosAuthToken.tipo_cliente,
-            usuario: usuario
-        }, process.env.JWT_KEY, {
-            expiresIn: '6h'
-        });
+        if (usuario.esta_ativo == 0){
 
-        return res.header('Authorization', `Bearer ${tokenUsuario}`).status(200).json({
-            mensagem: 'Usuário autenticado com sucesso.',
-            cod_usuario: usuario.cod_usuario,
-            token: tokenUsuario
-        });
+            return res.status(401).json({
+                mensagem: 'O usuário ainda não ativou a conta após se cadastrar.',
+                code: 'USER_NOT_ACTIVE',
+                reenvio_ativacao: `${req.protocol}://${req.get('host')}/contas/ativacao/reenvio/${usuario.cod_usuario}`
+            })
+
+        } 
+
+        if (usuario.esta_ativo == 1){
+            // O usuário é autêntico. Gerando o Token de Acesso.
+            const tokenUsuario = jwt.sign({
+                cod_cliente: req.dadosAuthToken.cod_cliente,
+                tipo_cliente: req.dadosAuthToken.tipo_cliente,
+                usuario: usuario
+            }, process.env.JWT_KEY, {
+                expiresIn: '6h'
+            });
+            
+
+            return res.header('Authorization', `Bearer ${tokenUsuario}`).status(200).json({
+                mensagem: 'Usuário autenticado com sucesso.',
+                cod_usuario: usuario.cod_usuario,
+                token: tokenUsuario
+            });
+        }
 
     }
 

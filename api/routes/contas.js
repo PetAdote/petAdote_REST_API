@@ -27,6 +27,10 @@
 
     const sequelize = require('../../configs/database').connection;
 
+    const envioEmailAtivacao = require('../helpers/envio_email_ativacao');
+
+    const jwt = require('jsonwebtoken');
+
 // TODO... A maioria dessas importações irão para os controllers. Estão aqui só durante a fase inicial de testes.
 
 // Rotas.
@@ -1091,6 +1095,66 @@ router.post('/', async (req, res, next) => {   // Cria os dados básicos do usu�
 // router.patch('/'/*, controller.conta_updateOne*/);
 
 // router.delete('/'/*, controller.conta_deleteOne*/);
+
+router.get('/ativacao/:tokenAtivacao', (req, res, next) => {
+    // Rota para realizar a ativação da conta do usuário. "tokenAtivacao" é um JWT, o que permite a geração de end-points temporários.
+
+    if (req.dadosAuthToken && req.dadosAuthToken.usuario){    // Se houver um usuário autenticado, não permita o acesso.
+        return res.status(401).json({
+            mensagem: 'Requisição inválida - Você não possui o nível de acesso adequado para esse recurso.',
+            code: 'ACCESS_NOT_ALLOWED'
+        });
+    }
+
+    jwt.verify(req.params.tokenAtivacao, process.env.JWT_MAILVALIDATION_KEY, (error, decoded) => {
+        if (error) {
+            req.pause();
+            return res.status(401).json({
+                mensagem: 'O link de ativação está expirado ou é inválido.',
+                code: 'INVALID_OR_EXPIRED_AUTH'
+            });
+        }
+
+        // console.log('decoded', decoded);
+
+        Usuario.update({ 
+            esta_ativo: 1,
+            data_modificacao: new Date()
+        }, {
+            where: { cod_usuario: decoded.cod_usuario },
+            limit: 1
+        })
+        .then((updateResult) => {
+            return res.status(200).json({
+                mensagem: 'Ativação efetuada com sucesso.'
+            })
+        })
+        .catch((updateError) => {
+            console.log('Algo inesperado aconteceu ao realizar a ativação da conta do usuário.', updateError);
+
+            let customErr = new Error('Algo inesperado aconteceu ao realizar a ativação da conta do usuário. Entre em contato com o administrador.');
+            customErr.status = 500;
+            customErr.code = 'INTERNAL_SERVER_ERROR';
+
+            return next( customErr );
+        });
+
+    });
+
+});
+
+router.get('/ativacao/reenvio/:codUsuario', (req, res, next) => {
+    // Rota para o reenvio do e-mail de verificação para a ativação do usuário local.
+
+    if (req.dadosAuthToken.usuario){    // Se houver um usuário autenticado, não permita o acesso.
+        return res.status(401).json({
+            mensagem: 'Requisição inválida - Você não possui o nível de acesso adequado para esse recurso.',
+            code: 'ACCESS_NOT_ALLOWED'
+        });
+    }
+
+    envioEmailAtivacao(req, res, next, req.params.codUsuario);
+});
 
 // Exportação.
 module.exports = router;    // É necessário exportar os Routers (rotas) para utilizá-los em 'app.js', nosso requestListener.
