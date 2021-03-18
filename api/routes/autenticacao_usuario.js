@@ -118,11 +118,28 @@ router.post('/', async (req, res, next) => {     // Verifica se o usuário está
 
         if (usuario.esta_ativo == 0){
 
-            return res.status(401).json({
-                mensagem: 'O usuário ainda não ativou a conta após se cadastrar.',
-                code: 'USER_NOT_ACTIVE',
-                reenvio_ativacao: `${req.protocol}://${req.get('host')}/contas/ativacao/reenvio/${usuario.cod_usuario}`
-            })
+             // O usuário realizou a autenticação, porém ainda não ativou a conta. Gerando o Token de Acesso e mensagem de ativação.
+             const tokenUsuario = jwt.sign({
+                cod_cliente: req.dadosAuthToken.cod_cliente,
+                tipo_cliente: req.dadosAuthToken.tipo_cliente,
+                usuario: usuario
+            }, process.env.JWT_KEY, {
+                expiresIn: '6h'
+            });
+
+            return res.header('Authorization', `Bearer ${tokenUsuario}`).status(200).json({
+                mensagem: 'Autenticação realizada com sucesso, porém o usuário ainda não ativou a conta. Utilize o [ cod_usuario ] para re-enviar o e-mail contendo o Token de Ativação. E o [ token ] de acesso para realizar a ativação quando o usuário informar o Token de Ativação que recebeu no e-mail.',
+                cod_usuario: usuario.cod_usuario,
+                token: tokenUsuario,
+                reenvio_ativacao: `${req.protocol}://${req.get('host')}/contas/ativacao/reenvio/${usuario.cod_usuario}`,
+                exemplo_ativacao: `${req.protocol}://${req.get('host')}/contas/ativacao/012T0K3n`
+            });
+
+            // return res.status(401).json({
+            //     mensagem: 'O usuário ainda não ativou a conta após se cadastrar.',
+            //     code: 'USER_NOT_ACTIVE',
+            //     reenvio_ativacao: `${req.protocol}://${req.get('host')}/contas/ativacao/reenvio/${usuario.cod_usuario}`
+            // })
 
         } 
 

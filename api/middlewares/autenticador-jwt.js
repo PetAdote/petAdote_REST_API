@@ -27,10 +27,6 @@ module.exports = (req, res, next) => {
         return next();
     }
 
-    if (req.url.match(/^\/contas\/ativacao\//)){   // Uma vez que a ativação da conta do usuário ocorre via e-mail. A requisição vem de uma fonte externa sem Token de Acesso atribuído. Então o end-point deverá ser público.
-        return next();
-    }
-
     try {
 
         /* Caso 01: Recebendo o Token por meio do BODY do Request. Não é o mais comum/recomendado. */
