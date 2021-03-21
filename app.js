@@ -11,10 +11,40 @@
 
     const autenticadorJWT = require('./api/middlewares/autenticador-jwt');  // Middleware - Utiliza o módulo "jsonwebtoken" para verificar em cada requisição se uma rota possui restrições de acesso e se o Token de Acesso está presente nos Headers e é válido.
 
+    const schedule = require('node-schedule');
+
 // Conexão com o Banco de Dados MySQL.
     db.connection;          // Instância da conexão atual.
     db.checkConnection();   // Verificação da conexão.
     // ormModelChecker();   // Realiza um [ SELECT * ] limitado à 1 resultado em cada um dos models da lista "./api/models".
+
+// Tarefas Agendadas (Cron Jobs).
+
+    let rmvExpiredTokens = schedule.scheduleJob('0 * * * *', () => {
+        let Token = require('./api/models/Token');
+        let { Op } = require('sequelize');
+
+        Token.destroy({
+            where: {
+                data_limite: {
+                    [ Op.lt ]: new Date()
+                }
+            },
+            logging: false
+        })
+        .then((result) => {
+            console.log('Quantidade de Tokens Expirados removidos durante a remoção agendada: ', result);
+        })
+        .catch((error) => {
+            console.log('Algo inesperado aconteceu durante a remoção agendada dos tokens expirados.', error);
+        })
+    });
+
+    // let sayHelloEvery30Seconds = schedule.scheduleJob('*/10 * * * * *', () => {
+    //     console.log('Hello @ ', new Date().toLocaleTimeString());
+    // })
+
+// Fim das tarefas agendadas.
 
 // Importação dos grupos de rotas.
     const rotaAutenticacaoAPI = require('./api/routes/autenticacao_api');

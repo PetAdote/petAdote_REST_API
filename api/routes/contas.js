@@ -11,6 +11,7 @@
         const ContaFacebook = require('../models/ContaFacebook');
         const ContaGoogle = require('../models/ContaGoogle');
         const EnderecoUsuario = require('../models/EnderecoUsuario');
+        const Token = require('../models/Token');
 
     const { EventEmitter } = require('events'); // Gerador de eventos do Node.
 
@@ -26,6 +27,17 @@
     const axios = require('axios').default;     // 'axios' cliente http para realizar chamadas em APIs.
 
     const sequelize = require('../../configs/database').connection;
+
+    const geradorTokenAtivacao = require('../helpers/gerador_token_ativacao');
+    const envioEmailAtivacao = require('../helpers/envio_email_ativacao');
+
+    const jwt = require('jsonwebtoken');
+
+    const randomize = require('randomatic');
+
+    const moment = require('moment');
+
+    const { Op } = require('sequelize');
 
 // TODO... A maioria dessas importações irão para os controllers. Estão aqui só durante a fase inicial de testes.
 
@@ -314,7 +326,7 @@ router.post('/', async (req, res, next) => {   // Cria os dados básicos do usu�
     // Fim das restrições de acesso à rota.
 
     // Início da validação dos campos.
-    let erros = [];     // Lista de Erros
+    let missingFields = [];     // Lista de missingFields
 
     // Lista de campos obrigatórios.
     let requiredFields = [
@@ -337,18 +349,18 @@ router.post('/', async (req, res, next) => {   // Cria os dados básicos do usu�
     // Verificador de campos obrigatórios.
     requiredFields.forEach((field) => {
         if (!Object.keys(req.body).includes(field)){
-            erros.push(`Campo [${field}] não encontrado.`);
+            missingFields.push(`Campo [${field}] não encontrado.`);
         }
     });
 
-    // Se algum dos campos obrigatórios não estiverem presentes no request, responda com a lista de erros.
-    if (erros.length > 0){
-        console.log('Erros detectados.');
+    // Se algum dos campos obrigatórios não estiverem presentes no request, responda com a lista de missingFields.
+    if (missingFields.length > 0){
+        console.log('missingFields detectados, campos obrigatórios estão faltando.');
 
         return res.status(400).json({
             mensagem: 'Campos inválidos ou incompletos foram detectados.',
             code: 'INVALID_REQUEST_FIELDS',
-            erros: erros
+            missing_fields: missingFields
         });
     }
 
@@ -1079,18 +1091,430 @@ router.post('/', async (req, res, next) => {   // Cria os dados básicos do usu�
 
 
     // Conclusão da recepção e processamento do formulário de cadastro.
+
+    // Envio do e-mail com o Token de Ativação da conta do usuário e finalização do processo de cadastro.
+
+    await geradorTokenAtivacao(idUsuario)
+    .then(async (resultTokenAtivacao) => {
+
+        if (resultTokenAtivacao) {
+
+            await envioEmailAtivacao(resultTokenAtivacao, req.body.email)
+            .then((resultEnvioEmail) => {
+
+                if (resultEnvioEmail === 'E-mail enviado com sucesso') {
+
+                    return res.status(200).json({
+                        mensagem: 'Novo usuário cadastrado com sucesso em breve o usuário receberá o Token de ativação da conta. Utilize o ID do Usuário para incluir dados adicionais ao cadastro do usuário.',
+                        cod_usuario: idUsuario,
+                        // tokenUsuario: accessTokenUsuario
+                    });
+
+                } else {
+                    return console.log('Algo deu errado ao enviar o e-mail com o Token de ativação nos processamentos de finalização do cadastro.');
+                }
+
+            })
+            .catch((errorEnvioEmail) => {
+
+                if (errorEnvioEmail.code === 'INVALID_REQUEST_FIELDS'){
+
+                    return res.status(errorEnvioEmail.status).json({
+                        mensagem: errorEnvioEmail.message,
+                        code: errorEnvioEmail.code,
+                        missing_fields: errorEnvioEmail.missing_fields
+                    });
+
+                } else {
+
+                    console.log('Algo inesperado aconteceu durante o envio do e-mail com o token de ativação.', errorEnvioEmail);
     
-    return res.status(200).json({
-        mensagem: 'Novo usuário cadastrado com sucesso. Utilize o ID abaixo para incluir dados adicionais ao cadastro do usuário.',
-        cod_usuario: idUsuario,
-        // tokenUsuario: accessTokenUsuario
-    });
+                    let customErr = new Error('Algo inesperado aconteceu durante o envio do e-mail com o token de ativação. Entre em contato com o administrador.');
+                    customErr.status = 500;
+                    customErr.code = 'INTERNAL_SERVER_ERROR';
+            
+                    return next ( customErr );
+
+                }
+
+            });
+
+        } else {
+            return console.log('Algo deu errado ao gerar o Token de Ativação nos processamentos de finalização do cadastro.');
+        }
+    })
+    .catch((errorTokenAtivacao) => {
+
+        if (errorTokenAtivacao.code === 'USER_HAS_ACTIVE_TOKEN') {
+
+            return res.status(errorTokenAtivacao.status).json({
+                mensagem: errorTokenAtivacao.message,
+                data_liberacao: errorTokenAtivacao.data_liberacao,
+                code: errorTokenAtivacao.code
+            });
+
+        } else {
+
+            console.log('Algo inesperado aconteceu durante a geração do token de ativação.', errorTokenAtivacao);
+    
+            let customErr = new Error('Algo inesperado aconteceu durante a geração do token de ativação ou envio do e-mail com o token de ativação. Entre em contato com o administrador.');
+            customErr.status = 500;
+            customErr.code = 'INTERNAL_SERVER_ERROR';
+    
+            return next ( customErr );
+
+        }
+
+    })
+
+    // Fim do processo de cadastro.
+    
+    // return res.status(200).json({
+    //     mensagem: 'Novo usuário cadastrado com sucesso. Utilize o ID abaixo para incluir dados adicionais ao cadastro do usuário.',
+    //     cod_usuario: idUsuario,
+    //     // tokenUsuario: accessTokenUsuario
+    // });
 
 });
 
 // router.patch('/'/*, controller.conta_updateOne*/);
 
 // router.delete('/'/*, controller.conta_deleteOne*/);
+
+router.patch('/ativacao/:tokenAtivacao', async (req, res, next) => {
+    /*  Rota para realizar a ativação da conta do usuário.
+        "tokenAtivacao" é uma string aleatória com 8 dígitos, possui números e letras em caixa alta e baixa.
+        O token de ativação é temporário (possui data de expiração) e é vinculado à um usuário específico.
+        Quando o token é consumido, ele é removido, além disso se a data limite for alcançada (Expirar), há uma tarefa agendada para remoção do Token. */
+
+    // Restrições de acesso à rota --- Apenas as Aplicações Pet Adote com usuários autenticados poderão realizar a ativação da conta.
+    if (!req.dadosAuthToken){   // Se não houver autenticação da aplicação, não permita o acesso.
+        return res.status(401).json({
+            mensagem: 'Requisição inválida - Você não possui o nível de acesso adequado para esse recurso.',
+            code: 'ACCESS_TO_RESOURCE_NOT_ALLOWED'
+        });
+    } else {
+
+        // Se o Cliente não for do tipo Pet Adote, não permita o acesso.
+        if (req.dadosAuthToken.tipo_cliente !== 'Pet Adote'){
+            return res.status(401).json({
+                mensagem: 'Requisição inválida - Você não possui o nível de acesso adequado para esse recurso.',
+                code: 'ACCESS_TO_RESOURCE_NOT_ALLOWED'
+            });
+        }
+
+        // Se o Requisitante não for um usuário não permita o acesso. Os dados básicos do usuário devem existir no Token de Acesso.
+        if (!req.dadosAuthToken.usuario){
+            return res.status(401).json({
+                mensagem: 'Requisição inválida - Você não possui o nível de acesso adequado para esse recurso.',
+                code: 'ACCESS_TO_RESOURCE_NOT_ALLOWED'
+            });
+        }
+
+    }
+    // Fim das restrições de acesso à rota.
+
+    // Verificação do Token de Ativação.
+    let {tokenAtivacao} = req.params;
+    
+    if (!String(tokenAtivacao).match(/^\w{7}[^_]$/g)){
+        return res.status(400).json({
+            mensagem: 'Token de Ativação não está em um formato válido.',
+            code: 'INVALID_INPUT',
+            exemplo: '/ativacao/012t0K3n'
+        });
+    }
+    // Fim da verificação do Token de Ativação.
+
+    // Ativação da conta do usuário.
+
+    let { usuario } = req.dadosAuthToken
+
+    await Token.findOne({       // Verifica se existe algum Token de Ativação do usuário em vigência.
+        where: { 
+            cod_usuario: usuario.cod_usuario,
+            tipo_token: 'ativacao',
+            token: tokenAtivacao,
+            data_limite: {
+                [Op.gt]: new Date()
+            }
+        },
+        raw: true
+    })
+    .then((result) => {
+        if (result){
+            console.log('Existe um Token de Ativação vigente', result);
+
+            Usuario.update({ 
+                esta_ativo: 1,
+                data_modificacao: new Date()
+            }, {
+                where: { cod_usuario: result.cod_usuario },
+                limit: 1
+            })
+            .then((updateResult) => {
+
+                return res.status(200).json({
+                    mensagem: 'Ativação da conta do usuário efetuada com sucesso.'
+                })
+
+            })
+            .catch((updateError) => {
+                console.log('Algo inesperado aconteceu ao realizar a ativação da conta do usuário.', updateError);
+    
+                let customErr = new Error('Algo inesperado aconteceu ao realizar a ativação da conta do usuário. Entre em contato com o administrador.');
+                customErr.status = 500;
+                customErr.code = 'INTERNAL_SERVER_ERROR';
+    
+                return next( customErr );
+            });
+
+        } else {
+
+            return res.status(404).json({
+                mensagem: 'Nenhum Token de Ativação vigente e vinculado ao usuário foi encontrado.',
+                code: 'TOKEN_NOT_FOUND',
+            });
+
+        }
+    })
+    .catch((error) => {
+        console.log('Algo inesperado aconteceu durante a ativação da conta do usuário ao verificar o token de ativação.', error);
+
+        let customErr = new Error('Algo inesperado aconteceu durante a ativação da conta do usuário ao verificar o token de ativação. Entre em contato com o administrador.');
+        customErr.status = 500;
+        customErr.code = 'INTERNAL_SERVER_ERROR';
+
+        next ( customErr );
+    })
+
+    // Fim da ativação da conta do usuário.
+
+    // if (req.dadosAuthToken && req.dadosAuthToken.usuario){    // Se houver um usuário autenticado, não permita o acesso.
+    //     return res.status(401).json({
+    //         mensagem: 'Requisição inválida - Você não possui o nível de acesso adequado para esse recurso.',
+    //         code: 'ACCESS_NOT_ALLOWED'
+    //     });
+    // }
+
+    // jwt.verify(req.params.tokenAtivacao, process.env.JWT_MAILVALIDATION_KEY, (error, decoded) => {
+    //     if (error) {
+    //         req.pause();
+    //         return res.status(401).json({
+    //             mensagem: 'O link de ativação está expirado ou é inválido.',
+    //             code: 'INVALID_OR_EXPIRED_AUTH'
+    //         });
+    //     }
+
+    //     // console.log('decoded', decoded);
+
+    //     Usuario.update({ 
+    //         esta_ativo: 1,
+    //         data_modificacao: new Date()
+    //     }, {
+    //         where: { cod_usuario: decoded.cod_usuario },
+    //         limit: 1
+    //     })
+    //     .then((updateResult) => {
+    //         return res.status(200).json({
+    //             mensagem: 'Ativação efetuada com sucesso.'
+    //         })
+    //     })
+    //     .catch((updateError) => {
+    //         console.log('Algo inesperado aconteceu ao realizar a ativação da conta do usuário.', updateError);
+
+    //         let customErr = new Error('Algo inesperado aconteceu ao realizar a ativação da conta do usuário. Entre em contato com o administrador.');
+    //         customErr.status = 500;
+    //         customErr.code = 'INTERNAL_SERVER_ERROR';
+
+    //         return next( customErr );
+    //     });
+
+    // });
+
+});
+
+router.post('/ativacao/reenvio/:codUsuario', async (req, res, next) => {
+    // Rota para o reenvio do e-mail de verificação para a ativação do usuário local.
+
+    // Restrições de acesso à rota --- Apenas as Aplicações Pet Adote, Administradores e o Dono do recurso poderão enviar e-mails de ativação de conta.
+    if (!req.dadosAuthToken || !req.dadosAuthToken.usuario){   // Se não houver autenticação da aplicação com um usuário, não permita o acesso.
+        return res.status(401).json({
+            mensagem: 'Requisição inválida - Você não possui o nível de acesso adequado para esse recurso.',
+            code: 'ACCESS_TO_RESOURCE_NOT_ALLOWED'
+        });
+    } else {
+
+        let { usuario } = req.dadosAuthToken;
+
+        // Se o Requisitante possuir um ID diferente do ID requisitado e não for um administrador, não permita o acesso.
+        if (usuario && (usuario.cod_usuario != req.params.codUsuario && usuario.e_admin == 0)){
+            return res.status(401).json({
+                mensagem: 'Requisição inválida - Você não possui o nível de acesso adequado para esse recurso.',
+                code: 'ACCESS_TO_RESOURCE_NOT_ALLOWED'
+            });
+        }
+
+        // Se o Cliente não for do tipo Pet Adote, não permita o acesso.
+        if (req.dadosAuthToken.tipo_cliente !== 'Pet Adote'){
+            return res.status(401).json({
+                mensagem: 'Requisição inválida - Você não possui o nível de acesso adequado para esse recurso.',
+                code: 'ACCESS_TO_RESOURCE_NOT_ALLOWED'
+            });
+        }
+
+    }
+    // Fim das restrições de acesso à rota.    
+
+    let { usuario } = req.dadosAuthToken;
+
+    // Se o tipo do cadastro for Local, enviaremos um e-mail contendo o Token de Ativação.
+    if (usuario.tipo_cadastro == 'local'){
+
+        // Busca o e-mail do usuário.
+        let emailUsuario = await ContaLocal.findOne({
+            where: {
+                cod_usuario: usuario.cod_usuario
+            },
+            raw: true
+        })
+        .then((result) => {
+            if (result){
+                console.log('Email encontrado: ', result.email);
+                return result.email
+            } else {
+                return res.status(404).json({
+                    mensagem: 'Nenhum e-mail vínculado à esse usuário foi encontrado.',
+                    code: 'RESOURCE_NOT_FOUND',
+                });
+            }
+        })
+        .catch((error) => {
+            console.log('Algo inesperado aconteceu ao buscar o e-mail do usuário requisitante do Token de Ativação.', error);
+
+            let customErr = new Error('Algo inesperado aconteceu ao buscar o e-mail do usuário requisitante do Token de Ativação. Entre em contato com o administrador.');
+            customErr.status = 500;
+            customErr.code = 'INTERNAL_SERVER_ERROR';
+    
+            next ( customErr );
+        });
+
+        // Cria e envia o e-mail contendo o Token de Ativação.
+        try {
+
+            let tokenAtivacao = await geradorTokenAtivacao(req.params.codUsuario);
+    
+            if (tokenAtivacao){
+    
+                console.log('Token recebido', tokenAtivacao);
+                console.log('Enviando e-mail para o usuário...');
+    
+                await envioEmailAtivacao(tokenAtivacao, emailUsuario)
+                .then((result) => {
+
+                    if (result === 'E-mail enviado com sucesso'){
+                        return res.status(200).json({
+                            mensagem: 'E-mail enviado com sucesso.'
+                        });
+                    }
+
+                });
+    
+            };
+    
+    
+        } catch (error) {
+
+            if (error.code === 'USER_HAS_ACTIVE_TOKEN') {
+
+                return res.status(error.status).json({
+                    mensagem: error.message,
+                    data_liberacao: error.data_liberacao,
+                    code: error.code
+                });
+
+            };
+
+            if (error.code === 'INVALID_REQUEST_FIELDS') {
+
+                return res.status(error.status).json({
+                    mensagem: error.message,
+                    code: error.code,
+                    missing_fields: error.missing_fields
+                });
+
+            };
+
+            console.log('Algo inesperado aconteceu durante a geração do token de ativação ou envio do e-mail com o token de ativação.', error);
+    
+            let customErr = new Error('Algo inesperado aconteceu durante a geração do token de ativação ou envio do e-mail com o token de ativação. Entre em contato com o administrador.');
+            customErr.status = 500;
+            customErr.code = 'INTERNAL_SERVER_ERROR';
+    
+            return next ( customErr );
+        };
+
+    };
+
+    /*  Usuários Sociais serão cadastrados como ativos, uma vez que toda verificação de autenticidade ocorreu nas redes aceitas pelo Sistema.
+
+        Se eles desativarem a conta em algum ponto do uso, no futuro, eles poderão solicitar um SMS com o Token de Ativação, ou caso não tenham
+        informado um telefone celular no cadastro, ou esse tenha sido expirado, requisitar ao suporte PetAdote para que ativem suas contas, informando
+        os primeiros e últimos dígitos do CPF.  */
+    
+});
+
+router.post('/logout', async (req, res, next) => {
+    // Rota que encerra a "Sessão" de um usuário ao restringir o uso um Token de Acesso de Usuário.
+
+    /*  Para proteger os usuários, os Clientes deverão permitir o encerramento da sessão do usuário utilizando esse end-point, assim os
+        Tokens válidos porém não mais utilizados por eles serão adicionados à uma lista de Tokens como "encerrado" e após a data limite ser atingida serão descartados. */
+
+    // Restrições de acesso à rota --- Apenas as Aplicações Pet Adote com usuários autenticados poderão realizar o log-out.
+    if (!req.dadosAuthToken || !req.dadosAuthToken.usuario){   // Se não houver autenticação da aplicação com um usuário, não permita o acesso.
+        return res.status(401).json({
+            mensagem: 'Requisição inválida - Você não possui o nível de acesso adequado para esse recurso.',
+            code: 'ACCESS_NOT_ALLOWED'
+        });
+    } else {
+
+        // Se o Cliente não for do tipo Pet Adote, não permita o acesso.
+        if (req.dadosAuthToken.tipo_cliente !== 'Pet Adote'){
+            return res.status(401).json({
+                mensagem: 'Requisição inválida - Você não possui o nível de acesso adequado para esse recurso.',
+                code: 'ACCESS_TO_RESOURCE_NOT_ALLOWED'
+            });
+        }
+    }
+    // Fim das restrições de acesso à rota. 
+
+    // Verificação dos dados do Token de Acesso.
+        // let userToken = req.headers.authorization.split(' ')[1];
+        // let decoded = jwt.verify(userToken, process.env.JWT_KEY);
+    // Fim da verificação dos dados do Token de Acesso.
+
+    // Adicionando o Token de Acesso à lista de Tokens como 'encerrado'.
+        // Token.create({
+        //     cod_usuario: decoded.usuario.cod_usuario,
+        //     token: userToken,
+        //     tipo_token: 'encerrado',
+        //     data_limite: new Date(decoded.exp * 1000)
+        // })
+        // .then((result) => {
+        //     console.log(result.get({plain: true}));
+        // })
+        // .catch((error) => {
+        //     console.log('Algo inesperado aconteceu ao adicionar o token à lista de tokens.', error);
+        // })
+
+
+    // Fim da adição do Token de Acesso à lista de Tokens.
+
+        
+
+    
+    
+});
 
 // Exportação.
 module.exports = router;    // É necessário exportar os Routers (rotas) para utilizá-los em 'app.js', nosso requestListener.

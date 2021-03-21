@@ -82,6 +82,16 @@ CREATE TABLE tbl_end_usuario (
     FOREIGN KEY (cod_usuario) REFERENCES tbl_usuario(cod_usuario)
 );
 
+CREATE TABLE tbl_token (
+	cod_token INT UNSIGNED NOT NULL UNIQUE AUTO_INCREMENT,
+    cod_usuario INT UNSIGNED NOT NULL,
+    token VARCHAR(255) NOT NULL,
+    tipo_token ENUM('ativacao', 'recuperacao') NOT NULL,
+    data_limite DATETIME NOT NULL,
+    PRIMARY KEY (cod_token),
+    FOREIGN KEY (cod_usuario) REFERENCES tbl_usuario(cod_usuario)
+);
+
 # Fim dos cadastros básicos para criação do perfil de um novo usuário #
 #---------------------------------------------------------------------#
 
@@ -307,10 +317,15 @@ SELECT * FROM tbl_end_usuario;
 
 SELECT * FROM tbl_bloqueio;
 
+SELECT * FROM tbl_token;
+
 # INSERT INTO tbl_bloqueio
 #	(bloqueante, bloqueado)
 # VALUES
 #	(1, 2);
+
+# DELETE FROM tbl_token
+# WHERE cod_usuario = 1 AND data_limite < NOW();
 
 SET FOREIGN_KEY_CHECKS = 0;
 TRUNCATE tbl_usuario;
@@ -319,6 +334,7 @@ TRUNCATE tbl_conta_facebook;
 TRUNCATE tbl_conta_google;
 TRUNCATE tbl_end_usuario;
 TRUNCATE tbl_bloqueio;
+TRUNCATE tbl_token;
 SET FOREIGN_KEY_CHECKS = 1;
 
 SELECT 	pu.*,
