@@ -15,14 +15,6 @@
         host: '127.0.0.1',
         port: '3316',       // Porta de Reverse Proxy -- Direciona ao serviço corrente na porta 3306 (mysql) na máquina virtual.
         dialect: 'mysql',
-        // dialectOptions: {
-        //     typeCast: (field, next) => {            // Por padrão, uma consulta com o Sequelize que retorna um DATETIME entregará o dado no padrão ISO8601 (UTC). Desejamos receber os dados sempre da forma que estão no banco de dados, então devemos sobrepor a entrega desse tipo de campo.
-        //         if (field.type === 'DATETIME'){
-        //             return field.string()
-        //         }
-        //         return next()
-        //     }
-        // },
         pool: {
             max: 100,
             min: 0,

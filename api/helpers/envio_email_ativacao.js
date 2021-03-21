@@ -5,13 +5,11 @@
 // Exportações.
 
 /**
- * @param res HTTP Response.
- * @param next Express Next Function.
  * @param {object} tokenAtivacao Token Temporário de Ativação da conta do usuário.
  * @param {string} email O e-mail do usuário requisitante.
- * @description Enviará um e-mail para o usuário contendo o Token Temporário de Ativação da conta, caso algo inesperado aconteça enviará uma resposta HTTP com o motivo da falha. É necessário estar em uma rota com os parâmetros (request, response, next).
+ * @description Retornará uma mensagem de sucesso caso o e-mail contendo o Token temporário de ativação da conta for enviado, caso algo inesperado aconteça enviará o motivo da falha.
  */
-module.exports = async (res, next, tokenAtivacao, email) => {
+module.exports = async (tokenAtivacao, email) => {
 
     let requiredFields = [
         'cod_token',
@@ -21,23 +19,30 @@ module.exports = async (res, next, tokenAtivacao, email) => {
         'data_limite'
     ];
 
-    let erros = [];
+    let missingFields = [];
 
     // Verificando se o objeto recebido contém os dados necessários.
     requiredFields.forEach((field) => {
         if (!Object.keys(tokenAtivacao).includes(field)){
-            erros.push(field);
+            missingFields.push(field);
         }
     });
 
-    if (erros.length > 0){
-        console.log('Erros detectados, campos obrigatórios estão faltando.');
+    if (missingFields.length > 0){
+        console.log('missingFields detectados, campos obrigatórios estão faltando.');
 
-        return res.status(400).json({
-            mensagem: 'Campos inválidos ou incompletos foram detectados.',
-            code: 'INVALID_REQUEST_FIELDS',
-            erros: erros
-        });
+        let customErr = new Error('Campos inválidos ou incompletos foram detectados.');
+        customErr.status = 400;
+        customErr.code = 'INVALID_REQUEST_FIELDS';
+        customErr.missing_fields = missingFields;
+
+        throw customErr;
+
+        // return res.status(400).json({
+        //     mensagem: 'Campos inválidos ou incompletos foram detectados.',
+        //     code: 'INVALID_REQUEST_FIELDS',
+        //     missing_fields: missingFields
+        // });
     }
 
     // Início das configurações do Nodemailer para enviar o e-mail.
@@ -78,11 +83,13 @@ module.exports = async (res, next, tokenAtivacao, email) => {
             </div>`
         }
 
-        await transport.sendMail(mailOptions)
+        await transport.sendMail(mailOptions);
 
-        return res.status(200).json({
-            mensagem: 'E-mail enviado com sucesso.'
-        });
+        return String('E-mail enviado com sucesso');
+        
+        // res.status(200).json({
+        //     mensagem: 'E-mail enviado com sucesso.'
+        // });
 
     } catch (error) {
         console.log('Algo inesperado aconteceu ao enviar o e-mail do Token de Ativação da conta do usuário.', error);
@@ -91,7 +98,13 @@ module.exports = async (res, next, tokenAtivacao, email) => {
         customErr.status = 500;
         customErr.code = 'INTERNAL_SERVER_ERROR';
 
-        return next( customErr );
+        throw customErr;
+
+        // let customErr = new Error('Algo inesperado aconteceu ao enviar o e-mail do Token de Ativação da conta do usuário. Entre em contato com o administrador.');
+        // customErr.status = 500;
+        // customErr.code = 'INTERNAL_SERVER_ERROR';
+
+        // return next( customErr );
         
     }
     // Fim das configurações de envio do e-mail.

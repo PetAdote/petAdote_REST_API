@@ -23,7 +23,7 @@ router.get('/', (req, res, next) => {     // Entrega o Token de autenticação a
 
         // console.log('Cliente válido! Entregando Token...');
 
-        const tokenAcesso = jwt.sign({      // Conteúdo acessível que estará dentro Token. (Não envie senhas!)
+        const tokenCliente = jwt.sign({      // Conteúdo acessível que estará dentro Token. (Não envie senhas!)
             cod_cliente: cliente.cod_cliente,
             tipo_cliente: cliente.tipo_cliente
         },
@@ -33,8 +33,8 @@ router.get('/', (req, res, next) => {     // Entrega o Token de autenticação a
         });
 
         return res.status(200).json({
-            mensagem: 'Cliente válido! O Token de acesso foi entregue.',
-            token: tokenAcesso
+            mensagem: 'Cliente válido! O Token de acesso do cliente foi entregue.',
+            token_cliente: tokenCliente
         });
     } else {
         return res.status(401).json({

@@ -116,48 +116,39 @@ router.post('/', async (req, res, next) => {     // Verifica se o usuário está
     // Atribuição do Token de Acesso do Usuário.
     if (usuario){
 
+        // O usuário autenticou-se na aplicação. Gerando o Token de Acesso.
+        const tokenUsuario = jwt.sign({
+            cod_cliente: req.dadosAuthToken.cod_cliente,
+            tipo_cliente: req.dadosAuthToken.tipo_cliente,
+            usuario: usuario
+        }, process.env.JWT_KEY, {
+            expiresIn: '6h'
+        });
+
         if (usuario.esta_ativo == 0){
 
-             // O usuário realizou a autenticação, porém ainda não ativou a conta. Gerando o Token de Acesso e mensagem de ativação.
-             const tokenUsuario = jwt.sign({
-                cod_cliente: req.dadosAuthToken.cod_cliente,
-                tipo_cliente: req.dadosAuthToken.tipo_cliente,
-                usuario: usuario
-            }, process.env.JWT_KEY, {
-                expiresIn: '6h'
-            });
+            // O usuário realizou a autenticação, porém ainda não ativou a conta.
+            /*  Uma vez que o Token vai conter "esta_ativo" como 0 (false) é possível permitir que esse usuário visualize áreas públicas e pessoais (altere seus próprios dados) da aplicação. 
+                Porém não permitir que ele interaja com outros usuários, como por exemplo: Faça candidaturas de adoção. */
 
             return res.header('Authorization', `Bearer ${tokenUsuario}`).status(200).json({
-                mensagem: 'Autenticação realizada com sucesso, porém o usuário ainda não ativou a conta. Utilize o [ cod_usuario ] para re-enviar o e-mail contendo o Token de Ativação. E o [ token ] de acesso para realizar a ativação quando o usuário informar o Token de Ativação que recebeu no e-mail.',
+                mensagem: 'Autenticação realizada com sucesso, porém o usuário ainda não ativou a conta. Utilize o [ cod_usuario ] para re-enviar o e-mail contendo o Token de Ativação. E o [ token_usuario ] para realizar a ativação quando o usuário informar o Token de Ativação que recebeu no e-mail. Quando o usuário ativar a conta, ele deverá renovar seu Token de acesso desconectando-se da conta e autenticando-se novamente.',
                 cod_usuario: usuario.cod_usuario,
-                token: tokenUsuario,
+                token_usuario_inativo: tokenUsuario,
                 reenvio_ativacao: `${req.protocol}://${req.get('host')}/contas/ativacao/reenvio/${usuario.cod_usuario}`,
                 exemplo_ativacao: `${req.protocol}://${req.get('host')}/contas/ativacao/012T0K3n`
             });
-
-            // return res.status(401).json({
-            //     mensagem: 'O usuário ainda não ativou a conta após se cadastrar.',
-            //     code: 'USER_NOT_ACTIVE',
-            //     reenvio_ativacao: `${req.protocol}://${req.get('host')}/contas/ativacao/reenvio/${usuario.cod_usuario}`
-            // })
-
         } 
 
         if (usuario.esta_ativo == 1){
-            // O usuário é autêntico. Gerando o Token de Acesso.
-            const tokenUsuario = jwt.sign({
-                cod_cliente: req.dadosAuthToken.cod_cliente,
-                tipo_cliente: req.dadosAuthToken.tipo_cliente,
-                usuario: usuario
-            }, process.env.JWT_KEY, {
-                expiresIn: '6h'
-            });
-            
+            // O usuário realizou a autenticação e também ativou a conta.
+            /*  Se o usuário for autêntico e ativou a conta utilizando ou o E-mail, o Telefone, ou o CPF via suporte Pet Adote, podemos
+                permitir que esse usuário interaja com os outros usuários, teremos maior segurança de que ele é real. */
 
             return res.header('Authorization', `Bearer ${tokenUsuario}`).status(200).json({
                 mensagem: 'Usuário autenticado com sucesso.',
                 cod_usuario: usuario.cod_usuario,
-                token: tokenUsuario
+                token_usuario: tokenUsuario
             });
         }
 

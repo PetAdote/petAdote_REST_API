@@ -11,12 +11,10 @@
 // Exportação.
 
 /** 
- *  @param res HTTP Response.
- *  @param next Express Next Function.
  *  @param {number} cod_usuario ID do usuário requisitante do token.
- *  @description Retornará o Token do usuário ou enviará uma resposta HTTP com o motivo pelo qual o Token não pôde ser gerado. Além disso, é necessário estar em uma rota com os parâmetros (request, response, next).
+ *  @description Retornará o Token do usuário ou erros com o motivo pelo qual o Token não pôde ser gerado.
  */
-module.exports = async (res, next, cod_usuario) => {
+module.exports = async (cod_usuario) => {
 
     let tokenAtivacao = undefined;
 
@@ -42,11 +40,12 @@ module.exports = async (res, next, cod_usuario) => {
                 
                 if (resultFindToken && resultFindToken.data_limite > new Date() ){
                     // Se o usuário possuir um Token de Ativação em vigência não permita que ele crie um novo.
-                    return res.status(403).json({
-                        mensagem: 'Ainda existe um Token de Ativação vigente para esse usuário',
-                        data_liberacao: resultFindToken.data_limite.toLocaleString(),
-                        code: 'NOT_ALLOWED'
-                    });
+                    let customErr = new Error('Ainda existe um Token de Ativação vigente para esse usuário');
+                    customErr.data_liberacao = resultFindToken.data_limite.toLocaleString();
+                    customErr.status = 403;
+                    customErr.code = 'USER_HAS_ACTIVE_TOKEN';
+
+                    throw customErr;
 
                 } else {
                     // Se o Token de Ativação do usuário tiver expirado, delete o registro do Token expirado e crie um novo.
@@ -86,7 +85,7 @@ module.exports = async (res, next, cod_usuario) => {
                             customErr.status = 500;
                             customErr.code = 'INTERNAL_SERVER_ERROR';
 
-                            return next( customErr );
+                            throw customErr;
                             
                         });
 
@@ -98,7 +97,7 @@ module.exports = async (res, next, cod_usuario) => {
                         customErr.status = 500;
                         customErr.code = 'INTERNAL_SERVER_ERROR';
 
-                        return next( customErr );
+                        throw customErr;
 
                     });
 
@@ -112,17 +111,19 @@ module.exports = async (res, next, cod_usuario) => {
                 customErr.status = 500;
                 customErr.code = 'INTERNAL_SERVER_ERROR';
 
-                return next( customErr );
+                throw customErr;
 
             });
 
         } else {
 
             // console.log('Nenhum usuário com o id informado foi encontrado.');
-            return res.status(404).json({
-                mensagem: 'Nenhum usuário com o ID informado foi encontrado.',
-                code: 'RESOURCE_NOT_FOUND'
-            });
+
+            let customErr = new Error('Nenhum usuário com o ID informado foi encontrado.');
+            customErr.status = 404;
+            customErr.code = 'RESOURCE_NOT_FOUND';
+
+            throw customErr;
 
         };
 
@@ -135,7 +136,7 @@ module.exports = async (res, next, cod_usuario) => {
         customErr.status = 500;
         customErr.code = 'INTERNAL_SERVER_ERROR';
 
-        return next( customErr );
+        throw customErr;
 
     });
 
