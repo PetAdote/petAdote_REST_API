@@ -11,7 +11,6 @@
         const ContaFacebook = require('../models/ContaFacebook');
         const ContaGoogle = require('../models/ContaGoogle');
         const EnderecoUsuario = require('../models/EnderecoUsuario');
-        const Token = require('../models/Token');
 
     const { EventEmitter } = require('events'); // Gerador de eventos do Node.
 
@@ -28,8 +27,15 @@
 
     const sequelize = require('../../configs/database').connection;
 
-    const geradorTokenAtivacao = require('../helpers/gerador_token_ativacao');
-    const envioEmailAtivacao = require('../helpers/envio_email_ativacao');
+    const userTokenGenerator = require('../../helpers/generate_userToken');
+
+    const envioEmailAtivacao = require('../../helpers/send_email_ativacao');
+
+    const envioEmailRecuperacao = require('../../helpers/send_email_recuperacao');
+
+    const envioEmailSenhaProvisoria = require('../../helpers/send_email_senhaProvisoria');
+
+    const redisClient = require('../../configs/redis_connection');
 
     const jwt = require('jsonwebtoken');
 
@@ -81,7 +87,7 @@ router.get('/', (req, res, next) => {
 
         try {   // Buscando Conta com base na Foreign Key (cod_usuario) do Usuário.
 
-            ContaLocal.findOne({ attributes: ['email', 'email_recuperacao', 'cod_usuario' ], where: { cod_usuario: req.query.codUsuario }, raw: true })
+            ContaLocal.findOne({ attributes: ['email'/*, 'email_recuperacao'*/, 'cod_usuario' ], where: { cod_usuario: req.query.codUsuario }, raw: true })
             .then((result) => {
                 result ? customListeners.emit('gotContaDoUsuario', result) : customListeners.emit('contaNotFound');
             });
@@ -117,7 +123,7 @@ router.get('/', (req, res, next) => {
         switch(req.query.tipoConta){
             case 'local':
 
-                return ContaLocal.findByPk(req.query.chaveConta, { attributes: ['email', 'email_recuperacao', 'cod_usuario'], raw: true })
+                return ContaLocal.findByPk(req.query.chaveConta, { attributes: ['email'/*, 'email_recuperacao'*/, 'cod_usuario'], raw: true })
                 .then((result) => {
                     if (result) {
                         res.status(200).json({
@@ -331,7 +337,7 @@ router.post('/', async (req, res, next) => {   // Cria os dados básicos do usu�
     // Lista de campos obrigatórios.
     let requiredFields = [
         'email',
-        'email_recuperacao',
+        // 'email_recuperacao',
         'senha',
         'confirma_senha',
         'primeiro_nome',
@@ -377,8 +383,10 @@ router.post('/', async (req, res, next) => {   // Cria os dados básicos do usu�
 
         // Deixando as primeiras letras dos nomes com caixa alta.
         switch(pair[0]){    // Se "pair[0]" (campo) não for um dos casos (cair em "default"), ele passará pelo tratamento de letras capitulares.
-            case 'email': break;
-            case 'email_recuperacao': break;
+            case 'email': 
+                req.body[pair[0]] = String(pair[1]).toLowerCase();
+                break;
+            // case 'email_recuperacao': break;
             case 'senha': break;
             case 'confirma_senha': break;
             case 'descricao': break;
@@ -455,21 +463,21 @@ router.post('/', async (req, res, next) => {   // Cria os dados básicos do usu�
             });
         }
     
-    // Validação básica do e-mail de recuperação.
-        if (req.body.email_recuperacao === req.body.email){
-            return res.status(400).json({
-                mensagem: 'EMAIL DE RECUPERACAO - Idêntico ao e-mail.',
-                code: 'RECOVERY_EMAIL_SAME_AS_EMAIL'
-            })
-        }
+    // // Validação básica do e-mail de recuperação.
+    //     if (req.body.email_recuperacao === req.body.email){
+    //         return res.status(400).json({
+    //             mensagem: 'EMAIL DE RECUPERACAO - Idêntico ao e-mail.',
+    //             code: 'RECOVERY_EMAIL_SAME_AS_EMAIL'
+    //         })
+    //     }
 
-        if (!req.body.email_recuperacao.match(/^([\w\d-+.]{1,64})(@[\w\d-]+)((?:\.\w+)+)$/g)){
-            return res.status(400).json({
-                mensagem: 'EMAIL DE RECUPERACAO - Formato inválido.',
-                code: 'INVALID_RECOVERY_EMAIL_INPUT',
-                exemplo: 'emailRecuperacao@dominio.com'
-            });
-        }
+    //     if (!req.body.email_recuperacao.match(/^([\w\d-+.]{1,64})(@[\w\d-]+)((?:\.\w+)+)$/g)){
+    //         return res.status(400).json({
+    //             mensagem: 'EMAIL DE RECUPERACAO - Formato inválido.',
+    //             code: 'INVALID_RECOVERY_EMAIL_INPUT',
+    //             exemplo: 'emailRecuperacao@dominio.com'
+    //         });
+    //     }
     
     // Validação senha.
         if (req.body.senha.length < 4 || req.body.senha.length > 100) {
@@ -885,17 +893,21 @@ router.post('/', async (req, res, next) => {   // Cria os dados básicos do usu�
     }
 
     // Coleta dados a respeito do CEP na api "ViaCEP".
-        let urlVerificacaoViaCep = `http://viacep.com.br/ws/${req.body.cep}/json/`;
+    let urlVerificacaoViaCep = `http://viacep.com.br/ws/${req.body.cep}/json/`;
 
-        let infoCEP = await axios.get(urlVerificacaoViaCep).then((res) => {
-            // console.log(res.data);
-            return res.data;
-        })
-        .catch((err) => {
-            return { errCode: err.code,
+    let infoCEP = await axios.get(urlVerificacaoViaCep)
+    .then((res) => {
+        // console.log(res.data);
+        return res.data;
+    })
+    .catch((err) => {
+        return { 
+            api_error: {
+                errCode: err.code,
                 errMessage: err.message
-            };
-        });
+            }
+        };
+    });
 
     if (infoCEP.erro){
         return res.status(404).json({
@@ -904,12 +916,24 @@ router.post('/', async (req, res, next) => {   // Cria os dados básicos do usu�
         })
     }
 
-    if (infoCEP.errMessage){
-        return res.status(500).json({
-            mensagem: 'CEP - Algo inesperado aconteceu ao buscar informações sobre o CEP.',
-            code: infoCEP.errCode,
-            error: infoCEP.errMessage            
-        })
+    if (infoCEP.api_error){
+        console.log('CEP - Algo inesperado aconteceu ao buscar informações sobre o CEP.', infoCEP.api_error);
+
+        if (!infoCEP.api_error.errCode == 'ETIMEDOUT'){
+            console.log('A API do ViaCEP caiu!');
+
+            let customErr = new Error('Não é possível realizar o cadastro no momento, tente novamente mais tarde.');
+            customErr.status = 500;
+            customErr.code = 'INTERNAL_SERVER_API_ERROR';
+
+            return next( customErr );
+        }
+
+        let customErr = new Error('CEP - Algo inesperado aconteceu ao buscar informações sobre o CEP.');
+        customErr.status = 500;
+        customErr.code = 'INTERNAL_SERVER_ERROR';
+
+        return next( customErr );
     }
 
     // Validação de logradouro
@@ -928,7 +952,7 @@ router.post('/', async (req, res, next) => {   // Cria os dados básicos do usu�
         })
     }
 
-    // if (!infoCEP.bairro.toLowerCase().includes(req.body.bairro.toLowerCase())){
+    // if (infoCEP && !infoCEP.bairro.toLowerCase().includes(req.body.bairro.toLowerCase())){
     //     return res.status(400).json({
     //         mensagem: 'BAIRRO - O bairro informado nao esta de acordo com o CEP'
     //     })
@@ -1035,7 +1059,7 @@ router.post('/', async (req, res, next) => {   // Cria os dados básicos do usu�
                 email: req.body.email,
                 cod_usuario: usuario.cod_usuario,
                 senha: req.body.senha,
-                email_recuperacao: req.body.email_recuperacao
+                // email_recuperacao: req.body.email_recuperacao
             });
 
             const endUsuario = await EnderecoUsuario.create({
@@ -1094,7 +1118,7 @@ router.post('/', async (req, res, next) => {   // Cria os dados básicos do usu�
 
     // Envio do e-mail com o Token de Ativação da conta do usuário e finalização do processo de cadastro.
 
-    await geradorTokenAtivacao(idUsuario)
+    await userTokenGenerator(idUsuario, 'atv')
     .then(async (resultTokenAtivacao) => {
 
         if (resultTokenAtivacao) {
@@ -1177,13 +1201,596 @@ router.post('/', async (req, res, next) => {   // Cria os dados básicos do usu�
 
 });
 
-// router.patch('/'/*, controller.conta_updateOne*/);
+router.patch('/recuperacao', async (req, res, next) => {
+
+    // Início da Verificação do Parâmetro de Rota.
+        // Rota sem parâmetros...
+    // Fim da Verificação do Parâmetro de Rota.
+
+    // Início das Restrições de Acesso à Rota.
+
+        // Apenas as Aplicações Pet Adote poderão realizar a recuperação da conta de um usuário.
+
+        if (!req.dadosAuthToken){   // Se não houver autenticação da aplicação, não permita o acesso.
+            return res.status(401).json({
+                mensagem: 'Requisição inválida - Você não possui o nível de acesso adequado para esse recurso.',
+                code: 'ACCESS_TO_RESOURCE_NOT_ALLOWED'
+            });
+        } else {
+
+            // Se o requisitante for um usuário autenticado, não permita o acesso.
+            if (req.dadosAuthToken.usuario){
+                return res.status(401).json({
+                    mensagem: 'Requisição inválida - Você não possui o nível de acesso adequado para esse recurso.',
+                    code: 'ACCESS_TO_RESOURCE_NOT_ALLOWED'
+                });
+            }
+
+            // Se o Cliente não for do tipo Pet Adote, não permita o acesso.
+            if (req.dadosAuthToken.tipo_cliente !== 'Pet Adote'){
+                return res.status(401).json({
+                    mensagem: 'Requisição inválida - Você não possui o nível de acesso adequado para esse recurso.',
+                    code: 'ACCESS_TO_RESOURCE_NOT_ALLOWED'
+                });
+            }
+
+        }
+
+    // Fim das Restrições de Acesso à Rota.
+
+    // Início da Verificação da existência de dados no pacote da requisição.
+
+        if (!req.headers['content-type']){
+            return res.status(400).json({
+                mensagem: 'Dados não encontrados na requisição',
+                code: 'INVALID_REQUEST_CONTENT'
+            })
+        }
+
+    // Fim da verificação da existência de dados no pacote da requisição.
+
+    // Início da lista de campos obrigatórios na requisição.
+
+        let requiredFields = [
+            'email',
+            'tokenRecuperacao'
+        ];
+
+    // Fim da lista de campos obrigatórios na requisição.
+
+    // Verificação da existência dos campos obrigatórios no pacote da requisição.
+        
+        let missingFields = [];
+
+        requiredFields.forEach((field) => {
+            if (!Object.keys(req.body).includes(field)){
+                missingFields.push(`Campo [${field}] não encontrado.`);
+            }
+        });
+
+        if (missingFields.length > 0){
+            console.log('missingFields detectados, campos obrigatórios estão faltando.');
+
+            return res.status(400).json({
+                mensagem: 'Campos inválidos ou incompletos foram detectados.',
+                code: 'INVALID_REQUEST_FIELDS',
+                missing_fields: missingFields
+            });
+        }
+
+    // Fim da verificação da existência dos campos obrigatórios no pacote da requisição.
+
+    // Início da normalização dos campos recebidos no pacote da requisição.
+
+        Object.entries(req.body).forEach((pair) => {        // Todo campo se tornará uma String e não possuirá espaços "     " no começo ou no fim.
+
+            // Remove espaços excessivos no início/fim da String.
+            req.body[pair[0]] = String(pair[1]).trim();
+
+            // Deixando as primeiras letras dos nomes com caixa alta.
+            switch(pair[0]){
+                // case 'descricao': break;     // Se algum campo não precisar da normalização, separe-o em 'cases' com apenas 'break'.
+                case 'email': 
+                    req.body[pair[0]] = String(pair[1]).toLowerCase();
+                    break;
+                default: break;
+            }
+            
+        });
+
+    // Fim da normalização dos campos recebidos no pacote da requisição.
+
+    // Início da validação dos campos recebidos.
+
+        // Validação básica do e-mail.
+            if (req.body.email.length === 0 || req.body.email.length > 255){
+                // console.log('Erro: E-mail vazio ou ultrapassa 255 caracteres.')
+                return res.status(400).json({
+                    mensagem: 'EMAIL - Vazio ou ultrapassa 255 caracteres.',
+                    code: 'INVALID_EMAIL_LENGTH'
+                })
+            }
+
+            if (!req.body.email.match(/^([\w\d-+.]{1,64})(@[\w\d-]+)((?:\.\w+)+)$/g)){
+                // console.log('Erro: O formato do e-mail está diferente do esperado.');
+                return res.status(400).json({
+                    mensagem: 'EMAIL - Formato inválido.',
+                    code: 'INVALID_EMAIL_INPUT',
+                    exemplo: 'email@dominio.com'
+                });
+            }
+        // Fim da validação básica do e-mail.
+
+        // Validação do Token de Recuperação.
+
+            if (!String(req.body.tokenRecuperacao).match(/^\w{7}[^_]$/g)){
+                return res.status(400).json({
+                    mensagem: 'O Token de Recuperação não está em um formato válido.',
+                    code: 'INVALID_INPUT',
+                    exemplo: '012t0K3n'
+                });
+            }
+
+        // Fim da validação do Token de Recuperação.
+
+    // Fim da validação dos campos recebidos.
+
+    // Início dos processos de recuperação de senha do usuário.
+
+        try{
+            // Início da verificação da existência do e-mail e do vínculo entre usuário e o Token de Recuperação.
+
+                // Início da verificação da existência de um usuário vínculado ao e-mail.
+                    let { cod_usuario } = await ContaLocal.findOne({
+                        where: {
+                            email: req.body.email
+                        },
+                        raw: true
+                    })
+
+                    if (!cod_usuario){
+                        return res.status(404).json({
+                            mensagem: 'Nenhum usuário vínculado à esse e-mail foi encontrado.',
+                            code: 'RESOURCE_NOT_FOUND'
+                        });
+                    }
+                // Fim da verificação da existência de um usuário vínculado ao e-mail.
+
+                // Início da verificação do Token de Recuperação.
+
+                    let getRecToken = async (hashKey) => {
+
+                        return new Promise((resolve, reject) => {
+
+                            redisClient.HGET(hashKey, 'token', (error, result) => {
+                                if (error) {
+                                    return reject(error);
+                                }
+        
+                                console.log('resultGetRecToken', result);
+                                return resolve(result);
+                                
+                            });
+
+                        });
+
+                    };
+
+                    let hashKey = `tokens:rec:user_${cod_usuario}`;
+
+                    let token = await getRecToken(hashKey);
+                    
+                    if (req.body.tokenRecuperacao != token){
+                        return res.status(401).json({
+                            mensagem: 'O token informado não é válido para esse usuário, não é possível realizar a redefinição da senha.',
+                            code: 'NOT_ALLOWED'
+                        });
+                    }
+
+                // Fim da verificação do Token de Recuperação.
+
+            // Fim da verificação da existência do e-mail e do vínculo entre usuário e o Token de Recuperação.
+
+            // Início da redefinição provisória da senha do usuário.
+                    
+                let senhaProvisoria = randomize('Aa0', 16);   // Nova senha provisória com 16 caracteres alfanuméricos.
+
+                // Início da criptografia da nova senha provisória do usuário.
+                    
+                    const salt = bcrypt.genSaltSync(10);
+                    console.log('O salt será: ', salt);
+                    const hashedPassword = bcrypt.hashSync(senhaProvisoria, salt);
+                    console.log('Senha hasheada: ', hashedPassword);    // 60 caracteres.
+
+                // Fim da criptografia da nova senha provisória do usuário.
+
+                // Início da redefinição da senha da conta do usuário.
+                    
+                    let isAcessoRenovado = await ContaLocal.update({
+                        senha: hashedPassword
+                    }, {
+                        where: { 
+                            email: req.body.email
+                        }
+                    });
+
+                // Fim da redefinição da senha da conta do usuário.
+
+            // Fim da redefinição provisória da senha do usuário.
+
+            // Início do envio do e-mail contendo a nova senha do usuário.
+                if (isAcessoRenovado){
+
+                    await envioEmailSenhaProvisoria(senhaProvisoria, req.body.email)
+                    .then(async (result) => {
+
+                        if (result === 'E-mail enviado com sucesso'){
+                            // Remova o Token de Recuperação.
+                            redisClient.DEL(hashKey, (errorDEL, resultDEL) => {
+                                if (errorDEL) {
+                                    console.log('Algo inesperado aconteceu ao remover o Token de Recuperação consumido pelo usuário.', errorDEL);
+        
+                                    let customErr = new Error('Algo inesperado aconteceu. Entre em contato com o administrador.');
+                                    customErr.status = 500;
+                                    customErr.code = 'INTERNAL_SERVER_ERROR';
+                                    
+                                    return next( customErr );
+                                };
+        
+                                return res.status(200).json({
+                                    mensagem: 'O e-mail com a senha provisória foi enviado com sucesso.'
+                                });
+        
+                            });
+
+                        }
+    
+                    });
+
+                } else {
+
+                    return res.status(500).json({
+                        mensagem: 'Algo inesperado aconteceu durante o processo de redefinição da senha do usuário para recuperação do acesso à conta. Entre em contato com o administrador.',
+                        code: 'INTERNAL_SERVER_ERROR'
+                    });
+
+                }
+
+            // Fim do envio do e-mail contendo a nova senha do usuário.
+        } catch(error) {
+            
+            console.log('Algo inesperado aconteceu durante o processo de redefinição da senha do usuário para recuperação do acesso à conta.', error);
+    
+            let customErr = new Error('Algo inesperado aconteceu durante o processo de redefinição da senha do usuário para recuperação do acesso à conta. Entre em contato com o administrador.');
+            customErr.status = 500;
+            customErr.code = 'INTERNAL_SERVER_ERROR';
+    
+            return next ( customErr );
+
+        }
+    // Fim dos processos de recuperação de senha do usuário.
+
+
+});
+
+router.patch('/:codUsuario', async (req, res, next) => {
+
+    // Início da Verificação do Parâmetro de Rota.
+
+    if (req.params.codUsuario.match(/[^\d]+/g)){     // Se "codUsuario" conter algo diferente do esperado.
+        return res.status(400).json({
+            mensagem: "Requisição inválida - O ID de um Usuario deve conter apenas dígitos.",
+            code: 'BAD_REQUEST'
+        });
+    }
+
+    // Fim da Verificação do Parâmetro de Rota.
+
+    // Início das Restrições de Acesso à Rota.
+
+        // Apenas as Aplicações Pet Adote, Administradores e o Dono do Recurso poderão realizar modificações no endereço.
+        // Além disso, a conta do dono do recurso deve ser uma Conta Local. Contas Sociais não podem alterar os dados da conta uma vez que armazenamos apenas o ID do usuário no provedor social.
+
+        if (!req.dadosAuthToken){   // Se não houver autenticação da aplicação, não permita o acesso.
+            return res.status(401).json({
+                mensagem: 'Requisição inválida - Você não possui o nível de acesso adequado para esse recurso.',
+                code: 'ACCESS_TO_RESOURCE_NOT_ALLOWED'
+            });
+        } else {
+
+            let { usuario } = req.dadosAuthToken;
+
+            // Se o Requisitante possuir um ID diferente do ID requisitado e não for um administrador, ou o tipo do cadastro do usuário não for local, não permita o acesso.
+            if (usuario){
+                if ((usuario.cod_usuario != req.params.codUsuario && usuario.e_admin == 0) || (usuario.tipo_cadastro != 'local')){
+                    return res.status(401).json({
+                        mensagem: 'Requisição inválida - Você não possui o nível de acesso adequado para esse recurso.',
+                        code: 'ACCESS_TO_RESOURCE_NOT_ALLOWED'
+                    });
+                }
+            }
+
+            // Se o Cliente não for do tipo Pet Adote, não permita o acesso.
+            if (req.dadosAuthToken.tipo_cliente !== 'Pet Adote'){
+                return res.status(401).json({
+                    mensagem: 'Requisição inválida - Você não possui o nível de acesso adequado para esse recurso.',
+                    code: 'ACCESS_TO_RESOURCE_NOT_ALLOWED'
+                });
+            }
+
+        }
+
+    // Fim das Restrições de Acesso à Rota.
+
+    // Início da verificação da conta vínculada ao "codUsuario".
+    
+    let contaAtual = await ContaLocal.findOne({
+        where: { 
+            cod_usuario: req.params.codUsuario
+        },
+        raw: true
+    })
+    .then((result) => {
+        if (result){
+            return result;
+        } else {
+            return res.status(404).json({
+                mensagem: 'O usuário não existe ou nenhuma conta local está vínculada à ele.',
+                code: 'RESOURCE_NOT_FOUND'
+            });
+        }
+    })
+    .catch((error) => {
+        console.log(`PATCH: '/contas/:codUsuario' - Algo deu errado... \n`, error);
+
+        let customErr = new Error('Algo inesperado aconteceu na verificação de existência de um endereço vínculado à um usuário. Entre em contato com o administrador.');
+        customErr.status = 500;
+        customErr.code = 'INTERNAL_SERVER_ERROR';
+
+        return next( customErr );
+    });
+
+    // Fim da verificação da conta vínculada ao "codUsuario".
+
+    // Início da Verificação da existência de dados no pacote da requisição.
+
+        if (!req.headers['content-type']){
+            return res.status(400).json({
+                mensagem: 'Dados não encontrados na requisição',
+                code: 'INVALID_REQUEST_CONTENT'
+            })
+        }
+
+    // Fim da verificação da existência de dados no pacote da requisição.
+
+    // Início da lista de campos de modificação permitidos.
+
+        let allowedFields = [
+            // 'email',
+            'senha',
+            'confirma_senha'
+        ];
+
+    // Fim da lista de campos de modificação permitidos.
+
+    // Início da normalização dos campos recebidos no pacote da requisição.
+
+        let operacoes = {}  // Lista de Operações: Não será possível modificar via requisições, valores que não estiverem na lista de "allowedFields".
+
+        Object.entries(req.body).forEach((pair) => {
+
+            if (allowedFields.includes(pair[0])){               
+
+                operacoes[pair[0]] = String(pair[1]).trim();    // Todo campo será tratado como uma String e não possuirá espaços no começo e no fim.
+
+                switch(pair[0]){
+                    //case 'descricao': break;  // Se algum campo não precisar da normalização abaixo, separe-o em 'cases' com break.
+                    case 'senha':
+                        try {
+                            const salt = bcrypt.genSaltSync(10);
+                            console.log('O salt será: ', salt);
+                            const hashedPassword = bcrypt.hashSync(pair[1], salt);
+                            console.log('Senha hasheada: ', hashedPassword);    // 60 caracteres.
+                
+                            pair[1] = hashedPassword;    // Atribui a senha pós tratamento à variável.
+                        } catch (error) {
+                            console.log('Algo inesperado aconteceu ao criptografar a senha do usuário.')
+                
+                            let customErr = new Error('Algo inesperado aconteceu ao tratar dados do usuário');
+                            customErr.status = 500;
+                            customErr.code = 'INTERNAL_SERVER_MODULE_ERROR';
+                
+                            return next( customErr );
+                        }
+
+                        operacoes[pair[0]] = String(pair[1]);
+                        break;
+                    default:
+                        break;
+                }
+
+            }
+
+        });
+
+    // Fim da normalização dos campos recebidos no pacote da requisição.
+
+    // Início da validação dos campos da operação.
+
+        // // Validação básica do e-mail.
+        //     if (operacoes.email){
+        //         if (operacoes.email.length === 0 || operacoes.email.length > 255){
+        //             // console.log('Erro: E-mail vazio ou ultrapassa 255 caracteres.')
+        //             return res.status(400).json({
+        //                 mensagem: 'EMAIL - Vazio ou ultrapassa 255 caracteres.',
+        //                 code: 'INVALID_EMAIL_LENGTH'
+        //             })
+        //         }
+
+        //         if (!operacoes.email.match(/^([\w\d-+.]{1,64})(@[\w\d-]+)((?:\.\w+)+)$/g)){
+        //             // console.log('Erro: O formato do e-mail está diferente do esperado.');
+        //             return res.status(400).json({
+        //                 mensagem: 'EMAIL - Formato inválido.',
+        //                 code: 'INVALID_EMAIL_INPUT',
+        //                 exemplo: 'email@dominio.com'
+        //             });
+        //         }
+
+        //         // Verificando se o novo e-mail existe no Banco de Dados.
+        //             const isEmailLivre = await ContaLocal.findOne({ where: { email: operacoes.email } }).then((res) => {
+        //                 if (res === null || res === undefined || res === ''){
+        //                     // O e-mail livre!
+        //                     return true;
+        //                 } else {
+        //                     // O e-mail não está livre!
+        //                     return false;
+        //                 }
+        //             });
+
+        //             // console.log('[ORM] O email está livre? ', isEmailLivre);
+
+        //             if (!isEmailLivre){
+        //                 // console.log('O Email não está livre. Enviando resposta ao front-end');
+        //                 return res.status(409).json({
+        //                     mensagem: 'EMAIL - Em Uso.',
+        //                     code: 'EMAIL_ALREADY_TAKEN'
+        //                 });
+        //             }
+        //         // Fim da verificação da existência do novo e-mail no Banco de Dados.
+        //     }
+        // // Fim da validação básica do e-mail.
+
+        // Validação senha.
+            if (operacoes.senha){
+                if (req.body.senha.length < 4 || req.body.senha.length > 100) {
+                    // console.log('Erro: Senha pequena demais ou ultrapassa 100 caracteres.')
+                    return res.status(400).json({
+                        mensagem: 'SENHA - Possui menos que 4 ou mais que 100 caracteres.',
+                        code: 'INVALID_PASSWORD_LENGTH'
+                    });
+                }
+
+                if (!req.body.senha.match(/\d+/g)){
+                    // console.log('Erro: A senha não possui dígitos.');
+                    return res.status(400).json({
+                        mensagem: 'SENHA - Não possui dígitos.',
+                        code: 'PASSWORD_WITHOUT_NUMBER'
+                    })
+                }
+
+                if (!req.body.senha.match(/[A-Z]+/g)){
+                    // console.log('Erro: A senha não possui letras maiúsculas.');
+                    return res.status(400).json({
+                        mensagem: 'SENHA - Não possui letras maiúsculas.',
+                        code: 'PASSWORD_WITHOUT_UPPERCASE_LETTER'
+                    })
+                }
+
+                if (!req.body.senha.match(/[a-z]+/g)){
+                    // console.log('Erro: A senha não possui letras minúsculas.');
+                    return res.status(400).json({
+                        mensagem: 'SENHA - Não possui letras minúsculas.',
+                        code: 'PASSWORD_WITHOUT_LOWERCASE_LETTERS'
+                    })
+                }
+
+                if (req.body.senha != req.body.confirma_senha){
+                    // console.log('Erro: A confirmação de senha está diferente da senha.');
+                    return res.status(400).json({
+                        mensagem: 'CONFIRMACAO SENHA - Está diferente da senha.',
+                        code: 'INVALID_PASSWORD_CONFIRMATION'
+                    })
+                }
+            }
+        // Fim da validação da senha.
+
+    // Fim da validação dos campos da operação.
+
+    // Início das Operações de Update.
+
+        ContaLocal.update(operacoes, {
+            where: {
+                cod_usuario: req.params.codUsuario
+            },
+            limit: 1
+        })
+        .then(async (resultUpdate) => {
+
+            return res.status(200).json({
+                mensagem: 'Os dados da conta do usuário foram atualizados com sucesso.',
+            });
+
+            // Caso no futuro for necessário permitir que o usuário altere seu e-mail...
+
+            // if (operacoes.email){
+
+            //     let { email } = await ContaLocal.findOne({
+            //         attributes: ['email'],
+            //         where: {
+            //             cod_usuario: req.params.codUsuario
+            //         },
+            //         raw: true
+            //     });
+
+            //     // Realizando a inativação da conta do usuário. Será necessário confirmar novamente o e-mail.
+            //     await Usuario.update({ esta_ativo: 0 }, {
+            //         where: {
+            //             cod_usuario: req.params.codUsuario
+            //         },
+            //         limit: 1
+            //     });
+
+            //     // Envia e-mail para o novo e-mail com o Token de Ativação.
+            //     let tokenAtivacao = await userTokenGenerator(req.params.codUsuario, 'atv');
+
+            //     if (tokenAtivacao){
+    
+            //         console.log('Token recebido', tokenAtivacao);
+            //         console.log('Enviando e-mail para o usuário...');
+        
+            //         await envioEmailAtivacao(tokenAtivacao, email)
+            //         .then((result) => {
+    
+            //             if (result === 'E-mail enviado com sucesso'){
+
+            //                 return res.status(200).json({
+            //                     mensagem: 'Os dados da conta do usuário foram atualizados com sucesso.',
+            //                 });
+
+            //             }
+    
+            //         });
+        
+            //     };
+
+            // } else {
+
+            //     return res.status(200).json({
+            //         mensagem: 'Os dados da conta do usuário foram atualizados com sucesso.',
+            //     });
+
+            // }
+
+        })
+        .catch((errorUpdate) => {
+            console.log('Algo inesperado aconteceu ao atualizar os dados da conta do usuário.', errorUpdate);
+
+            let customErr = new Error('Algo inesperado aconteceu ao atualizar os dados da conta do usuário. Entre em contato com o administrador.');
+            customErr.status = 500;
+            customErr.code = 'INTERNAL_SERVER_ERROR';
+
+            return next( customErr );
+        })
+
+    // Fim das Operações de Update.
+
+});
 
 // router.delete('/'/*, controller.conta_deleteOne*/);
 
 router.patch('/ativacao/:tokenAtivacao', async (req, res, next) => {
     /*  Rota para realizar a ativação da conta do usuário.
-        "tokenAtivacao" é uma string aleatória com 8 dígitos, possui números e letras em caixa alta e baixa.
+        "tokenAtivacao" é uma string com 8 dígitos aleatórios, possui números e letras em caixa alta e baixa.
         O token de ativação é temporário (possui data de expiração) e é vinculado à um usuário específico.
         Quando o token é consumido, ele é removido, além disso se a data limite for alcançada (Expirar), há uma tarefa agendada para remoção do Token. */
 
@@ -1226,69 +1833,153 @@ router.patch('/ativacao/:tokenAtivacao', async (req, res, next) => {
     }
     // Fim da verificação do Token de Ativação.
 
-    // Ativação da conta do usuário.
+    // Início da Ativação da conta do Usuário (Usando o Redis).
 
-    let { usuario } = req.dadosAuthToken
+    let { usuario } = req.dadosAuthToken;
 
-    await Token.findOne({       // Verifica se existe algum Token de Ativação do usuário em vigência.
-        where: { 
-            cod_usuario: usuario.cod_usuario,
-            tipo_token: 'ativacao',
-            token: tokenAtivacao,
-            data_limite: {
-                [Op.gt]: new Date()
-            }
-        },
-        raw: true
-    })
-    .then((result) => {
-        if (result){
-            console.log('Existe um Token de Ativação vigente', result);
+    let tokenType = 'atv';
+    let hashKey = `tokens:${tokenType}:user_${usuario.cod_usuario}`;
 
-            Usuario.update({ 
-                esta_ativo: 1,
-                data_modificacao: new Date()
-            }, {
-                where: { cod_usuario: result.cod_usuario },
-                limit: 1
-            })
-            .then((updateResult) => {
+    redisClient.HGETALL(hashKey, (errorHGETALL, resultHGETALL) => {
+        if (errorHGETALL){
+            console.log('Algo inesperado aconteceu durante a ativação da conta do usuário ao verificar o token de ativação.', errorHGETALL);
 
-                return res.status(200).json({
-                    mensagem: 'Ativação da conta do usuário efetuada com sucesso.'
+            let customErr = new Error('Algo inesperado aconteceu durante a ativação da conta do usuário ao verificar o token de ativação. Entre em contato com o administrador.');
+            customErr.status = 500;
+            customErr.code = 'INTERNAL_SERVER_ERROR';
+
+            next ( customErr );
+        };
+
+        console.log(`Algum Token do tipo ['${tokenType}'] para o usuário [${usuario.cod_usuario}] foi encontrado?`, resultHGETALL);
+
+        if (resultHGETALL){
+            let dataExpiracaoToken = Number(resultHGETALL.data_expiracao);
+
+            if (dataExpiracaoToken > new Date()){
+                // Se o usuário possuir um Token de Ativação vigente...
+
+                Usuario.update({ 
+                    esta_ativo: 1,
+                    data_modificacao: new Date()
+                }, {
+                    where: { cod_usuario: usuario.cod_usuario },
+                    limit: 1
                 })
+                .then((updateResult) => {
 
-            })
-            .catch((updateError) => {
-                console.log('Algo inesperado aconteceu ao realizar a ativação da conta do usuário.', updateError);
+                    // Removendo o Token de Ativação utilizado.
+                    let hashKey = `tokens:atv:user_${usuario.cod_usuario}`;
+
+                    redisClient.DEL(hashKey, (errorDEL, resultDEL) => {
+                        if (errorDEL) {
+                            console.log('Algo inesperado aconteceu ao remover o Token de Ativação consumido pelo usuário.', errorDEL);
+
+                            let customErr = new Error('Algo inesperado aconteceu. Entre em contato com o administrador.');
+                            customErr.status = 500;
+                            customErr.code = 'INTERNAL_SERVER_ERROR';
+                            
+                            return next( customErr );
+                        };
+
+                        // Se nenhum error acontecer, a chave será deletada ou um resultado dizendo que ela nunca existiu será retornado...
+                        console.log('Resultado da remoção do Token de Ativação consumido pelo usuário.:', resultDEL);
+
+                        return res.status(200).json({
+                            mensagem: 'Ativação da conta do usuário efetuada com sucesso.'
+                        })
+
+                    });
     
-                let customErr = new Error('Algo inesperado aconteceu ao realizar a ativação da conta do usuário. Entre em contato com o administrador.');
-                customErr.status = 500;
-                customErr.code = 'INTERNAL_SERVER_ERROR';
-    
-                return next( customErr );
-            });
+                })
+                .catch((updateError) => {
+                    console.log('Algo inesperado aconteceu ao realizar a ativação da conta do usuário.', updateError);
+        
+                    let customErr = new Error('Algo inesperado aconteceu ao realizar a ativação da conta do usuário. Entre em contato com o administrador.');
+                    customErr.status = 500;
+                    customErr.code = 'INTERNAL_SERVER_ERROR';
+        
+                    return next( customErr );
+                }); // ending Usuario.update()
+                
+            }
 
         } else {
 
             return res.status(404).json({
                 mensagem: 'Nenhum Token de Ativação vigente e vinculado ao usuário foi encontrado.',
-                code: 'TOKEN_NOT_FOUND',
+                code: 'TOKEN_NOT_FOUND'
             });
 
         }
-    })
-    .catch((error) => {
-        console.log('Algo inesperado aconteceu durante a ativação da conta do usuário ao verificar o token de ativação.', error);
 
-        let customErr = new Error('Algo inesperado aconteceu durante a ativação da conta do usuário ao verificar o token de ativação. Entre em contato com o administrador.');
-        customErr.status = 500;
-        customErr.code = 'INTERNAL_SERVER_ERROR';
+    }); // ending redisClient.HGETALL()
 
-        next ( customErr );
-    })
+    // Fim da Ativação da conta do Usuário.
 
-    // Fim da ativação da conta do usuário.
+    // Início da Ativação da conta do usuário (Tentativa 02 - Sistema próprio de Tokens de Ativação, armazenando no MySQL).
+
+    // await Token.findOne({       // Verifica se existe algum Token de Ativação do usuário em vigência.
+    //     where: { 
+    //         cod_usuario: usuario.cod_usuario,
+    //         tipo_token: 'ativacao',
+    //         token: tokenAtivacao,
+    //         data_limite: {
+    //             [Op.gt]: new Date()
+    //         }
+    //     },
+    //     raw: true
+    // })
+    // .then((result) => {
+    //     if (result){
+    //         console.log('Existe um Token de Ativação vigente', result);
+
+    //         Usuario.update({ 
+    //             esta_ativo: 1,
+    //             data_modificacao: new Date()
+    //         }, {
+    //             where: { cod_usuario: result.cod_usuario },
+    //             limit: 1
+    //         })
+    //         .then((updateResult) => {
+
+    //             return res.status(200).json({
+    //                 mensagem: 'Ativação da conta do usuário efetuada com sucesso.'
+    //             })
+
+    //         })
+    //         .catch((updateError) => {
+    //             console.log('Algo inesperado aconteceu ao realizar a ativação da conta do usuário.', updateError);
+    
+    //             let customErr = new Error('Algo inesperado aconteceu ao realizar a ativação da conta do usuário. Entre em contato com o administrador.');
+    //             customErr.status = 500;
+    //             customErr.code = 'INTERNAL_SERVER_ERROR';
+    
+    //             return next( customErr );
+    //         });
+
+    //     } else {
+
+    //         return res.status(404).json({
+    //             mensagem: 'Nenhum Token de Ativação vigente e vinculado ao usuário foi encontrado.',
+    //             code: 'TOKEN_NOT_FOUND',
+    //         });
+
+    //     }
+    // })
+    // .catch((error) => {
+    //     console.log('Algo inesperado aconteceu durante a ativação da conta do usuário ao verificar o token de ativação.', error);
+
+    //     let customErr = new Error('Algo inesperado aconteceu durante a ativação da conta do usuário ao verificar o token de ativação. Entre em contato com o administrador.');
+    //     customErr.status = 500;
+    //     customErr.code = 'INTERNAL_SERVER_ERROR';
+
+    //     next ( customErr );
+    // })
+
+    // Fim da Ativação da conta do usuário (Tentativa 02 - Sistema próprio de Tokens de Ativação, armazenando no MySQL).
+
+    // Início da Ativação da conta do usuário (Tentativa 01 - JWT).
 
     // if (req.dadosAuthToken && req.dadosAuthToken.usuario){    // Se houver um usuário autenticado, não permita o acesso.
     //     return res.status(401).json({
@@ -1331,6 +2022,8 @@ router.patch('/ativacao/:tokenAtivacao', async (req, res, next) => {
     //     });
 
     // });
+
+    // Fim da Ativação da conta do usuário (Tentativa 01 - JWT).
 
 });
 
@@ -1402,7 +2095,7 @@ router.post('/ativacao/reenvio/:codUsuario', async (req, res, next) => {
         // Cria e envia o e-mail contendo o Token de Ativação.
         try {
 
-            let tokenAtivacao = await geradorTokenAtivacao(req.params.codUsuario);
+            let tokenAtivacao = await userTokenGenerator(req.params.codUsuario, 'atv');
     
             if (tokenAtivacao){
     
@@ -1414,7 +2107,7 @@ router.post('/ativacao/reenvio/:codUsuario', async (req, res, next) => {
 
                     if (result === 'E-mail enviado com sucesso'){
                         return res.status(200).json({
-                            mensagem: 'E-mail enviado com sucesso.'
+                            mensagem: 'O e-mail com o Token de Ativação foi enviado com sucesso.'
                         });
                     }
 
@@ -1463,6 +2156,202 @@ router.post('/ativacao/reenvio/:codUsuario', async (req, res, next) => {
         os primeiros e últimos dígitos do CPF.  */
     
 });
+
+
+
+router.post('/recuperacao', async (req, res, next) => {
+
+    // Início da Verificação do Parâmetro de Rota.
+        // Rota sem parâmetros...
+    // Fim da Verificação do Parâmetro de Rota.
+
+    // Início das Restrições de Acesso à Rota.
+
+        // Apenas as Aplicações Pet Adote poderão realizar a recuperação da conta de um usuário.
+
+        if (!req.dadosAuthToken){   // Se não houver autenticação da aplicação, não permita o acesso.
+            return res.status(401).json({
+                mensagem: 'Requisição inválida - Você não possui o nível de acesso adequado para esse recurso.',
+                code: 'ACCESS_TO_RESOURCE_NOT_ALLOWED'
+            });
+        } else {
+
+            // Se o requisitante for um usuário autenticado, não permita o acesso.
+            if (req.dadosAuthToken.usuario){
+                return res.status(401).json({
+                    mensagem: 'Requisição inválida - Você não possui o nível de acesso adequado para esse recurso.',
+                    code: 'ACCESS_TO_RESOURCE_NOT_ALLOWED'
+                });
+            }
+
+            // Se o Cliente não for do tipo Pet Adote, não permita o acesso.
+            if (req.dadosAuthToken.tipo_cliente !== 'Pet Adote'){
+                return res.status(401).json({
+                    mensagem: 'Requisição inválida - Você não possui o nível de acesso adequado para esse recurso.',
+                    code: 'ACCESS_TO_RESOURCE_NOT_ALLOWED'
+                });
+            }
+
+        }
+
+    // Fim das Restrições de Acesso à Rota.
+
+    // Início da Verificação da existência de dados no pacote da requisição.
+
+        if (!req.headers['content-type']){
+            return res.status(400).json({
+                mensagem: 'Dados não encontrados na requisição',
+                code: 'INVALID_REQUEST_CONTENT'
+            })
+        }
+
+    // Fim da verificação da existência de dados no pacote da requisição.
+
+    // Início da lista de campos obrigatórios na requisição.
+
+        let requiredFields = [
+            'email'
+        ];
+
+    // Fim da lista de campos obrigatórios na requisição.
+
+    // Verificação da existência dos campos obrigatórios no pacote da requisição.
+        
+        let missingFields = [];
+
+        requiredFields.forEach((field) => {
+            if (!Object.keys(req.body).includes(field)){
+                missingFields.push(`Campo [${field}] não encontrado.`);
+            }
+        });
+
+        if (missingFields.length > 0){
+            console.log('missingFields detectados, campos obrigatórios estão faltando.');
+    
+            return res.status(400).json({
+                mensagem: 'Campos inválidos ou incompletos foram detectados.',
+                code: 'INVALID_REQUEST_FIELDS',
+                missing_fields: missingFields
+            });
+        }
+
+    // Fim da verificação da existência dos campos obrigatórios no pacote da requisição.
+
+    // Início da normalização dos campos recebidos no pacote da requisição.
+
+        Object.entries(req.body).forEach((pair) => {        // Todo campo se tornará uma String e não possuirá espaços "     " no começo ou no fim.
+
+            // Remove espaços excessivos no início/fim da String.
+            req.body[pair[0]] = String(pair[1]).trim();
+
+            // Deixando as primeiras letras dos nomes com caixa alta.
+            switch(pair[0]){
+                // case 'descricao': break;     // Se algum campo não precisar da normalização, separe-o em 'cases' com apenas 'break'.
+                case 'email': 
+                    req.body[pair[0]] = String(pair[1]).toLowerCase();
+                    break;
+                default: break;
+            }
+            
+        });
+
+    // Fim da normalização dos campos recebidos no pacote da requisição.
+
+    // Início da validação dos campos recebidos.
+
+        // Validação básica do e-mail.
+        if (req.body.email.length === 0 || req.body.email.length > 255){
+            // console.log('Erro: E-mail vazio ou ultrapassa 255 caracteres.')
+            return res.status(400).json({
+                mensagem: 'EMAIL - Vazio ou ultrapassa 255 caracteres.',
+                code: 'INVALID_EMAIL_LENGTH'
+            })
+        }
+
+        if (!req.body.email.match(/^([\w\d-+.]{1,64})(@[\w\d-]+)((?:\.\w+)+)$/g)){
+            // console.log('Erro: O formato do e-mail está diferente do esperado.');
+            return res.status(400).json({
+                mensagem: 'EMAIL - Formato inválido.',
+                code: 'INVALID_EMAIL_INPUT',
+                exemplo: 'email@dominio.com'
+            });
+        }
+        // Fim da validação básica do e-mail.
+
+    // Fim da validação dos campos recebidos.
+
+    // Início do processamento de envio do Token de Recuperação que o usuário utilizará para autorizar a renovação da senha.
+
+        try {
+            // Início da verificação da existência de um usuário vínculado ao e-mail.
+                let { cod_usuario } = await ContaLocal.findOne({
+                    where: {
+                        email: req.body.email
+                    },
+                    raw: true
+                })
+
+                if (!cod_usuario){
+                    return res.status(404).json({
+                        mensagem: 'Nenhum usuário vínculado à esse e-mail foi encontrado.',
+                        code: 'RESOURCE_NOT_FOUND'
+                    });
+                }
+            // Fim da verificação da existência de um usuário vínculado ao e-mail.
+
+            // Início da criação do Token de Recuperação - A função de criação também verifica se um Token de Recuperação já foi enviado.
+                const tokenRecuperacao = await userTokenGenerator(cod_usuario, 'rec', 10 * 60);
+            // Fim da criação do Token de Recuperação.
+
+            // Início do envio do e-mail de recuperação contendo o Token de Recuperação.
+                if (tokenRecuperacao){
+                    await envioEmailRecuperacao(tokenRecuperacao, req.body.email)
+                    .then((result) => {
+
+                        if (result === 'E-mail enviado com sucesso'){
+                            return res.status(200).json({
+                                mensagem: 'O e-mail com o Token de Recuperação foi enviado com sucesso.'
+                            });
+                        }
+    
+                    });
+                }
+            // Fim do envio do e-mail de recuperação contendo o Token de Recuperação.
+
+        } catch (error) {
+
+            if (error.code === 'USER_HAS_ACTIVE_TOKEN') {
+
+                return res.status(error.status).json({
+                    mensagem: error.message,
+                    data_liberacao: error.data_liberacao,
+                    code: error.code
+                });
+
+            };
+
+            if (error.code === 'INVALID_REQUEST_FIELDS') {
+
+                return res.status(error.status).json({
+                    mensagem: error.message,
+                    code: error.code,
+                    missing_fields: error.missing_fields
+                });
+
+            };
+
+            console.log('Algo inesperado aconteceu durante o processo de envio do Token de recuperação de senha do usuário.', error);
+    
+            let customErr = new Error('Algo inesperado aconteceu durante a geração do token de recuperação ou envio do e-mail com o token de recuperação. Entre em contato com o administrador.');
+            customErr.status = 500;
+            customErr.code = 'INTERNAL_SERVER_ERROR';
+    
+            return next ( customErr );
+
+        }
+    // Fim do processamento de envio do Token de Recuperação que o usuário utilizará para autorizar a renovação da senha.
+
+})
 
 router.post('/logout', async (req, res, next) => {
     // Rota que encerra a "Sessão" de um usuário ao restringir o uso um Token de Acesso de Usuário.

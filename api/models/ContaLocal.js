@@ -17,7 +17,7 @@ const {DataTypes, Model} = require('sequelize');
             references: { model: Model.Usuario, key: 'cod_usuario' }
         },
         senha:  { type: DataTypes.STRING(100), allowNull: false },
-        email_recuperacao: { type: DataTypes.STRING(255), allowNull: false }
+        // email_recuperacao: { type: DataTypes.STRING(255), allowNull: false }
 
     }, {
         tableName: 'tbl_conta_local',
