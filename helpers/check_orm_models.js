@@ -1,8 +1,8 @@
 // Importações.
-    const PerfilUsuario = require('../api/models/PerfilUsuario');
-    const AcessoLocal = require('../api/models/AcessoLocal');
-    const AcessoFacebook = require('../api/models/AcessoFacebook');
-    const AcessoGoogle = require('../api/models/AcessoGoogle');
+    const Usuario = require('../api/models/Usuario');
+    const ContaLocal = require('../api/models/ContaLocal');
+    const ContaFacebook = require('../api/models/ContaFacebook');
+    const ContaGoogle = require('../api/models/ContaGoogle');
     const EnderecoUsuario = require('../api/models/EnderecoUsuario');
 
     const Animal = require('../api/models/Animal');
@@ -24,28 +24,29 @@
     const AnexoResposta = require('../api/models/AnexoResposta');
     const Denuncia = require('../api/models/Denuncia');
     const Bloqueio = require('../api/models/Bloqueio');
+    const Cliente = require('../api/models/Cliente');
 
 // Exportação da função de verificação de cada um dos Models.
 module.exports = () => {
-    PerfilUsuario.findAll({ raw: true, limit: 1 }).then((result) => {
+    Usuario.findAll({ raw: true, limit: 1 }).then((result) => {
         console.log('[ORM/PerfilUsuario] Resultado: ', result);
     }).catch((error) => {
         console.log('[ORM/PerfilUsuario] Erro: ', error);
     });
 
-    AcessoLocal.findAll({ raw: true, limit: 1 }).then((result) => {
+    ContaLocal.findAll({ raw: true, limit: 1 }).then((result) => {
         console.log('[ORM/AcessoLocal] Resultado: ', result);
     }).catch((error) => {
         console.log('[ORM/AcessoLocal] Erro: ', error);
     });
 
-    AcessoFacebook.findAll({ raw: true, limit: 1 }).then((result) => {
+    ContaFacebook.findAll({ raw: true, limit: 1 }).then((result) => {
         console.log('[ORM/AcessoFacebook] Resultado: ', result);
     }).catch((error) => {
         console.log('[ORM/AcessoFacebook] Erro: ', error);
     });
 
-    AcessoGoogle.findAll({ raw: true, limit: 1 }).then((result) => {
+    ContaGoogle.findAll({ raw: true, limit: 1 }).then((result) => {
         console.log('[ORM/AcessoGoogle] Resultado: ', result);
     }).catch((error) => {
         console.log('[ORM/AcessoGoogle] Erro: ', error);
@@ -154,6 +155,12 @@ module.exports = () => {
     });
 
     Bloqueio.findAll({ raw: true, limit: 1 }).then((result) => {
+        console.log('[ORM/Bloqueio] Resultado: ', result);
+    }).catch((error) => {
+        console.log('[ORM/Bloqueio] Erro: ', error);
+    });
+
+    Cliente.findAll({ raw: true, limit: 1 }).then((result) => {
         console.log('[ORM/Bloqueio] Resultado: ', result);
     }).catch((error) => {
         console.log('[ORM/Bloqueio] Erro: ', error);

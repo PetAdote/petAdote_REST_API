@@ -22,6 +22,17 @@ SHOW VARIABLES WHERE Variable_name LIKE '%character%' OR Variable_name LIKE 'col
 # Criação das Tabelas #
 #######################
 
+# Tabela de cadastro de um Cliente (Aplicações que utilizarão a REST API) #
+
+CREATE TABLE tbl_cliente (
+	cod_cliente INT UNSIGNED NOT NULL UNIQUE AUTO_INCREMENT,
+    nome VARCHAR(255) NOT NULL,
+    tipo_cliente ENUM('Comum', 'Pet Adote') NOT NULL DEFAULT 'Comum',
+    senha VARCHAR(100) NOT NULL,
+    data_criacao DATETIME NOT NULL DEFAULT NOW(),
+    data_modificacao DATETIME NOT NULL DEFAULT NOW()
+);
+
 # Tabelas para cadastro de um perfil inicial de usuário (Perfil, Acessos, Endereços) #
 
 CREATE TABLE tbl_usuario (
@@ -49,10 +60,12 @@ CREATE TABLE tbl_conta_local (
 	email VARCHAR(255) NOT NULL UNIQUE,
 	cod_usuario INT UNSIGNED NOT NULL UNIQUE,
     senha VARCHAR(100) NOT NULL,
-    email_recuperacao VARCHAR(255) NOT NULL,
+    # email_recuperacao VARCHAR(255) NOT NULL,
     PRIMARY KEY (email),
     FOREIGN KEY (cod_usuario) REFERENCES tbl_usuario(cod_usuario)
 );
+
+DROP TABLE tbl_conta_local;
 
 CREATE TABLE tbl_conta_facebook (
 	cod_facebook VARCHAR(255) NOT NULL UNIQUE,
@@ -82,15 +95,15 @@ CREATE TABLE tbl_end_usuario (
     FOREIGN KEY (cod_usuario) REFERENCES tbl_usuario(cod_usuario)
 );
 
-CREATE TABLE tbl_token (
-	cod_token INT UNSIGNED NOT NULL UNIQUE AUTO_INCREMENT,
-    cod_usuario INT UNSIGNED NOT NULL,
-    token VARCHAR(255) NOT NULL,
-    tipo_token ENUM('ativacao', 'recuperacao') NOT NULL,
-    data_limite DATETIME NOT NULL,
-    PRIMARY KEY (cod_token),
-    FOREIGN KEY (cod_usuario) REFERENCES tbl_usuario(cod_usuario)
-);
+# CREATE TABLE tbl_token (
+#     cod_token INT UNSIGNED NOT NULL UNIQUE AUTO_INCREMENT,
+#     cod_usuario INT UNSIGNED NOT NULL,
+#     token VARCHAR(255) NOT NULL,
+#     tipo_token ENUM('ativacao', 'recuperacao') NOT NULL,
+#     data_limite DATETIME NOT NULL,
+#     PRIMARY KEY (cod_token),
+#     FOREIGN KEY (cod_usuario) REFERENCES tbl_usuario(cod_usuario)
+# );
 
 # Fim dos cadastros básicos para criação do perfil de um novo usuário #
 #---------------------------------------------------------------------#
@@ -317,7 +330,9 @@ SELECT * FROM tbl_end_usuario;
 
 SELECT * FROM tbl_bloqueio;
 
-SELECT * FROM tbl_token;
+# SELECT * FROM tbl_token;		# Agora está sendo gerenciada pelo Redis.
+
+SELECT * FROM tbl_cliente;
 
 # INSERT INTO tbl_bloqueio
 #	(bloqueante, bloqueado)
@@ -334,7 +349,6 @@ TRUNCATE tbl_conta_facebook;
 TRUNCATE tbl_conta_google;
 TRUNCATE tbl_end_usuario;
 TRUNCATE tbl_bloqueio;
-TRUNCATE tbl_token;
 SET FOREIGN_KEY_CHECKS = 1;
 
 SELECT 	pu.*,
@@ -353,6 +367,16 @@ ORDER BY count(cidade) DESC
 LIMIT 1;
 
 #---------------------------------------------------------------------------------------------#
+# Clientes #
+
+INSERT INTO tbl_cliente
+	(nome, senha, tipo_cliente)
+VALUES
+	('Pet Adote Web','123', 'Pet Adote'),
+    ('Pet Adote Mobile', '123', 'Pet Adote'),
+    ('Pet Shop 01', '123', 'Comum');
+
+#---------------------------------------------------------------------------------------------#
 # Usuário Local #
 
 INSERT INTO tbl_usuario
@@ -363,9 +387,9 @@ VALUES
 # Aqui o Sistema deve pegar o cod_perfil do usuário e salvar imediatamente.
 
 INSERT INTO tbl_conta_local
-	(email, cod_usuario, senha, email_recuperacao) 	#Em 'cod_perfil' o sistema entregará o ID do perfil criado acima, para o acesso atual.
+	(email, cod_usuario, senha) 	#Em 'cod_perfil' o sistema entregará o ID do perfil criado acima, para o acesso atual.
 VALUES
-	('alfino@testeiro.com', 1, '123', 'alfino@testeiro.com');
+	('alfino@testeiro.com', 1, '123');
     
 INSERT INTO tbl_end_usuario
 	(cod_usuario, cep, logradouro, bairro, cidade, estado)
