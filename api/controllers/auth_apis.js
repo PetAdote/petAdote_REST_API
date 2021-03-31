@@ -1,11 +1,14 @@
 // Importações.
 
-    const Cliente = require('../models/Cliente');
+    // Conexões.
+        const redisClient = require('../../configs/redis_connection');
 
-    const { signClientAccessToken, signClientRefreshToken, verifyRefreshToken } = require('../../helpers/manage_jwt');
+    // Models.
+        const Cliente = require('../models/Cliente');
+
+    // Helpers.
+        const { signClientAccessToken, signClientRefreshToken, verifyRefreshToken } = require('../../helpers/manage_jwt');
     
-    const redisClient = require('../../configs/redis_connection');
-
 // Controllers.
 
     /**
@@ -187,7 +190,7 @@
     
         };
         
-    }
+    };
         
 
 // Exportações.

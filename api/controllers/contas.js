@@ -1,7 +1,6 @@
 // Importações.
 
     // Conexões.
-
         const database = require('../../configs/database').connection;      // Nossa instância de conexão com o banco de dados MySQL.
 
         const redisClient = require('../../configs/redis_connection');      // Nossa instância de conexão com o Redis Data Storage.
@@ -25,7 +24,6 @@
         const randomize = require('randomatic');        // 'randomatic' para gerar strings com valores aleatórios.
     
     // Helpers.
-
         const userTokenGenerator = require('../../helpers/generate_userToken');     // Nosso helper, gerador de tokens temporários de ativação e recuperação.
 
         const envioEmailAtivacao = require('../../helpers/send_email_ativacao');    // Nosso helper de envio dos e-mails contendo o código de ativação da conta do usuário.

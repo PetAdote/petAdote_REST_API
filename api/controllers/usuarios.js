@@ -6,7 +6,6 @@
         const Bloqueio = require('../models/Bloqueio');
 
     // Utilidades.
-
         const fs = require('fs');           // 'fs' do Node para manipular o "file system', gerenciando os arquivos que o servidor receberá.
 
         const path = require('path');       // 'path' do Node para gerenciar caminhos para arquivos e diretórios.

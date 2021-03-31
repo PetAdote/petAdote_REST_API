@@ -1,13 +1,17 @@
 // Importações.
 
-    const ContaLocal = require('../models/ContaLocal');
-    const Usuario = require('../models/Usuario');
+    // Conexões.
+        const redisClient = require('../../configs/redis_connection');
 
-    const { signUserAccessToken, signUserRefreshToken, verifyRefreshToken } = require('../../helpers/manage_jwt');
+    // Models.
+        const ContaLocal = require('../models/ContaLocal');
+        const Usuario = require('../models/Usuario');
 
-    const bcrypt = require('bcrypt');
+    // Utilidades.
+        const bcrypt = require('bcrypt');
 
-    const redisClient = require('../../configs/redis_connection');
+    // Helpers.
+        const { signUserAccessToken, signUserRefreshToken, verifyRefreshToken } = require('../../helpers/manage_jwt');
 
 // Controllers.
 
