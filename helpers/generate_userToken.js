@@ -57,7 +57,7 @@ module.exports = async (cod_usuario, tokenType, expirationTimeInSeconds = 15 * 6
         // Verificando se existe algum Token (atv/rec) vigente para o usuário.
         redisClient.HGETALL(hashKey, (errorHGETALL, resultHGETALL) => {
             if (errorHGETALL){
-                console.log('Algo inesperado aconteceu ao verificar se um Token de Ativação está em vigência.', errorHGETALL);
+                console.error('Algo inesperado aconteceu ao verificar se um Token de Ativação está em vigência.', errorHGETALL);
 
                 let customErr = new Error('Algo inesperado aconteceu ao verificar se um Token de Ativação está em vigência. Entre em contato com o administrador.');
                 customErr.status = 500;
@@ -66,7 +66,7 @@ module.exports = async (cod_usuario, tokenType, expirationTimeInSeconds = 15 * 6
                 return reject(customErr);
             };
 
-            console.log(`Algum Token do tipo ['${tokenType}'] foi encontrado?`, resultHGETALL);
+            // console.log(`Algum Token do tipo ['${tokenType}'] foi encontrado?`, resultHGETALL);
 
             if (resultHGETALL){
                 let dataExpiracaoToken = Number(resultHGETALL.data_expiracao);
@@ -104,7 +104,7 @@ module.exports = async (cod_usuario, tokenType, expirationTimeInSeconds = 15 * 6
                 ],
                 (errorHSET, resultHSET) => {
                     if (errorHSET){
-                        console.log('Algo inesperado ocorreu ao atribuir o Token de Ativação para o usuário.', errorHSET);
+                        console.error('Algo inesperado ocorreu ao atribuir o Token de Ativação para o usuário.', errorHSET);
         
                         let customErr = new Error('Algo inesperado ocorreu ao atribuir o Token de Ativação para o usuário. Entre em contato com o administrador.');
                         customErr.status = 500;
@@ -113,12 +113,12 @@ module.exports = async (cod_usuario, tokenType, expirationTimeInSeconds = 15 * 6
                         return reject(customErr);
                     }
 
-                    console.log(`Quantos campos em [${hashKey}] foram atribuídos?`, resultHSET);
+                    // console.log(`Quantos campos em [${hashKey}] foram atribuídos?`, resultHSET);
 
                     // Adiciona o tempo de expiração ao Token.
                     redisClient.EXPIRE(hashKey, secondsToExpire, (errorEXP, resultEXP) => {
                         if (errorEXP){
-                            console.log('Algo inesperado ocorreu ao atribuir o Token de Ativação para o usuário.', errorEXP);
+                            console.error('Algo inesperado ocorreu ao atribuir o Token de Ativação para o usuário.', errorEXP);
             
                             let customErr = new Error('Algo inesperado ocorreu ao atribuir o Token de Ativação para o usuário. Entre em contato com o administrador.');
                             customErr.status = 500;
@@ -127,7 +127,7 @@ module.exports = async (cod_usuario, tokenType, expirationTimeInSeconds = 15 * 6
                             return reject(customErr);
                         }
             
-                        console.log('TTL foi adicionado?', resultEXP);
+                        // console.log('TTL foi adicionado?', resultEXP);
 
                         return resolve({
                             token: token,
@@ -140,7 +140,7 @@ module.exports = async (cod_usuario, tokenType, expirationTimeInSeconds = 15 * 6
 
             })
             .catch((errorFindUser) => {
-                console.log('Algo inesperado ocorreu ao buscar os dados do usuário para atribuir o Token de Ativação.', errorFindUser);
+                console.error('Algo inesperado ocorreu ao buscar os dados do usuário para atribuir o Token de Ativação.', errorFindUser);
 
                 let customErr = new Error('Algo inesperado ocorreu ao buscar os dados do usuário para atribuir o Token de Ativação. Entre em contato com o administrador.');
                 customErr.status = 500;
