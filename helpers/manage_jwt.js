@@ -28,7 +28,7 @@
 
             jwt.sign(payload, secret, options, (error, token) => {
                 if (error){
-                    console.log('Algo inesperado aconteceu ao assinar o AccessToken do Cliente.', error);
+                    console.error('Algo inesperado aconteceu ao assinar o AccessToken do Cliente.', error);
 
                     let customErr = new Error('Algo inesperado aconteceu. Entre em contato com o administrador.');
                     customErr.status = 500;
@@ -66,7 +66,7 @@
 
             jwt.sign(payload, secret, options, (error, clientRefreshToken) => {
                 if (error){
-                    console.log('Algo inesperado aconteceu ao assinar o RefreshToken do Cliente.', error);
+                    console.error('Algo inesperado aconteceu ao assinar o RefreshToken do Cliente.', error);
 
                     let customErr = new Error('Algo inesperado aconteceu. Entre em contato com o administrador.');
                     customErr.status = 500;
@@ -82,7 +82,7 @@
                     // Armazenando o Refresh Token do Cliente no Redis.
                     redisClient.HSET(clientSetKey, 'clientRefreshToken', clientRefreshToken, (error, redisReply) => {
                         if (error){
-                            console.log('Algo inesperado aconteceu ao armazenar o RefreshToken do Cliente no Redis.', error);
+                            console.error('Algo inesperado aconteceu ao armazenar o RefreshToken do Cliente no Redis.', error);
 
                             let customErr = new Error('Algo inesperado aconteceu. Entre em contato com o administrador.');
                             customErr.status = 500;
@@ -138,7 +138,7 @@
 
             jwt.sign(payload, secret, options, (error, token) => {
                 if (error){
-                    console.log('Algo inesperado aconteceu ao assinar o AccessToken do Usuário.', error);
+                    console.error('Algo inesperado aconteceu ao assinar o AccessToken do Usuário.', error);
 
                     let customErr = new Error('Algo inesperado aconteceu. Entre em contato com o administrador.');
                     customErr.status = 500;
@@ -176,7 +176,7 @@
 
             jwt.sign(payload, secret, options, (error, userRefreshToken) => {
                 if (error){
-                    console.log('Algo inesperado aconteceu ao assinar o RefreshToken do Usuário.', error);
+                    console.error('Algo inesperado aconteceu ao assinar o RefreshToken do Usuário.', error);
 
                     let customErr = new Error('Algo inesperado aconteceu. Entre em contato com o administrador.');
                     customErr.status = 500;
@@ -192,7 +192,7 @@
                     // Armazenando o Refresh Token do Usuário no Redis.
                     redisClient.HSET(userSetKey, 'userRefreshToken', userRefreshToken, (error, redisReply) => {
                         if (error){
-                            console.log('Algo inesperado aconteceu ao armazenar o RefreshToken do Cliente no Redis.', error);
+                            console.error('Algo inesperado aconteceu ao armazenar o RefreshToken do Cliente no Redis.', error);
 
                             let customErr = new Error('Algo inesperado aconteceu. Entre em contato com o administrador.');
                             customErr.status = 500;
@@ -227,7 +227,7 @@
     /** @description Middleware para verificação/autenticação dos Tokens de Acesso. */
     verifyAccessToken = (req, res, next) => {
 
-        if (req.url.match(/^\/autenticacao_api/)){   // Como a rota de autenticação deverá ser a única rota acessível à qualquer um, simplesmente passamos ela adiante, caso uma requisição chegue para ela.
+        if (req.url.match(/^\/autenticacoes\/apis/)){   // Como a rota de autenticação deverá ser a única rota acessível à qualquer um, simplesmente passamos ela adiante, caso uma requisição chegue para ela.
             return next();
         }
 
@@ -273,7 +273,7 @@
             jwt.verify(refreshToken, process.env.JWT_REFRESH_TOKEN_SECRET, (error, payload) => {
                 if (error){
 
-                    console.log('Algo inesperado aconteceu ao verificar o RefreshToken.', error);
+                    console.error('Algo inesperado aconteceu ao verificar o RefreshToken.', error);
 
                     if (error.name == 'JsonWebTokenError'){
 
@@ -304,7 +304,7 @@
 
                         redisClient.HGET(clientSetKey, 'clientRefreshToken', (error, result) => {
                             if (error){
-                                console.log('Algo inesperado aconteceu ao verificar no Redis se o Cliente possui um Refresh Token ativo.', error);
+                                console.error('Algo inesperado aconteceu ao verificar no Redis se o Cliente possui um Refresh Token ativo.', error);
 
                                 let customErr = new Error('Algo inesperado aconteceu. Entre em contato com o administrador.');
                                 customErr.status = 500;
@@ -321,7 +321,7 @@
                                 return resolve(client);
                             } else {
                                 // Se não, não autorize o acesso.
-                                console.log('O Refresh Token passado não foi encontrado no Redis DB');
+                                // console.log('O Refresh Token passado não foi encontrado no Redis DB');
 
                                 let customErr = new Error('Requisição não autorizada.');
 
@@ -342,7 +342,7 @@
 
                         redisClient.HGET(userSetKey, 'userRefreshToken', (error, result) => {
                             if (error){
-                                console.log('Algo inesperado aconteceu ao verificar no Redis se o Usuário possui um Refresh Token ativo.', error);
+                                console.error('Algo inesperado aconteceu ao verificar no Redis se o Usuário possui um Refresh Token ativo.', error);
 
                                 let customErr = new Error('Algo inesperado aconteceu. Entre em contato com o administrador.');
                                 customErr.status = 500;

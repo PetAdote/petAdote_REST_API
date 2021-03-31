@@ -58,7 +58,6 @@ module.exports = async (senhaProvisoria, email) => {
                 <div style="padding: 0px 10px; font-size: 13pt;">
                     <p>A senha da sua conta Pet Adote foi redefinida.</p>
                     <p>Recomendamos que você altere sua senha para uma senha forte de sua preferência ao acessar sua conta.</p>
-                    <br>
                     <p>• Senha provisória: <strong>${senhaProvisoria}</strong></p>
                 </div>
                 <hr>

@@ -26,7 +26,7 @@ module.exports = async (tokenRecuperacao, email) => {
     });
 
     if (missingFields.length > 0){
-        console.log('missingFields detectados, campos obrigatórios estão faltando.');
+        // console.log('missingFields detectados, campos obrigatórios estão faltando.');
 
         let customErr = new Error('Campos inválidos ou incompletos foram detectados no 1º parâmetro.');
         customErr.status = 400;
@@ -86,7 +86,7 @@ module.exports = async (tokenRecuperacao, email) => {
         // });
 
     } catch (error) {
-        console.log('Algo inesperado aconteceu ao enviar o e-mail do Token de Ativação da conta do usuário.', error);
+        console.error('Algo inesperado aconteceu ao enviar o e-mail do Token de Ativação da conta do usuário.', error);
 
         let customErr = new Error('Algo inesperado aconteceu ao enviar o e-mail do Token de Ativação da conta do usuário. Entre em contato com o administrador.');
         customErr.status = 500;
