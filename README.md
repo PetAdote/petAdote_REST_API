@@ -27,7 +27,9 @@ Vários end-points estarão disponíveis para que as aplicações autorizadas (C
 <p>Clique nos tópicos abaixo para ler mais detalhes sobre a nossa REST API e como realizar requisições aos end-points.</p>
 
 <details id='detailsAuth'>
-<summary style='color: cornflowerblue'><b>1. Autenticações - Clientes e Usuários.</b></summary>
+<summary><b>1. Autenticações - Clientes e Usuários.</b></summary>
+
+#### 
 
 Todos os end-points da REST API possuem restrições de acesso, portanto ao realizar uma requisição, o cliente (aplicação) deverá apresentar seu **_Access Token_** (um JWT - _JSON WEB TOKEN_ assinado pela REST API) nos cabeçalhos da requisição. O Access Token é atribuído à aplicação pela REST API acompanhando de um Refresh Token durante o processo de autenticação do requisitante no seu respectivo end-point de autenticação.
 
@@ -91,13 +93,13 @@ request.body = {
 ```javascript
 request.body = { 
 	email: 'emailDoUsuario',
-    senha: 'senhaDoUsuario'
+	senha: 'senhaDoUsuario'
 };
 ```
 
 - Para autenticar usuários cadastrados, a aplicação deverá apresentar o Token de Acesso da aplicação para requisitar a autenticação do usuário no end-point da REST API. Assim, saberemos por meio de qual aplicação o usuário está se autenticando.
 
-- Ao autenticar o usuário, a aplicação receberá um novo par de Access e Refresh Tokens, que deverão ser utilizados para realizar requisições em nome do usuário.
+- Ao autenticar o usuário, a aplicação receberá um novo par de Access e Refresh Tokens, que deverão ser utilizados para realizar requisições em nome do usuário. A resposta será um JSON contendo { mensagem, cod_usuario, user_accessToken, user_refreshToken }
 
 - Se a aplicação apresentar os Tokens de Acesso do usuário ao realizar uma requisição, a REST API apresentará dados relativos ao nível de acesso daquele usuário. Por exemplo, se o usuário for um administrador, poderá utilizar interfaces mais avançadas, se for um usuário comum, poderá acessar dados relativos à usuários comuns.
 
@@ -132,7 +134,7 @@ request.body = {
 
 ---
 <details id='detailsUsuarios'>
-<summary style='color: cornflowerblue'><b>2. Contas, usuários e endereços</b></summary>
+<summary><b>2. Contas, usuários e endereços</b></summary>
 
 ## 2.1 - Cadastrando novos usuários
 
@@ -256,7 +258,7 @@ request.body = {
 // Caso a ativação acontecer após a autenticação do usuário, apenas será necessário passar o Token diretamente ao end-point, uma vez que o cabeçalho da requisição deverá conter o Access Token do usuário.
 
 request.body = {
-	codUsuario = 'códigoDoUsuarioRecebidoComoRespostaNaConclusãoDoCadastro'
+	codUsuario: 'códigoDoUsuarioRecebidoComoRespostaNaConclusãoDoCadastro'
 };
 ```
 
