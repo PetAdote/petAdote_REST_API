@@ -125,26 +125,26 @@
         
                 try {
         
-                    const user_AccessToken = await signUserAccessToken(req.dadosAuthToken.cod_cliente, req.dadosAuthToken.tipo_cliente, usuario);
-                    const user_RefreshToken = await signUserRefreshToken(req.dadosAuthToken.cod_cliente, req.dadosAuthToken.tipo_cliente, usuario);
+                    const user_accessToken = await signUserAccessToken(req.dadosAuthToken.cod_cliente, req.dadosAuthToken.tipo_cliente, usuario);
+                    const user_refreshToken = await signUserRefreshToken(req.dadosAuthToken.cod_cliente, req.dadosAuthToken.tipo_cliente, usuario);
         
                     if (usuario.esta_ativo == 0){
-                        return res.header('Authorization', `Bearer ${user_AccessToken}`).status(200).json({
+                        return res.header('Authorization', `Bearer ${user_accessToken}`).status(200).json({
                             mensagem: 'Autenticação realizada, porém o usuário ainda não ativou a conta. Utilize o [ cod_usuario ] para reenviar o e-mail contendo o Token de Ativação. E o [ inactiveUser_AccessToken ] para realizar a ativação quando o usuário informar o Token de Ativação que recebeu no e-mail. Quando o usuário ativar a conta, ele deverá renovar seu Token de acesso desconectando-se da conta e autenticando-se novamente.',
                             cod_usuario: usuario.cod_usuario,
                             reenvio_ativacao: `${req.protocol}://${req.get('host')}/contas/ativacao/reenvio/${usuario.cod_usuario}`,
                             exemplo_ativacao: `${req.protocol}://${req.get('host')}/contas/ativacao/012T0K3n`,
-                            inactiveUser_AccessToken: user_AccessToken,
-                            inactiveUser_RefreshToken: user_RefreshToken
+                            inactiveUser_accessToken: user_accessToken,
+                            inactiveUser_refreshToken: user_refreshToken
                         });
                     }
         
                     if (usuario.esta_ativo == 1){
-                        return res.header('Authorization', `Bearer ${user_AccessToken}`).status(200).json({
+                        return res.header('Authorization', `Bearer ${user_accessToken}`).status(200).json({
                             mensagem: 'Usuário autenticado com sucesso.',
                             cod_usuario: usuario.cod_usuario,
-                            user_AccessToken,
-                            user_RefreshToken
+                            user_accessToken,
+                            user_refreshToken
                         });
                     }
                 
@@ -192,26 +192,26 @@
                 return next( customErr );
             };
     
-            const user_AccessToken = await signUserAccessToken(user.cod_cliente, user.tipo_cliente, user.usuario);
-            const user_RefreshToken = await signUserRefreshToken(user.cod_cliente, user.tipo_cliente, user.usuario);
+            const user_accessToken = await signUserAccessToken(user.cod_cliente, user.tipo_cliente, user.usuario);
+            const user_refreshToken = await signUserRefreshToken(user.cod_cliente, user.tipo_cliente, user.usuario);
     
             if (user.usuario.esta_ativo == 0){
-                return res.header('Authorization', `Bearer ${user_AccessToken}`).status(200).json({
+                return res.header('Authorization', `Bearer ${user_accessToken}`).status(200).json({
                     mensagem: 'Renovação realizada, porém o usuário ainda não ativou a conta. Utilize o [ cod_usuario ] para reenviar o e-mail contendo o Token de Ativação. E o [ inactiveUser_AccessToken ] para realizar a ativação quando o usuário informar o Token de Ativação que recebeu no e-mail. Quando o usuário ativar a conta, ele deverá renovar seu Token de acesso desconectando-se da conta e autenticando-se novamente.',
                     cod_usuario: user.usuario.cod_usuario,
                     reenvio_ativacao: `${req.protocol}://${req.get('host')}/contas/ativacao/reenvio/${user.usuario.cod_usuario}`,
                     exemplo_ativacao: `${req.protocol}://${req.get('host')}/contas/ativacao/012T0K3n`,
-                    inactiveUser_AccessToken: user_AccessToken,
-                    inactiveUser_RefreshToken: user_RefreshToken
+                    inactiveUser_accessToken: user_accessToken,
+                    inactiveUser_refreshToken: user_refreshToken
                 });
             };
     
             if (user.usuario.esta_ativo == 1){
-                return res.header('Authorization', `Bearer ${user_AccessToken}`).status(200).json({
+                return res.header('Authorization', `Bearer ${user_accessToken}`).status(200).json({
                     mensagem: 'Usuário renovado com sucesso.',
                     cod_usuario: user.usuario.cod_usuario,
-                    user_AccessToken,
-                    user_RefreshToken
+                    user_accessToken,
+                    user_refreshToken
                 });
             };
     

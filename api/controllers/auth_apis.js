@@ -24,13 +24,13 @@
     
                 try {
     
-                    const client_AccessToken = await signClientAccessToken(result.cod_cliente, result.tipo_cliente);
-                    const client_RefreshToken = await signClientRefreshToken(result.cod_cliente, result.tipo_cliente);
+                    const client_accessToken = await signClientAccessToken(result.cod_cliente, result.tipo_cliente);
+                    const client_refreshToken = await signClientRefreshToken(result.cod_cliente, result.tipo_cliente);
         
                     return res.status(200).json({
                         mensagem: 'Cliente válido! Access Token e Refresh Token foram entregues.',
-                        client_AccessToken,
-                        client_RefreshToken
+                        client_accessToken,
+                        client_refreshToken
                     });
         
                 } catch (error) {
@@ -96,13 +96,13 @@
                 return next( customErr );
             }
 
-            const client_AccessToken = await signClientAccessToken(client.cod_cliente, client.tipo_cliente);
-            const client_RefreshToken = await signClientRefreshToken(client.cod_cliente, client.tipo_cliente);
+            const client_accessToken = await signClientAccessToken(client.cod_cliente, client.tipo_cliente);
+            const client_refreshToken = await signClientRefreshToken(client.cod_cliente, client.tipo_cliente);
 
             return res.status(200).json({
                 mensagem: 'Cliente renovado! Novos Access Token e Refresh Token foram entregues.',
-                client_AccessToken,
-                client_RefreshToken
+                client_accessToken,
+                client_refreshToken
             });
 
         } catch (error) {

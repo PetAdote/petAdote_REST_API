@@ -1409,7 +1409,7 @@
      */
     const activateOne = async (req, res, next) => {
         // Restrições de acesso à rota.
-            //Apenas as Aplicações Pet Adote com usuários autenticados poderão realizar a ativação da conta.
+            //Apenas as Aplicações Pet Adote e  usuários autenticados poderão realizar a ativação da conta.
 
             if (!req.dadosAuthToken){   
                 // Se em algum caso não identificado, a requisição de uma aplicação chegou aqui e não apresentou suas credenciais JWT, não permita o acesso.
@@ -1427,12 +1427,14 @@
                     });
                 }
         
-                // Se o requisitante não for um usuário autenticado não permita o acesso. Os dados básicos do usuário devem existir no Token de Acesso.
+                // Se o Access Token não apresentar um usuário, mas for de uma aplicação, e a aplicação não passar o "codUsuario", não permita o acesso.
                 if (!req.dadosAuthToken.usuario){
-                    return res.status(401).json({
-                        mensagem: 'Requisição inválida - Você não possui o nível de acesso adequado para esse recurso.',
-                        code: 'ACCESS_TO_RESOURCE_NOT_ALLOWED'
-                    });
+                    if (!req.body.codUsuario){
+                        return res.status(401).json({
+                            mensagem: 'Requisição inválida - Você não possui o nível de acesso adequado para esse recurso.',
+                            code: 'ACCESS_TO_RESOURCE_NOT_ALLOWED'
+                        });
+                    }
                 }
         
             }
@@ -1452,7 +1454,18 @@
     
         // Início da Ativação da conta do Usuário.
     
-            let { usuario } = req.dadosAuthToken;
+            let usuario = undefined;
+
+            if (req.dadosAuthToken.usuario){
+
+                usuario = req.dadosAuthToken.usuario
+                
+            } else {
+
+                usuario = {
+                    cod_usuario: req.body.codUsuario
+                }
+            }
         
             let tokenType = 'atv';
             let hashKey = `tokens:${tokenType}:user_${usuario.cod_usuario}`;

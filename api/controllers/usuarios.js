@@ -793,13 +793,12 @@
                 // Validação para "esta_ativo".
                 if (operacoes.esta_ativo){
                     let allowedValues = [
-                        '0',
-                        '1'
+                        '0'
                     ]
 
                     if (!allowedValues.includes((operacoes.esta_ativo))){
                         return res.status(400).json({
-                            mensagem: 'ESTA_ATIVO - Apenas aceitamos os valores (0 ou 1).',
+                            mensagem: 'ESTA_ATIVO - Apenas aceitamos os valores (0).',
                             code: 'INVALID_ESTA_ATIVO_INPUT'
                         })
                     }
