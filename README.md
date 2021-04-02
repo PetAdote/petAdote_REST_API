@@ -47,14 +47,15 @@ Vejamos abaixo como uma aplicação deverá se autenticar para receber o **Acces
 
 - Observe que o parâmetro **"cliente"** e **"senha"** recebem, respectivamente, o código e senha da aplicação registrada. Se as credenciais apresentadas forem válidas, a resposta será um JSON contendo { mensagem, client_accessToken, client_refreshToken }
 
-- Nesse ponto a aplicação já autenticada e poderá adicionar o Access Token recebido no cabeçalho das requisições. 
+- Nesse ponto a aplicação se autenticou e poderá adicionar o Access Token recebido ao cabeçalho das requisições.
 
+> **Request Headers** = { Authorization: Bearer SeuAccessTokenVaiAqui }
 
-<small><b>Observação:</b> No momento, apenas aplicações Pet Adote cadastradas por nós podem se autenticar, para isso é necessário que a aplicação utilize o end-point da forma abaixo.</small>
+<small><b>Observação:</b> No momento, apenas aplicações Pet Adote cadastradas por nós podem se autenticar, para isso é necessário que a aplicação utilize os end-points dos tópicos explorados a seguir.</small>
 
 **Porém o que acontece quando o Access Token expira?**
 
-— A aplicação deverá renovar o Access Token utilizando o Refresh Token recebido.
+> A aplicação deverá renovar o Access Token utilizando o Refresh Token recebido.
 
 #### 1.1.1 - Utilizando o Refresh Token para renovar o Access Token
 
@@ -66,11 +67,11 @@ request.body = {
 };
 ```
 
-- A renovação do Access Token é necessária pois ele é um Token que por questões de segurança, possui um tempo de vida curto.
+- Por questões de segurança o Access Token possui um curto tempo de vida, portanto sua renovação é necessária.
 
 - A resposta será um par de Access e Refresh Tokens renovados, a aplicação novamente poderá utilizar o Access Token para continuar a fazer requisições.
 
-- Note que o Refresh Token antigo da aplicação será invalidado pela REST API, uma vez que ela substitui o Refresh Token vínculado à autenticação do cliente pelo mais atual.
+- Note que o Refresh Token antigo da aplicação será invalidado pela REST API, uma vez que a REST API substitui o Refresh Token vínculado à antiga autenticação do cliente pelo Refresh Token mais atual.
 
 #### 1.1.2 - Encerrando o Refresh Token da aplicação de forma segura
 
@@ -82,7 +83,7 @@ request.body = {
 };
 ```
 
-- Em algum momento, um cliente pode desejar expirar seu Refresh Token mais cedo do que o tempo de expiração estabelecido para ele, uma vez que se trata de um Token com longo tempo de vida. Ao utilizar esse end-point, a aplicação poderá encerrar o Refresh Token até a próxima autenticação da aplicação na REST API.
+- Em algum momento, um cliente pode desejar expirar seu Refresh Token mais cedo do que o tempo de expiração estabelecido para ele, uma vez que se trata de um Token com longo tempo de vida. Ao utilizar esse end-point e entregar o refreshToken no corpo da requisição, a aplicação poderá encerrar o Refresh Token até a próxima autenticação da aplicação na REST API.
 
 
 <span id='authUsuarios'></span>
@@ -101,6 +102,10 @@ request.body = {
 
 - Ao autenticar o usuário, a aplicação receberá um novo par de Access e Refresh Tokens, que deverão ser utilizados para realizar requisições em nome do usuário. A resposta será um JSON contendo { mensagem, cod_usuario, user_accessToken, user_refreshToken }
 
+- Nesse ponto o usuário da aplicação se autenticou e a aplicação poderá adicionar o Access Token do usuário recebido ao cabeçalho das requisições.
+
+> **Request Headers** = { Authorization: Bearer AccessTokenDoUsuarioVaiAqui }
+
 - Se a aplicação apresentar os Tokens de Acesso do usuário ao realizar uma requisição, a REST API apresentará dados relativos ao nível de acesso daquele usuário. Por exemplo, se o usuário for um administrador, poderá utilizar interfaces mais avançadas, se for um usuário comum, poderá acessar dados relativos à usuários comuns.
 
 #### 1.2.1 - Utilizando o Refresh Token para renovar o Access Token do usuário
@@ -113,7 +118,7 @@ request.body = {
 };
 ```
 
-- O motivo para renovar o Access Token do usuário é o mesmo da aplicação, será necessário apresentar um Token válido para realizar novas requisições, e o Access Token possui um tempo de vida curto.
+- O motivo para renovar o Access Token do usuário é o mesmo da aplicação, será necessário apresentar um Token válido para realizar novas requisições e o Access Token possui um tempo de vida curto.
 
 #### 1.2.2 - Desconectando o usuário da sua aplicação de forma segura
 
@@ -139,7 +144,6 @@ request.body = {
 ## 2.1 - Cadastrando novos usuários
 
 - Para criar a conta de um novo usuário, a REST API precisa receber uma requisição com o método http **POST** contendo o seguinte conteúdo no corpo da requisição (as chaves devem ser as mesmas do exemplo abaixo).
-
 
 -  A autenticidade dos campos será verificada pela REST API que responderá de acordo conforme as verificações.
 
