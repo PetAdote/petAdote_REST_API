@@ -62,7 +62,7 @@ Vejamos abaixo como uma aplicação deverá se autenticar para receber o **Acces
 
 ```javascript
 request.body = { 
-	refreshToken: 'refreshTokenDaSuaAplicacao'
+    refreshToken: 'refreshTokenDaSuaAplicacao'
 };
 ```
 
@@ -78,7 +78,7 @@ request.body = {
 
 ```javascript
 request.body = { 
-	refreshToken: 'refreshTokenDaSuaAplicacao'
+    refreshToken: 'refreshTokenDaSuaAplicacao'
 };
 ```
 
@@ -92,8 +92,8 @@ request.body = {
 
 ```javascript
 request.body = { 
-	email: 'emailDoUsuario',
-	senha: 'senhaDoUsuario'
+    email: 'emailDoUsuario',
+    senha: 'senhaDoUsuario'
 };
 ```
 
@@ -109,7 +109,7 @@ request.body = {
 
 ```javascript
 request.body = { 
-	refreshToken: 'refreshTokenDoSeuUsuario'
+    refreshToken: 'refreshTokenDoSeuUsuario'
 };
 ```
 
@@ -121,7 +121,7 @@ request.body = {
 
 ```javascript
 request.body = { 
-	refreshToken: 'refreshTokenDoSeuUsuario'
+    refreshToken: 'refreshTokenDoSeuUsuario'
 };
 ```
 
@@ -151,7 +151,7 @@ request.body = {
 
 ```javascript
 request.body = { 
-	email: 'email.usuario@dominio.com',
+    email: 'email.usuario@dominio.com',
     senha: 'Senha123',
     confirma_senha: 'Senha123',
     
@@ -258,7 +258,7 @@ request.body = {
 // Caso a ativação acontecer após a autenticação do usuário, apenas será necessário passar o Token diretamente ao end-point, uma vez que o cabeçalho da requisição deverá conter o Access Token do usuário.
 
 request.body = {
-	codUsuario: 'códigoDoUsuarioRecebidoComoRespostaNaConclusãoDoCadastro'
+    codUsuario: 'códigoDoUsuarioRecebidoComoRespostaNaConclusãoDoCadastro'
 };
 ```
 
@@ -291,7 +291,7 @@ request.body = {
 
 ```javascript
 request.body = {
-	email: 'email.usuario@dominio.com'
+    email: 'email.usuario@dominio.com'
 }
 ```
 
@@ -301,7 +301,7 @@ request.body = {
 
 ```javascript
 request.body = {
-	email: 'email.usuario@dominio.com',
+    email: 'email.usuario@dominio.com',
     tokenRecuperacao: '123t0K3n'
 }
 ```
