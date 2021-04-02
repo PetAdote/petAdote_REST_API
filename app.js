@@ -22,14 +22,6 @@
     database.checkConnection();   // Verificação da conexão.
     // ormModelChecker();   // Realiza um [ SELECT * ] limitado à 1 resultado em cada um dos models da lista "./api/models".
 
-// Tarefas Agendadas (Cron Jobs).
-
-    let keepUpThePace = schedule.scheduleJob('*/30 * * * *', () => {
-        console.log('Keep up keeping up!');
-    });
-
-// Fim das tarefas agendadas.
-
 // Importação dos grupos de rotas.
     // const rotaAutenticacaoAPI = require('./api/routes/autenticacao_api');
     // const rotaAutenticacaoUsuario = require('./api/routes/autenticacao_usuario');
