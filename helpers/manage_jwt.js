@@ -133,7 +133,7 @@
             };
             const secret = process.env.JWT_ACCESS_TOKEN_SECRET;
             const options = {
-                expiresIn: '2m'
+                expiresIn: '20m'
             };
 
             jwt.sign(payload, secret, options, (error, token) => {

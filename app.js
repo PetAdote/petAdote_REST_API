@@ -23,14 +23,12 @@
     // ormModelChecker();   // Realiza um [ SELECT * ] limitado à 1 resultado em cada um dos models da lista "./api/models".
 
 // Importação dos grupos de rotas.
-    // const rotaAutenticacaoAPI = require('./api/routes/autenticacao_api');
-    // const rotaAutenticacaoUsuario = require('./api/routes/autenticacao_usuario');
-
     const rotaAutenticacoes = require('./api/routes/autenticacoes');
 
     const rotaContas = require('./api/routes/contas');
     const rotaUsuarios = require('./api/routes/usuarios');
-    const rotaEnderecos = require('./api/routes/enderecos');
+        const rotaEnderecos = require('./api/routes/enderecos');
+        const rotaAnimais = require('./api/routes/animais');
 
 // Middlewares.
     app.use(logger('dev'));     // Em todas as requisições, Morgan fará a análise e entregará dados sobre ela no console do servidor, por fim passará a requisição adiante.
@@ -71,6 +69,8 @@
     app.use('/autenticacoes', rotaAutenticacoes);
 
     app.use('/contas', rotaContas);
+
+    app.use('/usuarios/animais', rotaAnimais);
     app.use('/usuarios/enderecos', rotaEnderecos);
     app.use('/usuarios', rotaUsuarios);
 

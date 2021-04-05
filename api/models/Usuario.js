@@ -34,7 +34,7 @@
         tableName: 'tbl_usuario',
     });
 
-    // Associações
+    // Associações.
     // ...
 
 // Exportação.

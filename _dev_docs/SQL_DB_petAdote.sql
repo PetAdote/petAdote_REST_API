@@ -330,17 +330,45 @@ SELECT * FROM tbl_end_usuario;
 
 SELECT * FROM tbl_bloqueio;
 
-# SELECT * FROM tbl_token;		# Agora está sendo gerenciada pelo Redis.
-
 SELECT * FROM tbl_cliente;
 
-# INSERT INTO tbl_bloqueio
-#	(bloqueante, bloqueado)
-# VALUES
-#	(1, 2);
+# Traz os pets de usuários que estão com a conta ativa.
+SELECT 
+	*
+FROM tbl_animal ta
+	INNER JOIN tbl_usuario tu
+		ON ta.cod_dono = tu.cod_usuario
+WHERE tu.esta_ativo = 1;
 
-# DELETE FROM tbl_token
-# WHERE cod_usuario = 1 AND data_limite < NOW();
+# Traz as fotos do álbum dos pets dos usuários que estão com a conta ativa.
+SELECT 
+	taa.titulo_album AS ALBUM,
+	tfa.nome_unico_foto AS FOTO_PET,
+    tfa.descricao AS FOTO_DESCRICAO,
+    ta.nome AS NOME_PET,
+    ta.idade AS IDADE,
+    ta.especie AS ESPECIE,
+	concat(tu.primeiro_nome,' ', tu.sobrenome ) AS DONO,
+    tu.cod_usuario AS ID_DONO,
+    tu.esta_ativo AS USUARIO_ATIVO
+FROM tbl_foto_animal tfa
+	INNER JOIN tbl_album_animal taa
+		ON tfa.cod_animal = taa.cod_animal
+	INNER JOIN tbl_animal ta
+		ON taa.cod_animal = ta.cod_animal
+	INNER JOIN tbl_usuario tu
+		ON ta.cod_dono = tu.cod_usuario
+WHERE tu.esta_ativo = 1;
+    
+# Traz todos os animais.
+SELECT * FROM tbl_animal;
+
+# Traz todos os álbums.
+SELECT * FROM tbl_album_animal;
+
+# Traz todas as fotos.
+SELECT * FROM tbl_foto_animal;
+	
 
 SET FOREIGN_KEY_CHECKS = 0;
 TRUNCATE tbl_usuario;
@@ -431,3 +459,138 @@ INSERT INTO tbl_end_usuario
 	(cod_usuario, cep, logradouro, bairro, cidade, estado)
 VALUES
 	(3, '16300-265', 'Pavilhão de Liyue', 'Moraxville', 'Liyue', 'Liyue');
+    
+#---------------------------------------------------------------------------------------------#
+# Pets dos usuários #
+
+DESCRIBE tbl_animal;
+
+INSERT INTO tbl_animal
+	(cod_dono, nome, idade, especie, raca, 
+    genero, porte, esta_castrado, esta_vacinado,
+    detalhes_comportamento,
+    detalhes_saude,
+    historia)
+VALUES
+	(1, 'Lucky', '3 meses', 'Cão', 'comum',
+    'F', 'P', '0', '0',
+    'Comportamento calmo',
+    'Não apresentou nenhum problema de saúde',
+    'Abandonaram ele na esquina da rua de casa, não tenho como cuidar dele por muito tempo.');
+    
+INSERT INTO tbl_animal
+	(cod_dono, nome, idade, especie, raca, 
+    genero, porte, esta_castrado, esta_vacinado,
+    detalhes_comportamento,
+    detalhes_saude,
+    historia)
+VALUES
+	(1, 'Lila', '1 mes', 'Gato', 'comum',
+    'F', 'P', '0', '0',
+    'Ela é super calminha',
+    'Não tem problemas de saúde',
+    'É filhote da gata aqui de casa, mas não temos como cuidar dela também :(');
+    
+INSERT INTO tbl_animal
+	(cod_dono, cod_dono_antigo, nome, idade, especie, raca, 
+    genero, porte, esta_castrado, esta_vacinado,
+    detalhes_comportamento,
+    detalhes_saude,
+    historia)
+VALUES
+	(1, 2, 'Xiquinho', '1 ano', 'Cão', 'comum',
+    'M', 'M', '1', '1',
+    'Xiquinha é um companheiro e tanto!',
+    'Nenhum problema de saúde até hoje.',
+    'Adotei ele de um usuário aqui do Pet Adote quando era um dog pequenininho, mas vou ter que sair do país e não posso levar ele imediatamente. Preciso de alguém pra cuidar dele pelo menos temporáriamente.');
+    
+    INSERT INTO tbl_animal
+	(cod_dono, nome, idade, especie, raca, 
+    genero, porte, esta_castrado, esta_vacinado,
+    detalhes_comportamento,
+    detalhes_saude,
+    historia)
+VALUES
+	(3, 'Cinzento', '5 mes', 'Gato', 'comum',
+    'M', 'P', '0', '0',
+    'O cinzento é bem quieto',
+    'Não tem problemas de saúde',
+    'Chegou aqui do nada, ficou por uns dias, e no fim tá aqui já faz 5 meses. Mas preciso de alguém pra cuidar dele de verdade.');
+    
+#---------------------------------------------------------------------------------------------#
+# Álbum dos Pets dos usuários #
+
+DESCRIBE tbl_album_animal;
+
+INSERT INTO tbl_album_animal
+	(cod_animal, titulo_album)
+VALUES
+	(1, 'Álbum do Lucky');
+    
+INSERT INTO tbl_album_animal
+	(cod_animal, titulo_album)
+VALUES
+	(2, 'Álbum da Lila');
+    
+INSERT INTO tbl_album_animal
+	(cod_animal, titulo_album)
+VALUES
+	(3, 'Álbum do Xiquinho');
+    
+INSERT INTO tbl_album_animal
+	(cod_animal, titulo_album)
+VALUES
+	(4, 'Álbum do Cinzento');
+    
+#---------------------------------------------------------------------------------------------#
+# Fotos dos Pets dos usuários #
+
+DESCRIBE tbl_foto_animal;
+
+INSERT INTO tbl_foto_animal
+	(cod_animal, cod_album_animal, nome_unico_foto, descricao)
+VALUES
+	(1, 1, 'luckychegou.jpeg', 'Foto de quando acolhemos o Lucky.');
+    
+INSERT INTO tbl_foto_animal
+	(cod_animal, cod_album_animal, nome_unico_foto, descricao)
+VALUES
+	(1, 1, 'luckyfeliz.jpeg', 'Foto do Lucky feliz por ter sido acolhido.');
+    
+INSERT INTO tbl_foto_animal
+	(cod_animal, cod_album_animal, nome_unico_foto, descricao)
+VALUES
+	(2, 2, 'lilabricando.jpeg', 'Foto da Lila correndo em circulos tentando pegar a própria calda.');
+    
+INSERT INTO tbl_foto_animal
+	(cod_animal, cod_album_animal, nome_unico_foto, descricao)
+VALUES
+	(2, 2, 'lilameow.jpeg', 'Foto do Lila miando, tinha acabado de acordar e estava pedindo comida.');
+    
+INSERT INTO tbl_foto_animal
+	(cod_animal, cod_album_animal, nome_unico_foto, descricao)
+VALUES
+	(3, 3, 'xiquinho_filhote.jpeg', 'Olha só esse doguinho quando chegou, Xiquinho cabia numa mão só.');
+
+INSERT INTO tbl_foto_animal
+	(cod_animal, cod_album_animal, nome_unico_foto, descricao)
+VALUES
+	(3, 3, 'xiquinho_crescido.jpeg', 'Xiquinho ficou grandão e hoje em dia se tornou esse doguinho companheiro!');
+    
+INSERT INTO tbl_foto_animal
+	(cod_animal, cod_album_animal, nome_unico_foto, descricao)
+VALUES
+	(4, 4, 'o_grande_cinzento.jpeg', 'O Cinzento deu um pulo na câmera quando eu tirei essa foto, pareceu que ele ficou gigante.');
+	
+    
+#---------------------------------------------------------------------------------------------#
+# Bloqueio entre usuários #
+
+INSERT INTO tbl_bloqueio
+	(bloqueante, bloqueado)
+VALUES
+	(1, 3),
+	(3, 1);
+    
+# TRUNCATE TABLE tbl_bloqueio;
+

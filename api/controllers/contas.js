@@ -313,7 +313,7 @@
         
                 let { usuario } = req.dadosAuthToken;
         
-                // Se o Requisitante possuir um ID diferente do ID requisitado e não for um administrador, não permita o acesso.
+                // Se o Requisitante não for um administrador, não permita o acesso.
                 if (usuario && usuario.e_admin != 1){
                     return res.status(401).json({
                         mensagem: 'Requisição inválida - Você não possui o nível de acesso adequado para esse recurso.',

@@ -4,6 +4,9 @@ const {DataTypes, Model, Sequelize} = require('sequelize');
 // Instância da conexão com a Database.
     const {connection} = require('../../configs/database');
 
+    // Model das associações (FKs).
+        const Usuario = require('./Usuario');
+
 // Definição do Model 'Animal' para 'tbl_animal'.
     const Animal = connection.define('Animal', {
 
@@ -34,6 +37,18 @@ const {DataTypes, Model, Sequelize} = require('sequelize');
     }, {
         tableName: 'tbl_animal',
     });
+
+    // Associações (FKs).
+        Animal.belongsTo(Usuario, {
+            as: 'dono',
+            foreignKey: 'cod_dono',
+            allowNull: false
+        });
+
+        Animal.belongsTo(Usuario, {
+            as: 'dono_antigo',
+            foreignKey: 'cod_dono_antigo'
+        });
 
 // Exportação.
 module.exports = Animal;
