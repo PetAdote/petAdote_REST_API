@@ -95,16 +95,6 @@ CREATE TABLE tbl_end_usuario (
     FOREIGN KEY (cod_usuario) REFERENCES tbl_usuario(cod_usuario)
 );
 
-# CREATE TABLE tbl_token (
-#     cod_token INT UNSIGNED NOT NULL UNIQUE AUTO_INCREMENT,
-#     cod_usuario INT UNSIGNED NOT NULL,
-#     token VARCHAR(255) NOT NULL,
-#     tipo_token ENUM('ativacao', 'recuperacao') NOT NULL,
-#     data_limite DATETIME NOT NULL,
-#     PRIMARY KEY (cod_token),
-#     FOREIGN KEY (cod_usuario) REFERENCES tbl_usuario(cod_usuario)
-# );
-
 # Fim dos cadastros básicos para criação do perfil de um novo usuário #
 #---------------------------------------------------------------------#
 
@@ -116,7 +106,8 @@ CREATE TABLE tbl_animal (
     cod_dono_antigo INT UNSIGNED,
     estado_adocao ENUM('Sob proteção', 'Em anúncio', 'Em processo adotivo', 'Adotado') NOT NULL DEFAULT 'Sob proteção',
     nome VARCHAR(100) NOT NULL,
-    idade VARCHAR(8) NOT NULL,
+    foto_atual VARCHAR(200) NOT NULL DEFAULT 'default_unknown_pet.jpeg',
+    data_nascimento DATE NOT NULL,
     especie ENUM('Cão', 'Gato', 'Outros') NOT NULL,
     raca VARCHAR(20) NOT NULL,
     genero ENUM('M', 'F') NOT NULL,
@@ -146,7 +137,7 @@ CREATE TABLE tbl_foto_animal (
 	cod_foto_animal INT UNSIGNED NOT NULL UNIQUE AUTO_INCREMENT,
     cod_animal INT UNSIGNED NOT NULL,
     cod_album_animal INT UNSIGNED NOT NULL,
-    nome_unico_foto VARCHAR(200) NOT NULL UNIQUE,
+    foto VARCHAR(200) NOT NULL UNIQUE,
     descricao VARCHAR(255),
     data_criacao DATETIME NOT NULL DEFAULT NOW(),
     PRIMARY KEY (cod_foto_animal),
@@ -463,55 +454,61 @@ VALUES
 #---------------------------------------------------------------------------------------------#
 # Pets dos usuários #
 
+# SET FOREIGN_KEY_CHECKS = 0;
+# TRUNCATE tbl_animal;
+# TRUNCATE tbl_album_animal;
+# TRUNCATE tbl_foto_animal;
+# SET FOREIGN_KEY_CHECKS = 1;
+
 DESCRIBE tbl_animal;
 
 INSERT INTO tbl_animal
-	(cod_dono, nome, idade, especie, raca, 
+	(cod_dono, nome, data_nascimento, especie, raca, 
     genero, porte, esta_castrado, esta_vacinado,
     detalhes_comportamento,
     detalhes_saude,
     historia)
 VALUES
-	(1, 'Lucky', '3 meses', 'Cão', 'comum',
+	(1, 'Lucky', '2021-01-05', 'Cão', 'comum',
     'F', 'P', '0', '0',
     'Comportamento calmo',
     'Não apresentou nenhum problema de saúde',
     'Abandonaram ele na esquina da rua de casa, não tenho como cuidar dele por muito tempo.');
     
 INSERT INTO tbl_animal
-	(cod_dono, nome, idade, especie, raca, 
+	(cod_dono, nome, data_nascimento, especie, raca, 
     genero, porte, esta_castrado, esta_vacinado,
     detalhes_comportamento,
     detalhes_saude,
     historia)
 VALUES
-	(1, 'Lila', '1 mes', 'Gato', 'comum',
+	(1, 'Lila', '2021-03-04', 'Gato', 'comum',
     'F', 'P', '0', '0',
     'Ela é super calminha',
     'Não tem problemas de saúde',
     'É filhote da gata aqui de casa, mas não temos como cuidar dela também :(');
     
 INSERT INTO tbl_animal
-	(cod_dono, cod_dono_antigo, nome, idade, especie, raca, 
+	(cod_dono, cod_dono_antigo, nome, data_nascimento, especie, raca, 
     genero, porte, esta_castrado, esta_vacinado,
     detalhes_comportamento,
     detalhes_saude,
     historia)
 VALUES
-	(1, 2, 'Xiquinho', '1 ano', 'Cão', 'comum',
+	(1, 2, 'Xiquinho', '2020-04-04', 'Cão', 'comum',
     'M', 'M', '1', '1',
     'Xiquinha é um companheiro e tanto!',
     'Nenhum problema de saúde até hoje.',
     'Adotei ele de um usuário aqui do Pet Adote quando era um dog pequenininho, mas vou ter que sair do país e não posso levar ele imediatamente. Preciso de alguém pra cuidar dele pelo menos temporáriamente.');
     
-    INSERT INTO tbl_animal
-	(cod_dono, nome, idade, especie, raca, 
+INSERT INTO tbl_animal
+	(cod_dono, nome, data_nascimento, especie, raca, 
     genero, porte, esta_castrado, esta_vacinado,
     detalhes_comportamento,
     detalhes_saude,
     historia)
 VALUES
-	(3, 'Cinzento', '5 mes', 'Gato', 'comum',
+	(3, 'Cinzento', '2020-11-04', 'Gato', 'comum',
     'M', 'P', '0', '0',
     'O cinzento é bem quieto',
     'Não tem problemas de saúde',
@@ -548,37 +545,37 @@ VALUES
 DESCRIBE tbl_foto_animal;
 
 INSERT INTO tbl_foto_animal
-	(cod_animal, cod_album_animal, nome_unico_foto, descricao)
+	(cod_animal, cod_album_animal, foto, descricao)
 VALUES
 	(1, 1, 'luckychegou.jpeg', 'Foto de quando acolhemos o Lucky.');
     
 INSERT INTO tbl_foto_animal
-	(cod_animal, cod_album_animal, nome_unico_foto, descricao)
+	(cod_animal, cod_album_animal, foto, descricao)
 VALUES
 	(1, 1, 'luckyfeliz.jpeg', 'Foto do Lucky feliz por ter sido acolhido.');
     
 INSERT INTO tbl_foto_animal
-	(cod_animal, cod_album_animal, nome_unico_foto, descricao)
+	(cod_animal, cod_album_animal, foto, descricao)
 VALUES
 	(2, 2, 'lilabricando.jpeg', 'Foto da Lila correndo em circulos tentando pegar a própria calda.');
     
 INSERT INTO tbl_foto_animal
-	(cod_animal, cod_album_animal, nome_unico_foto, descricao)
+	(cod_animal, cod_album_animal, foto, descricao)
 VALUES
 	(2, 2, 'lilameow.jpeg', 'Foto do Lila miando, tinha acabado de acordar e estava pedindo comida.');
     
 INSERT INTO tbl_foto_animal
-	(cod_animal, cod_album_animal, nome_unico_foto, descricao)
+	(cod_animal, cod_album_animal, foto, descricao)
 VALUES
 	(3, 3, 'xiquinho_filhote.jpeg', 'Olha só esse doguinho quando chegou, Xiquinho cabia numa mão só.');
 
 INSERT INTO tbl_foto_animal
-	(cod_animal, cod_album_animal, nome_unico_foto, descricao)
+	(cod_animal, cod_album_animal, foto, descricao)
 VALUES
 	(3, 3, 'xiquinho_crescido.jpeg', 'Xiquinho ficou grandão e hoje em dia se tornou esse doguinho companheiro!');
     
 INSERT INTO tbl_foto_animal
-	(cod_animal, cod_album_animal, nome_unico_foto, descricao)
+	(cod_animal, cod_album_animal, foto, descricao)
 VALUES
 	(4, 4, 'o_grande_cinzento.jpeg', 'O Cinzento deu um pulo na câmera quando eu tirei essa foto, pareceu que ele ficou gigante.');
 	

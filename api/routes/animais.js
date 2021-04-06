@@ -1,8 +1,13 @@
 // Importações.
     const router = require('express').Router();
 
+    // Conexões.
+        const database = require('../../configs/database').connection;
+
     // Models.
         const Animal = require('../models/Animal');
+        const AlbumAnimal = require('../models/AlbumAnimal');
+
         const Usuario = require('../models/Usuario');
         const Bloqueio = require('../models/Bloqueio');
     
@@ -59,7 +64,7 @@ router.get('/', async (req, res, next) => {
         // Capturando os dados do usuário, se o requisitante for o usuário de uma aplicação Pet Adote.
             let { usuario } = req.dadosAuthToken;
 
-        // Se o usuário da aplicação estiver requisitando qualquer rota além de "getAllActive", não permita o acesso.
+        // Se o usuário da aplicação estiver requisitando qualquer rota além de "getAllActive=1", "getAllFromUser" ou "getOne". Não permita o acesso.
             if (usuario && !(req.query.getAllActive == 1 || req.query.getAllFromUser || req.query.getOne)){
                 return res.status(401).json({
                     mensagem: 'Requisição inválida - Você não possui o nível de acesso adequado para esse recurso.',
@@ -600,7 +605,540 @@ router.get('/', async (req, res, next) => {
 
 });
 
-router.patch('/:codUsuario', (req, res, next) => {
+router.post('/', async (req, res, next) => {
+
+    // Início das Restrições de acesso à rota.
+
+        // Apenas Usuários das aplicações Pet Adote poderão cadastrar animais.
+        if (!req.dadosAuthToken){   
+
+            // Se em algum caso não identificado, a requisição de uma aplicação chegou aqui e não apresentou suas credenciais JWT, não permita o acesso.
+            return res.status(401).json({
+                mensagem: 'Requisição inválida - Você não possui o nível de acesso adequado para esse recurso.',
+                code: 'ACCESS_TO_RESOURCE_NOT_ALLOWED'
+            });
+
+        }
+
+        // Se o Cliente não for do tipo Pet Adote, não permita o acesso.
+        if (req.dadosAuthToken.tipo_cliente !== 'Pet Adote'){
+            return res.status(401).json({
+                mensagem: 'Requisição inválida - Você não possui o nível de acesso adequado para esse recurso.',
+                code: 'ACCESS_TO_RESOURCE_NOT_ALLOWED'
+            });
+        }
+
+        // Capturando os dados do usuário requisitante.
+        let { usuario } = req.dadosAuthToken;
+        
+        // Se o requisitante não for um usuário, não permita o acesso.
+        if (!usuario){
+            return res.status(401).json({
+                mensagem: 'Requisição inválida - Você não possui o nível de acesso adequado para esse recurso.',
+                code: 'ACCESS_TO_RESOURCE_NOT_ALLOWED'
+            });
+        };
+
+    // Fim das Restrições de acesso à rota.
+
+    // Início das restrições de envio de campos.
+
+        let hasUnauthorizedField = false;
+
+        // Lista de campos permitidos.
+
+            let allowedFields = [
+                'nome',
+                'data_nascimento',
+                'especie',
+                'raca',
+                'genero',
+                'porte',
+                'esta_castrado',
+                'esta_vacinado',
+                'detalhes_comportamento',
+                'detalhes_saude',
+                'historia'
+            ];
+
+        // Fim da lista de campos permitidos.
+
+        // Início da verificação de campos não permitidos.
+
+            Object.entries(req.body).forEach((pair) => {
+                if (!allowedFields.includes(pair[0])){
+                    hasUnauthorizedField = true;
+                };
+            });
+
+            if (hasUnauthorizedField){
+                return res.status(400).json({
+                    mensagem: 'Algum dos campos enviados é inválido.',
+                    code: 'INVALID_REQUEST_FIELDS'
+                });
+            }
+
+        // Fim da verificação de campos não permitidos.
+
+    // Fim da das restrições de envio de campos.
+
+    // Início da Verificação de campos obrigatórios.
+
+        let missingFields = []; // Receberá os campos que faltaram na requisição.
+
+        // Lista de campos obrigatórios.
+
+            let requiredFields = [
+                'nome',
+                'data_nascimento',
+                'especie',
+                'raca',
+                'genero',
+                'porte',
+                'esta_castrado',
+                'esta_vacinado',
+                'detalhes_comportamento',
+                'detalhes_saude',
+            ];
+
+        // Fim da lista de campos obrigatórios.
+
+        // Verificador de campos obrigatórios.
+
+            requiredFields.forEach((field) => {
+                if (!Object.keys(req.body).includes(field)){
+                    missingFields.push(`Campo [${field}] não encontrado.`);
+                }
+            });
+
+        // Fim do verificador de campos obrigatórios.
+
+        // Resposta para campos obrigatórios não preenchidos.
+
+            if (missingFields.length > 0){
+                // console.log('missingFields detectados, campos obrigatórios estão faltando.');
+        
+                return res.status(400).json({
+                    mensagem: 'Campos obrigatórios estão faltando.',
+                    code: 'INVALID_REQUEST_FIELDS',
+                    missing_fields: missingFields
+                });
+            }
+
+        // Fim da Resposta de campos obrigatórios não preenchidos.
+
+    // Fim da Verificação de campos obrigatórios.
+
+    // Início da Normalização dos campos recebidos.
+
+        Object.entries(req.body).forEach((pair) => {
+
+            req.body[pair[0]] = String(pair[1]).trim();     // Remove espaços excessivos no início e no fim do valor.
+
+            let partes = undefined;     // Será útil para tratar partes individuais de um valor.
+
+            switch(pair[0]){
+                case 'nome':
+                    // Deixando cada parte do nome com a primeira letra maiúscula.
+                    partes = pair[1].trim().split(' ');
+
+                    partes.forEach((parte, index) => {
+                        if (parte){
+                            partes[index] = parte[0].toUpperCase() + parte.substr(1);
+                        };
+                    })
+
+                    req.body[pair[0]] = partes.join(' ');
+                    break;
+                case 'especie':
+                    // Deixa a primeira letra da string como maiúscula.
+                    req.body[pair[0]] = pair[1][0].toUpperCase() + pair[1].substr(1);
+                    break;
+                case 'raca':
+                    req.body[pair[0]] = pair[1][0].toUpperCase() + pair[1].substr(1);
+                    break;
+                case 'genero':
+                    // Deixa as letras da string em caixa alta.
+                    req.body[pair[0]] = pair[1].toUpperCase();
+                    break;
+                case 'porte':
+                    req.body[pair[0]] = pair[1].toUpperCase();
+                    break;
+                default:
+                    break;
+            }
+
+        });
+
+    // Fim da Normalização dos campos recebidos.
+
+    // Início da Validação dos Campos.
+
+        // Validação Nome.
+            if (req.body.nome?.length >= 0){
+
+                if (req.body.nome.match(/\s{2}|[^A-Za-zÀ-ÖØ-öø-ÿ ,.'-]+/g)){
+                    return res.status(400).json({
+                        mensagem: 'O nome do animal possui espaços excessivos ou caracteres inválidos.',
+                        code: 'INVALID_INPUT_NOME'
+                    });
+                }
+
+                if (req.body.nome.length === 0 || req.body.nome.length > 100){
+                    return res.status(400).json({
+                        mensagem: 'O nome do animal está vazio ou possui mais do que 100 caracteres.',
+                        code: 'INVALID_LENGTH_NOME'
+                    });
+                }
+
+            }
+        // ---------------
+
+        // Validação Data Nascimento.
+            if (req.body.data_nascimento?.length >= 0){
+
+                if (req.body.data_nascimento.length === 0){
+
+                    // console.log('Erro: Data de nascimento vazia.');
+                    return res.status(400).json({
+                        mensagem: 'A data de nascimento do animal está vazia.',
+                        code: 'INVALID_LENGTH_DATA_NASCIMENTO'
+                    });
+
+                } else {
+
+                    // console.log('Data de Nascimento: [' + req.body.data_nascimento + ']');
+
+                    if (!req.body.data_nascimento.match(/^(\d{4})\-([1][0-2]|[0][1-9])\-([0][1-9]|[1-2]\d|[3][0-1])$/g)){
+                        // console.log('Erro: Formato inválido de data!');
+                        return res.status(400).json({
+                            mensagem: 'A data de nascimento do animal está em um formato inválido.',
+                            code: 'INVALID_INPUT_DATA_NASCIMENTO',
+                            exemplo: 'aaaa-mm-dd'
+                        });
+                    }
+        
+                    // Verificação de ano bissexto
+
+                        let data_nascimento = req.body.data_nascimento.split('-');
+
+                        if(data_nascimento[0][2] == 0 && data_nascimento[0][3] == 0){
+                            if (data_nascimento[0] % 400 == 0){
+                                // console.log('Ano bissexto % 400');
+                                if (data_nascimento[1] == 02 && data_nascimento[2] > 29){
+                                    return res.status(400).json({
+                                        mensagem: 'A data de nascimento do animal declara um dia inválido para ano bissexto.',
+                                        code: 'INVALID_DATA_NASCIMENTO_FOR_LEAP_YEAR'
+                                    });
+                                }
+                            } else {
+                                // console.log('Ano não-bissexto % 400');
+                                if (data_nascimento[1] == 02 && data_nascimento[2] > 28){
+                                    return res.status(400).json({
+                                        mensagem: 'A data de nascimento do animal declara um dia inválido para ano não-bissexto.',
+                                        code: 'INVALID_DATA_NASCIMENTO_FOR_COMMON_YEAR'
+                                    });
+                                }
+                            }
+                        } else {
+                            if (data_nascimento[0] % 4 == 0){
+                                // console.log('Ano bissexto % 4');
+                                if (data_nascimento[1] == 02 && data_nascimento[2] > 29){
+                                    return res.status(400).json({
+                                        mensagem: 'A data de nascimento do animal declara um dia inválido para ano bissexto.',
+                                        code: 'INVALID_DATA_NASCIMENTO_FOR_LEAP_YEAR'
+                                    });
+                                }
+                            } else {
+                                // console.log('Ano não-bissexto % 4');
+                                if (data_nascimento[1] == 02 && data_nascimento[2] > 28){
+                                    return res.status(400).json({
+                                        mensagem: 'A data de nascimento do animal declara um dia inválido para ano não-bissexto.',
+                                        code: 'INVALID_DATA_NASCIMENTO_FOR_COMMON_YEAR'
+                                    });
+                                }
+                            }
+                        }
+                    // Fim da verificação de ano bissexto.
+                    
+                    if (data_nascimento[0] < 1900){
+                        return res.status(400).json({
+                            mensagem: 'A data de nascimento do animal é inválida, digite um valor para ano acima de 1900.',
+                            code: 'INVALID_INPUT_DATA_NASCIMENTO'
+                        });
+                    }
+
+                    if (new Date(req.body.data_nascimento) > new Date()){
+                        // Se a data informada for maior que o dia atual, não permita continuar.
+                        return res.status(400).json({
+                            mensagem: 'A data de nascimento do animal é inválida, o animal não pode ter nascido no futuro.',
+                            code: 'INVALID_INPUT_DATA_NASCIMENTO'
+                        });
+                    }
+
+                }
+
+            }
+        // -------------------------
+
+        // Validação Especie.
+            if (req.body.especie?.length >= 0){
+
+                let allowedEspecies = [
+                    'Cão',
+                    'Gato',
+                    'Outros'
+                ];
+
+                if (!allowedEspecies.includes(req.body.especie)){
+                    return res.status(400).json({
+                        mensagem: 'A espécie declarada para o animal é inválida.',
+                        code: 'INVALID_INPUT_ESPECIE'
+                    });
+                }
+
+            }
+        // ------------------
+
+        // Validação Raça.
+            if (req.body.raca?.length >= 0){
+
+                if (req.body.raca.match(/\s{2}|[^A-Za-zÀ-ÖØ-öø-ÿ ]+/g)){
+                    return res.status(400).json({
+                        mensagem: 'A declaração da raça do animal possui espaços excessivos ou caracteres inválidos.',
+                        code: 'INVALID_INPUT_RACA'
+                    });
+                }
+
+                if (req.body.raca.length == 0 || req.body.raca.length > 20){
+                    return res.status(400).json({
+                        mensagem: 'A declaração da raça do animal está vazia ou possui mais do que 20 caracteres.',
+                        code: 'INVALID_LENGTH_RACA'
+                    });
+                }
+
+            }
+        // ---------------
+
+        // Validação Gênero.
+            if (req.body.genero?.length >= 0){
+
+                let allowedGenres = [
+                    'M',
+                    'F'
+                ];
+
+                if (!allowedGenres.includes(req.body.genero)){
+                    return res.status(400).json({
+                        mensagem: 'O genero declarado para o animal é inválido.',
+                        code: 'INVALID_INPUT_GENERO'
+                    });
+                }
+                
+            }
+        // -----------------
+
+        // Validação Porte.
+            if (req.body.porte?.length >= 0){
+
+                let allowedSize = [
+                    'P',
+                    'M',
+                    'G'
+                ];
+
+                if (!allowedSize.includes(req.body.porte)){
+                    return res.status(400).json({
+                        mensagem: 'O porte (tamanho) declarado para o animal é inválido.',
+                        code: 'INVALID_INPUT_PORTE'
+                    });
+                }
+                
+            }
+        // ----------------
+
+        // Validação Está Castrado?
+            if (req.body.esta_castrado?.length >= 0){
+
+                let allowedValues = [
+                    '0',
+                    '1'
+                ];
+
+                if (!allowedValues.includes(req.body.esta_castrado)){
+                    return res.status(400).json({
+                        mensagem: 'O estado de castração declarado para o animal é inválido',
+                        code: 'INVALID_INPUT_ESTA_CASTRADO'
+                    });
+                }
+
+                // Se chegou aqui, o valor é válido. Converta para Number.
+                    req.body.esta_castrado = Number(req.body.esta_castrado);
+                // Fim da conversão do estado de castração para Number.
+
+            }
+        // ------------------------
+
+        // Validação Está Vacinado?
+            if (req.body.esta_vacinado?.length >= 0){
+
+                let allowedValues = [
+                    '0',
+                    '1'
+                ];
+
+                if (!allowedValues.includes(req.body.esta_vacinado)){
+                    return res.status(400).json({
+                        mensagem: 'O estado de vacinação declarado para o animal é inválido',
+                        code: 'INVALID_INPUT_ESTA_VACINADO'
+                    });
+                }
+
+                // Se chegou aqui, o valor é válido. Converta para Number.
+                    req.body.esta_vacinado = Number(req.body.esta_vacinado);
+                // Fim da conversão do estado de vacinação para Number.
+                
+            }
+        // ------------------------
+        
+        // Validação Detalhes comportamento.
+            if (req.body.detalhes_comportamento?.length >= 0){
+
+                if (req.body.detalhes_comportamento.length == 0 || req.body.detalhes_comportamento.length > 255 ){
+                    return res.status(400).json({
+                        mensagem: 'O campo de detalhes de comportamento do animal está vazio ou possui mais do que 255 caracteres.',
+                        code: 'INVALID_LENGTH_DETALHES_COMPORTAMENTO'
+                    });
+                }
+
+            }
+        // ---------------------------------
+
+        // Validação Detalhes saúde.
+            if (req.body.detalhes_saude?.length >= 0){
+
+                if (req.body.detalhes_saude.length == 0 || req.body.detalhes_saude.length > 255 ){
+                    return res.status(400).json({
+                        mensagem: 'O campo de detalhes de saúde do animal está vazio ou possui mais do que 255 caracteres.',
+                        code: 'INVALID_LENGTH_DETALHES_SAUDE'
+                    });
+                }
+
+            }
+        // -------------------------
+
+        // Validação História.
+            if (req.body.historia?.length >= 0){
+
+                if (req.body.historia.length == 0){
+                    return res.status(400).json({
+                        mensagem: 'O campo de detalhes de saúde do animal está vazio ou possui mais do que 255 caracteres.',
+                        code: 'INVALID_LENGTH_HISTORIA'
+                    });
+                }
+
+            }
+        // -------------------
+
+    // Fim da Validação dos Campos.
+
+    // console.log('Id do requisitante:', usuario.cod_usuario);
+    // console.log('Estado final do corpo da requisição:', req.body);
+
+    // Início do processo de cadastro do animal.
+
+        try {
+
+            let defaultAnimalPicture = undefined;
+            let possibleDefaultImages = undefined;
+            let rngSelector = Number.parseInt((Math.random() * (1.9 - 0)));  // 0 ou 1.
+
+            switch(req.body.especie){
+                case 'Gato':
+                    possibleDefaultImages = [
+                        'default_cat_01.jpeg',
+                        'default_cat_02.jpeg'
+                    ];
+
+                    defaultAnimalPicture = possibleDefaultImages[rngSelector];
+                    break;
+                case 'Cão':
+                    possibleDefaultImages = [
+                        'default_dog_01.jpeg',
+                        'default_dog_02.jpeg'
+                    ];
+
+                    defaultAnimalPicture = possibleDefaultImages[rngSelector];
+                    break;
+                default:
+                    defaultAnimalPicture = 'default_unknown_pet.jpeg';
+                    break;
+            }
+
+            await database.transaction( async (transaction) => {
+
+                const animal = await Animal.create({
+                    cod_dono: usuario.cod_usuario,
+                    nome: req.body.nome,
+                    foto_atual: defaultAnimalPicture,
+                    data_nascimento: req.body.data_nascimento,
+                    especie: req.body.especie,
+                    raca: req.body.raca,
+                    genero: req.body.genero,
+                    porte: req.body.porte,
+                    esta_castrado: req.body.esta_castrado,
+                    esta_vacinado: req.body.esta_vacinado,
+                    detalhes_comportamento: req.body.detalhes_comportamento,
+                    detalhes_saude: req.body.detalhes_saude,
+                    historia: req.body.historia
+                });
+
+                let albumPrefix = undefined;
+
+                switch(animal.genero){
+                    case 'M': 
+                        albumPrefix = 'Álbum do';
+                        break;
+                    case 'F':
+                        albumPrefix = 'Álbum da';
+                        break;
+                    default: 
+                        albumPrefix = 'Álbum';
+                        break;
+                }
+
+                const albumAnimal = await AlbumAnimal.create({
+                    cod_animal: animal.cod_animal,
+                    titulo_album: `${albumPrefix} ${animal.nome}`,
+                });
+
+                // Início da entrega da mensagem de conclusão do cadastro do animal para o usuário.
+
+                    return res.status(200).json({
+                        mensagem: 'Cadastro do animal foi realizado com sucesso! Utilize o "cod_animal" para alterar dados do animal. É possível alterar a foto padrão do animal ao adicionar uma foto ao álbum do animal e depois alterar a "foto_atual" do animal para a nova foto do álbum.',
+                        cod_animal: animal.cod_animal
+                    });
+
+                // Fim da entrega da mensagem de conclusão do cadastro do animal para o usuário.
+
+            });
+            // Se chegou aqui: Auto-commit.            
+        } catch (error) {
+            // Se algo deu errado: Auto-rollback.
+            console.error('Algo inesperado aconteceu ao cadastrar os dados do novo usuário.', error);
+        
+            let customErr = new Error('Algo inesperado aconteceu ao cadastrar os dados do novo usuário. Entre em contato com o administrador.');
+            customErr.status = 500;
+            customErr.code = 'INTERNAL_SERVER_ERROR';
+    
+            return next(customErr);
+        }
+
+    // Fim do processo de cadastro do animal.
+
+});
+
+router.patch('/:codAnimal', (req, res, next) => {
 
 });
 

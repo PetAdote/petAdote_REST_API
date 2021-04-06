@@ -364,10 +364,10 @@
     
             // Se algum dos campos obrigatórios não estiverem presentes no request, responda com a lista de missingFields.
                 if (missingFields.length > 0){
-                    console.log('missingFields detectados, campos obrigatórios estão faltando.');
+                    // console.log('missingFields detectados, campos obrigatórios estão faltando.');
             
                     return res.status(400).json({
-                        mensagem: 'Campos inválidos ou incompletos foram detectados.',
+                        mensagem: 'Campos obrigatórios estão faltando.',
                         code: 'INVALID_REQUEST_FIELDS',
                         missing_fields: missingFields
                     });
@@ -623,7 +623,7 @@
                         
                         if (data_nascimento[0] < 1900){
                             return res.status(400).json({
-                                mensagem: 'DATA DE NASCIMENTO - Ano de nascimento inválido, digite um valor acima de 1900.',
+                                mensagem: 'DATA DE NASCIMENTO - Ano de nascimento inválido, digite um valor para ano acima de 1900.',
                                 code: 'INVALID_DATA_NASCIMENTO_INPUT'
                             })
                         }
@@ -1036,6 +1036,16 @@
             
                 try {
                     await database.transaction( async (transaction) => {
+
+                        
+                        let possibleDefaultAvatar = [
+                            'default_avatar_01.jpeg',
+                            'default_avatar_02.jpeg',
+                            'default_avatar_03.jpeg'
+                        ];
+                        let rngSelector = Number.parseInt((Math.random() * (2.9 - 0)));  // 0 até 2.
+
+                        let defaultUserAvatar = possibleDefaultAvatar[rngSelector];
             
                         const usuario = await Usuario.create({
                             primeiro_nome: req.body.primeiro_nome,
@@ -1043,7 +1053,8 @@
                             data_nascimento: req.body.data_nascimento,
                             cpf: req.body.cpf,
                             telefone: req.body.telefone,
-                            descricao: req.body.descricao || null
+                            descricao: req.body.descricao || null,
+                            foto_usuario: defaultUserAvatar
                         });
             
                         const contaUsuario = await ContaLocal.create({
