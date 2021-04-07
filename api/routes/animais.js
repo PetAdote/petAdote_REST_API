@@ -29,14 +29,7 @@ router.get('/', async (req, res, next) => {
 
     // Início da Verificação dos Parâmetros da Rota.
 
-        if (String(req.query).includes('&')){
-
-            return res.status(400).json({
-                mensagem: 'Algum parâmetro inválido foi passado na URL da requisição.',
-                code: 'BAD_REQUEST'
-            });
-
-        }
+        // As verificações dos parâmetros desta rota acontecem nas configurações das opções de busca.
 
     // Fim da verificação dos parâmetros da Rota.
 
@@ -74,49 +67,128 @@ router.get('/', async (req, res, next) => {
 
     // Fim das Restrições de acesso à rota.
 
-    // Início da configuração das possíveis operações de busca.
+    // Início da configuração das possíveis operações de busca + verificação dos parâmetros para cada caso.
 
         let operacao = undefined;   // Se a operação continuar como undefined, envie BAD_REQUEST (400).
-    
-        if (Object.entries(req.query).length == 0){
-            operacao = 'getAll';
-        };
 
-        if (req.query?.getAllActive == '1'){     // Utilizando "Optional Chaining" do Javascript. (query existe? Se sim, verifique se x atributo existe.)
-            // Exemplo - "GET: .../usuarios/animais/?getAllActive=1"
-            operacao = 'getAllActive';
-        };
+        switch (Object.entries(req.query).length){
+            case 0:
+                operacao = 'getAll';
 
-        if (req.query?.getAllActive == '0'){
-            operacao = 'getAllNotActive';
-        };
+                break;
+            case 1:
+                if (req.query?.page) { operacao = 'getAll' };
 
-        if (req.query?.getAllFromUser){
+                if (req.query?.getAllActive == '1') { operacao = 'getAllActive'; };
 
-            if (req.query.getAllFromUser.match(/[^\d]+/g)){     // Se "codUsuario" conter algo diferente do esperado.
-                let customErr = new Error('Requisição inválida - O ID do Usuário deve conter apenas dígitos.');
-                customErr.status = 400;
-                customErr.code = 'INVALID_REQUEST_QUERY';
-                return next(customErr);
-            }
+                if (req.query?.getAllActive == '0') { operacao = 'getAllNotActive'; };
 
-            operacao = 'getAllFromUser';
-        };
+                if (req.query?.getAllFromUser) { 
 
-        if (req.query?.getOne){
+                    if (req.query.getAllFromUser.match(/[^\d]+/g)){     // Se "getAllFromUser" conter algo diferente do esperado.
+                        return res.status(400).json({
+                            mensagem: 'Requisição inválida - O ID do Usuário deve conter apenas dígitos.',
+                            code: 'INVALID_REQUEST_QUERY'
+                        });
+                    }
 
-            if (req.query.getOne.match(/[^\d]+/g)){     // Se 'getOne' conter algo diferente do esperado.
-                let customErr = new Error('Requisição inválida - O ID do Animal deve conter apenas dígitos.');
-                customErr.status = 400;
-                customErr.code = 'INVALID_REQUEST_QUERY';
-                return next(customErr);
-            }
+                    operacao = 'getAllFromUser'; 
+                };
 
-            operacao = 'getOne';
+                if (req.query?.getOne) { 
+
+                    if (req.query.getOne.match(/[^\d]+/g)){     // Se "getOne" conter algo diferente do esperado.
+                        return res.status(400).json({
+                            mensagem: 'Requisição inválida - O ID do Animal deve conter apenas dígitos.',
+                            code: 'INVALID_REQUEST_QUERY'
+                        });
+                    }
+
+                    operacao = 'getOne';
+                };
+
+                break;
+            case 2:
+                if (req.query?.page && req.query?.limit) { operacao = 'getAll' };
+
+                if (req.query?.getAllActive == '1' && req.query?.page) { operacao = 'getAllActive'; };
+
+                if (req.query?.getAllActive == '0' && req.query?.page) { operacao = 'getAllNotActive'; };
+
+                if (req.query?.getAllFromUser && req.query?.page) { 
+
+                    if (req.query.getAllFromUser.match(/[^\d]+/g)){     // Se "getAllFromUser" conter algo diferente do esperado.
+                        return res.status(400).json({
+                            mensagem: 'Requisição inválida - O ID do Usuário deve conter apenas dígitos.',
+                            code: 'INVALID_REQUEST_QUERY'
+                        });
+                    }
+
+                    operacao = 'getAllFromUser'; 
+                };
+                break;
+            case 3:
+                if (req.query?.getAllActive == '1' && req.query?.page && req.query?.limit) { operacao = 'getAllActive'; };
+
+                if (req.query?.getAllActive == '0' && req.query?.page && req.query?.limit) { operacao = 'getAllNotActive'; };
+
+                if (req.query?.getAllFromUser && req.query?.page && req.query?.limit) { 
+
+                    if (req.query.getAllFromUser.match(/[^\d]+/g)){     // Se "getAllFromUser" conter algo diferente do esperado.
+                        return res.status(400).json({
+                            mensagem: 'Requisição inválida - O ID do Usuário deve conter apenas dígitos.',
+                            code: 'INVALID_REQUEST_QUERY'
+                        });
+                    }
+
+                    operacao = 'getAllFromUser'; 
+                };
+                break;
+            default:
+                break;
         }
+
     // Fim da configuração das possíveis operações de busca.
 
+    // Início da Validação dos parâmetros.
+
+        // Se "page" ou "limit" fores menores que 1, ou for um número real. Entregue BAD_REQUEST.
+        if (req.query.page){
+            if (Number(req.query.page) < 1 || req.query.page != Number.parseInt(req.query.page)) {
+                return res.status(400).json({
+                    mensagem: 'Algum parâmetro inválido foi passado na URL da requisição.',
+                    code: 'BAD_REQUEST'
+                });
+            }
+        }
+
+        if (req.query.limit){
+            if (Number(req.query.limit) < 1 || req.query.limit != Number.parseInt(req.query.limit)) {
+                return res.status(400).json({
+                    mensagem: 'Algum parâmetro inválido foi passado na URL da requisição.',
+                    code: 'BAD_REQUEST'
+                });
+            }
+        }
+
+    // Fim da Validação dos parâmetros.
+
+    // Início da Normalização dos parâmetros.
+
+        req.query.page = Number(req.query.page);    // Se o valor para a página do sistema de páginação for recebido como String, torne-o um Number.
+        req.query.limit = Number(req.query.limit);  // Se o valor para o limite de entrega de dados do sistema de páginação for recebido como String, torne-o um Number.
+
+    // Fim da Normalização dos parâmetros.
+
     // Início do processo de listagem dos animais cadastrados.
+
+        // Início das configurações de paginação.
+            let requestedPage = req.query.page || 1;        // Página por padrão será a primeira.
+            let paginationLimit = req.query.limit || 10;     // Limite padrão de dados por página = 10;
+
+            let paginationOffset = (requestedPage - 1) * paginationLimit;   // Define o índice de partida para coleta dos dados.
+        // Fim das configuração de paginação.
+
         if (operacao == 'getAll'){
 
             Animal.findAndCountAll({
@@ -124,6 +196,8 @@ router.get('/', async (req, res, next) => {
                     model: Usuario,
                     as: 'dono'
                 }],
+                limit: paginationLimit,
+                offset: paginationOffset,
                 nest: true,
                 raw: true
             })
@@ -137,8 +211,33 @@ router.get('/', async (req, res, next) => {
 
                 }
 
-                let total_animais = resultArr.count;
-                let animais = [];
+                // Início da construção do objeto enviado na resposta.
+
+                    let total_animais = resultArr.count;
+
+                    let total_paginas = Math.ceil(total_animais / paginationLimit);
+
+                    let animais = [];
+
+                    let voltar_pagina = undefined;
+                    let avancar_pagina = undefined;
+
+                    if (requestedPage > 1 && requestedPage <= total_paginas){
+                        voltar_pagina = `${req.protocol}://${req.get('host')}/usuarios/animais/?page=${requestedPage - 1}&limit=${paginationLimit}`;
+                    }
+
+                    if (requestedPage < total_paginas){
+                        avancar_pagina = `${req.protocol}://${req.get('host')}/usuarios/animais/?page=${requestedPage + 1}&limit=${paginationLimit}`;
+                    } 
+
+                    if (requestedPage > total_paginas){
+                        return res.status(404).json({
+                            mensagem: 'Você chegou ao final da lista de animais cadastrados.',
+                            code: 'RESOURCE_NOT_FOUND'
+                        });
+                    }
+                    
+                // Fim da construção do objeto enviado na resposta.
 
                 resultArr.rows.forEach((animal) => {
                     animais.push({ 
@@ -146,11 +245,14 @@ router.get('/', async (req, res, next) => {
                         detalhes: `${req.protocol}://${req.get('host')}/usuarios/animais/?getOne=${animal.cod_animal}`
                     });
                 });
-
+                
                 return res.status(200).json({
                     mensagem: 'Lista de todos os animais cadastrados.',
                     total_animais,
-                    animais
+                    total_paginas,
+                    animais,
+                    voltar_pagina,
+                    avancar_pagina
                 });
 
             })
