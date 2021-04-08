@@ -14,6 +14,9 @@
     // Utilidades.
         const { Op } = require('sequelize');
 
+    // Helpers.
+        const checkUserBlockList = require('../../helpers/check_user_BlockList');
+
 // Controllers.
     // const controller = require('../controllers/...');
 
@@ -36,6 +39,7 @@ router.get('/', async (req, res, next) => {
     // Início das Restrições de acesso à rota.
 
         // Apenas aplicações Pet Adote e Usuários das aplicações Pet Adote poderão acessar a listagem dos animais dos usuários.
+        // Além disso, usuários só podem visualizar animais de usuários ativos e que não são de usuários que estão em sua lista de bloqueios.
             if (!req.dadosAuthToken){   
 
                 // Se em algum caso não identificado, a requisição de uma aplicação chegou aqui e não apresentou suas credenciais JWT, não permita o acesso.
@@ -83,29 +87,9 @@ router.get('/', async (req, res, next) => {
 
                 if (req.query?.getAllActive == '0') { operacao = 'getAllNotActive'; };
 
-                if (req.query?.getAllFromUser) { 
+                if (req.query?.getAllFromUser) { operacao = 'getAllFromUser'; };
 
-                    if (req.query.getAllFromUser.match(/[^\d]+/g)){     // Se "getAllFromUser" conter algo diferente do esperado.
-                        return res.status(400).json({
-                            mensagem: 'Requisição inválida - O ID do Usuário deve conter apenas dígitos.',
-                            code: 'INVALID_REQUEST_QUERY'
-                        });
-                    }
-
-                    operacao = 'getAllFromUser'; 
-                };
-
-                if (req.query?.getOne) { 
-
-                    if (req.query.getOne.match(/[^\d]+/g)){     // Se "getOne" conter algo diferente do esperado.
-                        return res.status(400).json({
-                            mensagem: 'Requisição inválida - O ID do Animal deve conter apenas dígitos.',
-                            code: 'INVALID_REQUEST_QUERY'
-                        });
-                    }
-
-                    operacao = 'getOne';
-                };
+                if (req.query?.getOne) { operacao = 'getOne'; };
 
                 break;
             case 2:
@@ -115,34 +99,16 @@ router.get('/', async (req, res, next) => {
 
                 if (req.query?.getAllActive == '0' && req.query?.page) { operacao = 'getAllNotActive'; };
 
-                if (req.query?.getAllFromUser && req.query?.page) { 
+                if (req.query?.getAllFromUser && req.query?.page) { operacao = 'getAllFromUser'; };
 
-                    if (req.query.getAllFromUser.match(/[^\d]+/g)){     // Se "getAllFromUser" conter algo diferente do esperado.
-                        return res.status(400).json({
-                            mensagem: 'Requisição inválida - O ID do Usuário deve conter apenas dígitos.',
-                            code: 'INVALID_REQUEST_QUERY'
-                        });
-                    }
-
-                    operacao = 'getAllFromUser'; 
-                };
                 break;
             case 3:
                 if (req.query?.getAllActive == '1' && req.query?.page && req.query?.limit) { operacao = 'getAllActive'; };
 
                 if (req.query?.getAllActive == '0' && req.query?.page && req.query?.limit) { operacao = 'getAllNotActive'; };
 
-                if (req.query?.getAllFromUser && req.query?.page && req.query?.limit) { 
+                if (req.query?.getAllFromUser && req.query?.page && req.query?.limit) { operacao = 'getAllFromUser'; };
 
-                    if (req.query.getAllFromUser.match(/[^\d]+/g)){     // Se "getAllFromUser" conter algo diferente do esperado.
-                        return res.status(400).json({
-                            mensagem: 'Requisição inválida - O ID do Usuário deve conter apenas dígitos.',
-                            code: 'INVALID_REQUEST_QUERY'
-                        });
-                    }
-
-                    operacao = 'getAllFromUser'; 
-                };
                 break;
             default:
                 break;
@@ -151,6 +117,24 @@ router.get('/', async (req, res, next) => {
     // Fim da configuração das possíveis operações de busca.
 
     // Início da Validação dos parâmetros.
+
+        if (req.query?.getOne){
+            if (String(req.query.getOne).match(/[^\d]+/g)){     // Se "getOne" conter algo diferente do esperado.
+                return res.status(400).json({
+                    mensagem: 'Requisição inválida - O ID do Animal deve conter apenas dígitos.',
+                    code: 'INVALID_REQUEST_QUERY'
+                });
+            }
+        }
+
+        if (req.query?.getAllFromUser){
+            if (String(req.query.getAllFromUser).match(/[^\d]+/g)){     // Se "getAllFromUser" conter algo diferente do esperado.
+                return res.status(400).json({
+                    mensagem: 'Requisição inválida - O ID do Usuário deve conter apenas dígitos.',
+                    code: 'INVALID_REQUEST_QUERY'
+                });
+            }
+        }
 
         // Se "page" ou "limit" fores menores que 1, ou for um número real. Entregue BAD_REQUEST.
         if (req.query.page){
@@ -178,6 +162,9 @@ router.get('/', async (req, res, next) => {
         req.query.page = Number(req.query.page);    // Se o valor para a página do sistema de páginação for recebido como String, torne-o um Number.
         req.query.limit = Number(req.query.limit);  // Se o valor para o limite de entrega de dados do sistema de páginação for recebido como String, torne-o um Number.
 
+        req.query.getAllFromUser = String(req.query.getAllFromUser);
+        req.query.getOne = String(req.query.getOne);
+
     // Fim da Normalização dos parâmetros.
 
     // Início do processo de listagem dos animais cadastrados.
@@ -191,14 +178,19 @@ router.get('/', async (req, res, next) => {
 
         if (operacao == 'getAll'){
 
+            // Restrições de Uso.
+                if (usuario?.e_admin == 0){
+                    // Se o requisitante for um usuário e não for um administrador...
+                    return res.status(401).json({
+                        mensagem: 'Você não possui o nível de acesso adequado para esse recurso.',
+                        code: 'ACCESS_TO_RESOURCE_NOT_ALLOWED'
+                    });
+                }
+            // -----------------
+
             Animal.findAndCountAll({
-                include: [{
-                    model: Usuario,
-                    as: 'dono'
-                }],
                 limit: paginationLimit,
                 offset: paginationOffset,
-                nest: true,
                 raw: true
             })
             .then((resultArr) => {
@@ -212,7 +204,6 @@ router.get('/', async (req, res, next) => {
                 }
 
                 // Início da construção do objeto enviado na resposta.
-
                     let total_animais = resultArr.count;
 
                     let total_paginas = Math.ceil(total_animais / paginationLimit);
@@ -236,15 +227,21 @@ router.get('/', async (req, res, next) => {
                             code: 'RESOURCE_NOT_FOUND'
                         });
                     }
+
+                    resultArr.rows.forEach((animal) => {
+                        if (animal.cod_dono){
+                            animal.detalhes_dono = `${req.protocol}://${req.get('host')}/usuarios/${animal.cod_dono}`;
+                        }
+
+                        if (animal.cod_dono_antigo){
+                            // Se foi adotado nos sistemas Pet Adote, possui um dono antigo...
+                            animal.detalhes_dono_antigo = `${req.protocol}://${req.get('host')}/usuarios/${animal.cod_dono_antigo}`
+                        }
+
+                        animais.push(animal);
+                    });
                     
                 // Fim da construção do objeto enviado na resposta.
-
-                resultArr.rows.forEach((animal) => {
-                    animais.push({ 
-                        cod_animal: animal.cod_animal,
-                        detalhes: `${req.protocol}://${req.get('host')}/usuarios/animais/?getOne=${animal.cod_animal}`
-                    });
-                });
                 
                 return res.status(200).json({
                     mensagem: 'Lista de todos os animais cadastrados.',
@@ -277,117 +274,116 @@ router.get('/', async (req, res, next) => {
                 where: {
                     '$dono.esta_ativo$': 1
                 },
+                limit: paginationLimit,
+                offset: paginationOffset,
                 nest: true,
                 raw: true
             })
-            .then((result) => {
+            .then( async (resultArr) => {
 
-                if (result) {
+                if (resultArr.count == 0){
+                    return res.status(200).json({
+                        mensagem: 'Nenhum usuário ativo cadastrou animais.'
+                    });
+                }
 
-                    if (result.count === 0){
+                // Início da construção do objeto enviado na resposta.
 
-                        return res.status(200).json({
-                            mensagem: 'Nenhum animal com usuários ativos está cadastrado.'
-                        });
+                    // Início da verificação da lista de bloqueios e calculo da quantidade de animais que não serão exibidos.
+                        let listaBloqueios = undefined;
 
-                    }
+                        let qtdAnimaisDosBloqueados = undefined;
 
-                    let total_animais = result.count;
-                    let animais = [];
+                        if (usuario) { 
 
-                    // Início do processamento da resposta caso o requisitante for o usuário de uma aplicação.
+                            listaBloqueios = await checkUserBlockList(usuario.cod_usuario);
 
-                        // Se o requisitante for o usuário de uma aplicação, exiba apenas os animais dos usuários que não estão bloqueados por ele, ou bloquearam ele.
-                        if (usuario) {
-
-                            total_animais = 0;          // Vamos ter que incrementar à cada animal passado pra lista que será exibida pro usuário.
-                            let listaBloqueios = [];    // Lista contendo todos os IDs dos usuários que bloquearam ou foram bloqueados pelo usuário requisitante.
-
-                            return Bloqueio.findAll({ 
+                            qtdAnimaisDosBloqueados = await Animal.count({
+                                include: [{
+                                    all: true
+                                }],
                                 where: {
-                                    [Op.or]: [{
-                                        bloqueado: usuario.cod_usuario
-                                    }, {
-                                        bloqueante: usuario.cod_usuario
-                                    }]
-                                },
-                                raw: true
-                            })
-                            .then((resultBloqueiosArr) => {
-
-                                if(resultBloqueiosArr){
-
-                                    // console.log('resultBloqueiosArr', resultBloqueiosArr);
-
-                                    resultBloqueiosArr.forEach((bloqueio) => {
-                                        // Se o usuário requisitante bloqueou alguém, verifique se esse alguém está na lista de bloqueios... Se não tiver? Adicione.
-                                        if (bloqueio.bloqueante == usuario.cod_usuario){
-                                            if(!listaBloqueios.includes(bloqueio.bloqueado)){
-                                                listaBloqueios.push(bloqueio.bloqueado);
-                                            }
-                                        }
-
-                                        // Se o usuário requisitante foi bloqueado por alguém, verifique se esse alguém está na lista de bloqueios... Se não tiver? Adicione.
-                                        if (bloqueio.bloqueado == usuario.cod_usuario){
-                                            if(!listaBloqueios.includes(bloqueio.bloqueante)){
-                                                listaBloqueios.push(bloqueio.bloqueante)
-                                            };
-                                        };
-                                    });
-
-                                    // console.log('listaBloqueios', listaBloqueios);
-
-                                    result.rows.forEach((animal) => {
-                                        if(!listaBloqueios.includes(animal.dono.cod_usuario)){  // Se o dono do animal encontrado não estiver na lista de bloqueios do usuário requisitante, liste-o.
-                                            total_animais += 1;
-                                            animais.push({
-                                                cod_animal: animal.cod_animal,
-                                                detalhes: `${req.protocol}://${req.get('host')}/usuarios/animais/?getOne=${animal.cod_animal}`
-                                            });
-                                        }
-                                    });
-
-                                    return res.status(200).json({
-                                        mensagem: 'Lista de todos os animais cadastrados.',
-                                        total_animais,
-                                        animais
-                                    });
-
-                                };
-
-                            })
-                            .catch((error) => {
-                                console.error('Algo inesperado aconteceu ao listar os animais cadastrados.', error);
-            
-                                let customErr = new Error('Algo inesperado aconteceu ao listar os animais cadastrados. Entre em contato com o administrador.');
-                                customErr.status = 500;
-                                customErr.code = 'INTERNAL_SERVER_ERROR'
-                        
-                                return next( customErr );
+                                    cod_dono: listaBloqueios,
+                                    '$dono.esta_ativo$': 1
+                                }
                             });
 
-                            // Conclusão dessa resposta no caso do requisitante ser um usuário.
                         };
 
-                    // Fim do processamento da resposta caso o requisitante for o usuário de uma aplicação.
+                    // Fim da verificação da lista de bloqueios e calculo da quantidade de animais que não serão exibidos.
 
-                    result.rows.forEach((row) => {
-                        animais.push({ 
-                            cod_animal: row.cod_animal,
-                            detalhes: `${req.protocol}://${req.get('host')}/usuarios/animais/?getOne=${row.cod_animal}`
+                    let total_animais = resultArr.count - (qtdAnimaisDosBloqueados || 0); // Se qtdAnimaisDosBloqueados estiver como NULL ou UNDEFINED, atribua zero à operação.
+
+                    let total_paginas = Math.ceil(total_animais / paginationLimit);
+
+                    let animais = [];
+
+                    let voltar_pagina = undefined;
+                    let avancar_pagina = undefined;
+
+                    if (requestedPage > 1 && requestedPage <= total_paginas){
+                        voltar_pagina = `${req.protocol}://${req.get('host')}/usuarios/animais/?getAllActive=1&page=${requestedPage - 1}&limit=${paginationLimit}`;
+                    }
+
+                    if (requestedPage < total_paginas){
+                        avancar_pagina = `${req.protocol}://${req.get('host')}/usuarios/animais/?getAllActive=1&page=${requestedPage + 1}&limit=${paginationLimit}`;
+                    } 
+
+                    if (requestedPage > total_paginas){
+                        return res.status(404).json({
+                            mensagem: 'Você chegou ao final da lista de animais de usuários ativos.',
+                            code: 'RESOURCE_NOT_FOUND'
                         });
+                    }
+
+                    resultArr.rows.forEach((animal) => {
+
+                        // Removendo estruturas que agora são desnecessárias.
+                            delete animal.dono;
+                            delete animal.dono_antigo;
+                        // --------------------------------------------------
+
+                        // Início da adição de atributos extras ao objeto.
+                            if (animal.cod_dono){
+                                animal.detalhes_dono = `${req.protocol}://${req.get('host')}/usuarios/${animal.cod_dono}`;
+                            }
+                            
+                            if (animal.cod_dono_antigo){
+                                animal.detalhes_dono_antigo = `${req.protocol}://${req.get('host')}/usuarios/${animal.cod_dono_antigo}`;
+                            }
+                        // Fim da adição de atributos extras ao objeto.
+
+                        if (usuario){
+                            // Se o requisitante for um usuário...
+                            if (!listaBloqueios.includes(animal.cod_dono)){
+                                // E o dono do animal não estiver na lista de bloqueios do usuário (Bloqueado/Bloqueante)...
+                                animais.push(animal);
+                            }
+                        } else {
+                            // Se o requisitante for uma aplicação...
+                            animais.push(animal);
+                        }
+                        
                     });
+
+                // Fim da construção do objeto enviado na resposta.
+
+                // Início do envio da resposta.
 
                     return res.status(200).json({
-                        mensagem: 'Lista de todos os animais de usuários ativos.',
+                        mensagem: 'Lista de todos os animais cadastrados de usuários ativos.',
                         total_animais,
-                        animais
+                        total_paginas,
+                        animais,
+                        voltar_pagina,
+                        avancar_pagina
                     });
 
-                }
+                // Fim do envio da resposta.
 
             })
             .catch((error) =>{
+
                 console.error('Algo inesperado aconteceu ao listar os animais cadastrados que possuem usuários ativos.', error);
     
                 let customErr = new Error('Algo inesperado aconteceu ao listar os animais cadastrados que possuem usuários ativos. Entre em contato com o administrador.');
@@ -395,11 +391,22 @@ router.get('/', async (req, res, next) => {
                 customErr.code = 'INTERNAL_SERVER_ERROR'
         
                 return next( customErr );
+
             });
 
         };
 
         if (operacao == 'getAllNotActive'){
+
+            // Restrições de Uso.
+                if (usuario?.e_admin == 0){
+                    // Se o requisitante for um usuário e não for um administrador...
+                    return res.status(401).json({
+                        mensagem: 'Você não possui o nível de acesso adequado para esse recurso.',
+                        code: 'ACCESS_TO_RESOURCE_NOT_ALLOWED'
+                    });
+                }
+            // -----------------
 
             Animal.findAndCountAll({
                 include: [{
@@ -408,163 +415,203 @@ router.get('/', async (req, res, next) => {
                 where: {
                     '$dono.esta_ativo$': 0
                 },
+                limit: paginationLimit,
+                offset: paginationOffset,
                 nest: true,
                 raw: true
             })
-            .then((result) => {
+            .then((resultArr) => {
 
-                if (result) {
-
-                    if (result.count === 0){
-
-                        return res.status(200).json({
-                            mensagem: 'Nenhum animal com usuários inativos está cadastrado.'
-                        });
-
-                    }
-
-                    let total_animais = result.count;
-                    let animais = [];
-
-                    result.rows.forEach((row) => {
-                        animais.push({ 
-                            cod_animal: row.cod_animal,
-                            detalhes: `${req.protocol}://${req.get('host')}/usuarios/animais/?getOne=${row.cod_animal}`
-                        });
-                    });
-
+                if (resultArr.count == 0){
                     return res.status(200).json({
-                        mensagem: 'Lista de todos os animais de usuários inativos.',
-                        total_animais,
-                        animais
+                        mensagem: 'Nenhum usuário inativo possui animais cadastrados.'
                     });
-
                 }
 
+                // Início da construção do objeto enviado na resposta.
+
+                    let total_animais = resultArr.count;
+
+                    let total_paginas = Math.ceil(total_animais / paginationLimit);
+
+                    let animais = [];
+
+                    let voltar_pagina = undefined;
+                    let avancar_pagina = undefined;
+
+                    if (requestedPage > 1 && requestedPage <= total_paginas){
+                        voltar_pagina = `${req.protocol}://${req.get('host')}/usuarios/animais/?getAllActive=0&page=${requestedPage - 1}&limit=${paginationLimit}`;
+                    }
+
+                    if (requestedPage < total_paginas){
+                        avancar_pagina = `${req.protocol}://${req.get('host')}/usuarios/animais/?getAllActive=0&page=${requestedPage + 1}&limit=${paginationLimit}`;
+                    } 
+
+                    if (requestedPage > total_paginas){
+                        return res.status(404).json({
+                            mensagem: 'Você chegou ao final da lista de animais de usuários inativos.',
+                            code: 'RESOURCE_NOT_FOUND'
+                        });
+                    }
+
+                    resultArr.rows.forEach((animal) => {
+
+                        // Removendo estruturas que agora são desnecessárias.
+                            delete animal.dono;
+                            delete animal.dono_antigo;
+                        // --------------------------------------------------
+
+                        // Início da adição de atributos extras ao objeto.
+                            if (animal.cod_dono){
+                                animal.detalhes_dono = `${req.protocol}://${req.get('host')}/usuarios/${animal.cod_dono}`;
+                            }
+                            
+                            if (animal.cod_dono_antigo){
+                                animal.detalhes_dono_antigo = `${req.protocol}://${req.get('host')}/usuarios/${animal.cod_dono_antigo}`;
+                            }
+                        // Fim da adição de atributos extras ao objeto.
+
+                        animais.push(animal);
+                        
+                    });
+
+                // Fim da construção do objeto enviado na resposta.
+
+                // Início do envio da resposta.
+
+                    return res.status(200).json({
+                        mensagem: 'Lista de todos os animais cadastrados de usuários inativos.',
+                        total_animais,
+                        total_paginas,
+                        animais,
+                        voltar_pagina,
+                        avancar_pagina
+                    });
+
+                // Fim do envio da resposta.
+
             })
-            .catch((error) =>{
+            .catch((error) => {
+
                 console.error('Algo inesperado aconteceu ao listar os animais cadastrados que possuem usuários inativos.', error);
     
-                let customErr = new Error('lgo inesperado aconteceu ao listar os animais cadastrados que possuem usuários inativos. Entre em contato com o administrador.');
+                let customErr = new Error('Algo inesperado aconteceu ao listar os animais cadastrados que possuem usuários inativos. Entre em contato com o administrador.');
                 customErr.status = 500;
                 customErr.code = 'INTERNAL_SERVER_ERROR'
         
                 return next( customErr );
+
             });
 
         };
 
         if (operacao == 'getAllFromUser'){
 
-            let cod_usuario = Number(req.query.getAllFromUser);
+            let dono_recurso = Number(req.query.getAllFromUser);
 
             // Início da verificação de bloqueios para usuários requisitantes.
                 // Se o requisitante for o usuário de uma aplicação, exiba apenas os animais dos usuários que não estão bloqueados por ele, ou bloquearam ele.
-                if (usuario) {
-
+                if (usuario?.e_admin == 0) {
                     try {
                         let listaBloqueios = [];    // Lista contendo todos os IDs dos usuários que bloquearam ou foram bloqueados pelo usuário requisitante.
 
-                        let arrBloqueios = await Bloqueio.findAll({ 
-                            where: {
-                                [Op.or]: [{
-                                    bloqueado: usuario.cod_usuario
-                                }, {
-                                    bloqueante: usuario.cod_usuario
-                                }]
-                            },
-                            raw: true
-                        });
+                        listaBloqueios = await checkUserBlockList(usuario.cod_usuario);
 
-                        if (arrBloqueios.length > 0){
-
-                            // console.log('resultBloqueiosArr', arrBloqueios);
-
-                            arrBloqueios.forEach((bloqueio) => {
-                                // Se o usuário requisitante bloqueou alguém, verifique se esse alguém está na lista de bloqueios... Se não tiver? Adicione.
-                                if (bloqueio.bloqueante == usuario.cod_usuario){
-                                    if(!listaBloqueios.includes(bloqueio.bloqueado)){
-                                        listaBloqueios.push(bloqueio.bloqueado);
-                                    }
-                                }
-
-                                // Se o usuário requisitante foi bloqueado por alguém, verifique se esse alguém está na lista de bloqueios... Se não tiver? Adicione.
-                                if (bloqueio.bloqueado == usuario.cod_usuario){
-                                    if(!listaBloqueios.includes(bloqueio.bloqueante)){
-                                        listaBloqueios.push(bloqueio.bloqueante)
-                                    };
-                                };
+                        if(listaBloqueios.includes(dono_recurso)){
+                            return res.status(401).json({
+                                mensagem: 'Você não possui o nível de acesso adequado para esse recurso.',
+                                code: 'ACCESS_TO_RESOURCE_NOT_ALLOWED'
                             });
-
-                            // console.log('listaBloqueios', listaBloqueios);
-
-                            if(listaBloqueios.includes(cod_usuario)){
-                                return res.status(401).json({
-                                    mensagem: 'Requisição inválida - Você não possui o nível de acesso adequado para esse recurso.',
-                                    code: 'ACCESS_TO_RESOURCE_NOT_ALLOWED'
-                                });
-                            }
-
                         }
                     
                     } catch (error) {
-                        console.error('Algo inesperado aconteceu ao listar os animais cadastrados.', error);
-        
-                        let customErr = new Error('Algo inesperado aconteceu ao listar os animais cadastrados. Entre em contato com o administrador.');
+                        console.error('Algo inesperado aconteceu ao listar os animais que estão sob a guarda do usuário.', error);
+    
+                        let customErr = new Error('Algo inesperado aconteceu ao listar os animais que estão sob a guarda do usuário. Entre em contato com o administrador.');
                         customErr.status = 500;
                         customErr.code = 'INTERNAL_SERVER_ERROR'
                 
                         return next( customErr );
                     }
-                    // Conclusão dessa resposta no caso do requisitante ser um usuário.
                 };
             // Fim da verificação de bloqueios para usuários requisitantes.
 
             Animal.findAndCountAll({
-                include: [{
-                    all: true
-                }],
                 where: {
-                    cod_dono: cod_usuario
+                    cod_dono: dono_recurso
                 },
-                nest: true,
+                limit: paginationLimit,
+                offset: paginationOffset,
                 raw: true
             })
-            .then((result) => {
+            .then((resultArr) => {
 
-                if (result) {
+                if (resultArr.count == 0){
+                    return res.status(200).json({
+                        mensagem: 'Esse usuário ainda não possui nenhum animal sob sua guarda.'
+                    });
+                }
 
-                    if (result.count === 0){
+                // Início da construção do objeto enviado na resposta.
 
-                        return res.status(200).json({
-                            mensagem: 'Esse usuário ainda não cadastrou nenhum animal.'
-                        });
+                    let total_animais = resultArr.count;
 
-                    }
+                    let total_paginas = Math.ceil(total_animais / paginationLimit);
 
-                    let total_animais = result.count;
                     let animais = [];
 
-                    result.rows.forEach((row) => {
-                        animais.push({ 
-                            cod_animal: row.cod_animal,
-                            detalhes: `${req.protocol}://${req.get('host')}/usuarios/animais/?getOne=${row.cod_animal}`
+                    let voltar_pagina = undefined;
+                    let avancar_pagina = undefined;
+
+                    if (requestedPage > 1 && requestedPage <= total_paginas){
+                        voltar_pagina = `${req.protocol}://${req.get('host')}/usuarios/animais/?getAllFromUser=${dono_recurso}&page=${requestedPage - 1}&limit=${paginationLimit}`;
+                    }
+
+                    if (requestedPage < total_paginas){
+                        avancar_pagina = `${req.protocol}://${req.get('host')}/usuarios/animais/?getAllFromUser=${dono_recurso}&page=${requestedPage + 1}&limit=${paginationLimit}`;
+                    } 
+
+                    if (requestedPage > total_paginas){
+                        return res.status(404).json({
+                            mensagem: 'Você chegou ao final da lista de animais do usuário.',
+                            code: 'RESOURCE_NOT_FOUND'
                         });
+                    }
+
+                    resultArr.rows.forEach((animal) => {
+
+                        // Início da adição de atributos extras ao objeto.
+                            if (animal.cod_dono_antigo){
+                                animal.detalhes_dono_antigo = `${req.protocol}://${req.get('host')}/usuarios/${animal.cod_dono_antigo}`;
+                            }
+                        // Fim da adição de atributos extras ao objeto.
+                        
+                        animais.push(animal);
+                        
                     });
+
+                // Fim da construção do objeto enviado na resposta.
+
+                // Início do envio da resposta.
 
                     return res.status(200).json({
-                        mensagem: 'Lista de todos os animais do usuários.',
+                        mensagem: 'Lista dos animais sob guarda do usuário.',
+                        detalhes_dono: `${req.protocol}://${req.get('host')}/usuarios/${dono_recurso}`,
                         total_animais,
-                        animais
+                        total_paginas,
+                        animais,
+                        voltar_pagina,
+                        avancar_pagina
                     });
 
-                }
+                // Fim do envio da resposta.
+
 
             })
             .catch((error) =>{
-                console.error('Algo inesperado aconteceu ao listar os animais cadastrados pelo usuário.', error);
+                console.error('Algo inesperado aconteceu ao listar os animais que estão sob a guarda do usuário.', error);
     
-                let customErr = new Error('Algo inesperado aconteceu ao listar os animais cadastrados pelo usuário. Entre em contato com o administrador.');
+                let customErr = new Error('Algo inesperado aconteceu ao listar os animais que estão sob a guarda do usuário. Entre em contato com o administrador.');
                 customErr.status = 500;
                 customErr.code = 'INTERNAL_SERVER_ERROR'
         
@@ -589,103 +636,62 @@ router.get('/', async (req, res, next) => {
             })
             .then(async (result) => {
 
-                if (result){
+                if (!result){
+                    return res.status(404).json({
+                        mensagem: 'Nenhum animal está vinculado à esse ID.',
+                        code: 'RESOURCE_NOT_FOUND',
+                        lista_usuarios: `${req.protocol}://${req.get('host')}/usuarios/`,
+                    });
+                }
+
+                // Início da construção do objeto enviado na resposta.
 
                     if (!result.cod_dono_antigo){
-                        delete result.dono_antigo;
-                    }
+                        delete result.dono_antigo;  // Garante que {dono_antigo} só vai existir se "cod_dono_antigo" existir.
+                    };
 
-                    let {dono_antigo, dono} = result;
-                        delete result.dono_antigo;
-                        delete result.dono;
+                    let { dono, dono_antigo } = result;
+
+                    delete result.dono;
+                    delete result.dono_antigo;
 
                     let animal = result;
 
-                    // Início da verificação de bloqueios para usuários requisitantes.
-                        // Se o requisitante for o usuário de uma aplicação, exiba apenas os animais dos usuários que não estão bloqueados por ele, ou bloquearam ele.
-                        if (usuario) {
-
-                            try {
-                                let listaBloqueios = [];    // Lista contendo todos os IDs dos usuários que bloquearam ou foram bloqueados pelo usuário requisitante.
-
-                                let arrBloqueios = await Bloqueio.findAll({ 
-                                    where: {
-                                        [Op.or]: [{
-                                            bloqueado: usuario.cod_usuario
-                                        }, {
-                                            bloqueante: usuario.cod_usuario
-                                        }]
-                                    },
-                                    raw: true
-                                });
-
-                                if (arrBloqueios.length > 0){
-
-                                    // console.log('resultBloqueiosArr', arrBloqueios);
-
-                                    arrBloqueios.forEach((bloqueio) => {
-                                        // Se o usuário requisitante bloqueou alguém, verifique se esse alguém está na lista de bloqueios... Se não tiver? Adicione.
-                                        if (bloqueio.bloqueante == usuario.cod_usuario){
-                                            if(!listaBloqueios.includes(bloqueio.bloqueado)){
-                                                listaBloqueios.push(bloqueio.bloqueado);
-                                            }
-                                        }
-
-                                        // Se o usuário requisitante foi bloqueado por alguém, verifique se esse alguém está na lista de bloqueios... Se não tiver? Adicione.
-                                        if (bloqueio.bloqueado == usuario.cod_usuario){
-                                            if(!listaBloqueios.includes(bloqueio.bloqueante)){
-                                                listaBloqueios.push(bloqueio.bloqueante)
-                                            };
-                                        };
-                                    });
-
-                                    // console.log('listaBloqueios', listaBloqueios);
-
-                                    if(listaBloqueios.includes(Number(dono.cod_usuario))){
-                                        return res.status(401).json({
-                                            mensagem: 'Requisição inválida - Você não possui o nível de acesso adequado para esse recurso.',
-                                            code: 'ACCESS_TO_RESOURCE_NOT_ALLOWED'
-                                        });
-                                    }
-
-                                }
-                            
-                            } catch (error) {
-
-                                console.error('Algo inesperado aconteceu ao buscar os dados do animal.', error);
-    
-                                let customErr = new Error('Algo inesperado aconteceu ao buscar os dados do animal Entre em contato com o administrador.');
-                                customErr.status = 500;
-                                customErr.code = 'INTERNAL_SERVER_ERROR'
-                        
-                                return next( customErr );
-
-                            }
-                            // Conclusão dessa resposta no caso do requisitante ser um usuário.
-                        };
-                    // Fim da verificação de bloqueios para usuários requisitantes.
+                    // Início da verificação de bloqueios para usuário requisitante.
                     
+                        // Se o requisitante for o usuário de uma aplicação, exiba apenas os animais dos usuários que não estão bloqueados por ele, ou bloquearam ele.
+                        if (usuario?.e_admin == 0) {
+                            let listaBloqueios = [];    // Lista contendo todos os IDs dos usuários que bloquearam ou foram bloqueados pelo usuário requisitante.
+
+                            listaBloqueios = await checkUserBlockList(usuario.cod_usuario);
+
+                            if (listaBloqueios.includes(animal.cod_dono)){
+                                return res.status(401).json({
+                                    mensagem: 'Você não possui o nível de acesso adequado para esse recurso.',
+                                    code: 'ACCESS_TO_RESOURCE_NOT_ALLOWED'
+                                });
+                            }
+                        }
+
+                    // Fim da verificação de bloqueios para usuário requisitante.
+
+                // Fim da construção do objeto enviado na resposta.
+
+                // Início do envio da resposta.
                     return res.status(200).json({
                         mensagem: 'Exibindo os dados do animal encontrado.',
                         animal,
                         dono,
                         dono_antigo
                     });
-
-                } else {
-
-                    return res.status(400).json({
-                        mensagem: 'Nenhum animal com esse ID foi encontrado.'
-                    });
-
-                }
+                // Fim do envio da resposta.
                 
             })
             .catch((error) => {
 
                 console.error('Algo inesperado aconteceu ao buscar os dados do animal.', error);
     
-                let customErr = new Error('Algo inesperado aconteceu ao buscar os dados do animal Entre em contato com o administrador.');
+                let customErr = new Error('Algo inesperado aconteceu ao buscar os dados do animal. Entre em contato com o administrador.');
                 customErr.status = 500;
                 customErr.code = 'INTERNAL_SERVER_ERROR'
         

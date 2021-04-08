@@ -514,6 +514,19 @@ VALUES
     'Não tem problemas de saúde',
     'Chegou aqui do nada, ficou por uns dias, e no fim tá aqui já faz 5 meses. Mas preciso de alguém pra cuidar dele de verdade.');
     
+INSERT INTO tbl_animal
+	(cod_dono, nome, data_nascimento, especie, raca, 
+    genero, porte, esta_castrado, esta_vacinado,
+    detalhes_comportamento,
+    detalhes_saude,
+    historia)
+VALUES
+	(3, 'Girasol', '2020-11-07', 'Cão', 'comum',
+    'F', 'P', '0', '0',
+    'A girasol gosta de brincar',
+    'Não tem problemas de saúde',
+    'A vizinha teve que se mudar e deixou a Girasol com a gente, estamos precisando encontrar algum dono verdadeiro pra ela.');
+    
 #---------------------------------------------------------------------------------------------#
 # Álbum dos Pets dos usuários #
 
@@ -538,6 +551,11 @@ INSERT INTO tbl_album_animal
 	(cod_animal, titulo_album)
 VALUES
 	(4, 'Álbum do Cinzento');
+
+INSERT INTO tbl_album_animal
+	(cod_animal, titulo_album)
+VALUES
+	(6, 'Álbum da Girasol');
     
 #---------------------------------------------------------------------------------------------#
 # Fotos dos Pets dos usuários #
@@ -588,6 +606,18 @@ INSERT INTO tbl_bloqueio
 VALUES
 	(1, 3),
 	(3, 1);
+    
+INSERT INTO tbl_bloqueio
+	(bloqueante, bloqueado)
+VALUES
+	(1, 2);
+    
+INSERT INTO tbl_bloqueio
+	(bloqueante, bloqueado)
+VALUES
+	(1, 4);
+    
+
     
 # TRUNCATE TABLE tbl_bloqueio;
 

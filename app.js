@@ -17,6 +17,8 @@
 
     const schedule = require('node-schedule');
 
+    // const path = require('path');
+
 // Conexão com o Banco de Dados MySQL.
     database.connection;          // Instância da conexão atual.
     database.checkConnection();   // Verificação da conexão.
@@ -56,14 +58,34 @@
 
     });
 
+    // app.use('/uploads', express.static(path.join(__dirname, "api/uploads/images/usersAvatar/")));
+
     app.use(verifyAccessToken);
 
     app.use(express.urlencoded({ extended: true }));     // Se false, não receberá "rich data" (Textos RTF???).
     app.use(express.json());                             // Extrai os campos da requisição no formato JSON para o objeto "req.body".
 
+    
+
 // Rotas que vão gerenciar as requisições.
     app.get('/', async (req, res, next) => {
         // Rota livre para testes simples durante a fase de desenvolvimento.
+
+        let checkUserBlockList = require('./helpers/check_user_BlockList');
+
+        let blockList = await checkUserBlockList(1)
+        .catch((error) => {
+            console.error(error);
+
+            let customErr = new Error('Algo inesperado aconteceu ao verificar os bloqueios do usuário.');
+            customErr.status = 400;
+            customErr.code = 'INVALID_PARAM';
+
+            next(customErr);
+        });
+        
+        console.log(blockList);
+
     });
 
     app.use('/autenticacoes', rotaAutenticacoes);

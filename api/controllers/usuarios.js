@@ -20,6 +20,9 @@
 
         const mv = require('mv');           // 'mv' para mover arquivos de forma segura.
 
+    // Helpers.
+        const checkUserBlockList = require('../../helpers/check_user_BlockList');
+
 // Controllers.
 
     /**
@@ -27,38 +30,403 @@
      */
     const getAll = (req, res, next) => {
 
-        Usuario.findAll({ attributes: ['cod_usuario'], raw: true })
-        .then((resultArr) => {
+        // Início das Restrições de Acesso à Rota.
 
-            if (resultArr.length === 0){
-                return res.status(200).json({
-                    mensagem: 'Nenhum usuário está registrado.'
+            // Apenas aplicações Pet Adote e usuários autenticados nelas poderão acessar a listagem de usuários.
+            // Além disso, usuários só poderão visualizar outros usuários ativos, uma vez que mesmo estando inativo o usuário poderá visualizar alguns dados, mas não interagir com eles nem receber interações deles.
+            if (!req.dadosAuthToken){   
+
+                // Se em algum caso não identificado, a requisição de uma aplicação chegou aqui e não apresentou suas credenciais JWT, não permita o acesso.
+                return res.status(401).json({
+                    mensagem: 'Requisição inválida - Você não possui o nível de acesso adequado para esse recurso.',
+                    code: 'ACCESS_TO_RESOURCE_NOT_ALLOWED'
                 });
+
             }
 
-            resultArr.forEach((row) => {
-                row.conta = `${req.protocol}://${req.get('host')}/contas/?codUsuario=${row.cod_usuario}`,
-                row.detalhes = `${req.protocol}://${req.get('host')}/usuarios/${row.cod_usuario}`
-            });
+            // Se o Cliente não for do tipo Pet Adote, não permita o acesso.
+                if (req.dadosAuthToken.tipo_cliente !== 'Pet Adote'){
+                    return res.status(401).json({
+                        mensagem: 'Requisição inválida - Você não possui o nível de acesso adequado para esse recurso.',
+                        code: 'ACCESS_TO_RESOURCE_NOT_ALLOWED'
+                    });
+                }
 
-            res.status(200).json({
-                total_usuarios: resultArr.length,
-                mensagem: 'Lista de usuários registrados.',
-                usuarios: resultArr
-            });
+            // Capturando os dados do usuário, se o requisitante for o usuário de uma aplicação Pet Adote.
+                let { usuario } = req.dadosAuthToken;
 
-        })
-        .catch((error) => {
+        // Fim das Restrições de Acesso à Rota.
 
-            console.error(`Algo inesperado aconteceu ao buscar a lista de usuários.`, error);
+        // Início da configuração das possíveis operações de busca + verificação dos parâmetros para cada caso.
 
-            let customErr = new Error('Algo inesperado aconteceu ao buscar a lista de usuários. Entre em contato com o administrador.');
-            customErr.status = 500;
-            customErr.code = 'INTERNAL_SERVER_ERROR';
+            let operacao = undefined;   // Se a operação continuar como undefined, envie BAD_REQUEST (400).
 
-            return next( customErr );
+            switch (Object.entries(req.query).length){
+                case 0:
+                    operacao = 'getAll';
 
-        });
+                    break;
+                case 1:
+                    if (req.query?.page) { operacao = 'getAll' };
+
+                    if (req.query?.getAllActive == '1') { operacao = 'getAllActive'; };
+
+                    if (req.query?.getAllActive == '0') { operacao = 'getAllNotActive'; };
+
+                    break;
+                case 2:
+                    if (req.query?.page && req.query?.limit) { operacao = 'getAll' };
+
+                    if (req.query?.getAllActive == '1' && req.query?.page) { operacao = 'getAllActive'; };
+
+                    if (req.query?.getAllActive == '0' && req.query?.page) { operacao = 'getAllNotActive'; };
+
+                    break;
+                case 3:
+                    if (req.query?.getAllActive == '1' && req.query?.page && req.query?.limit) { operacao = 'getAllActive'; };
+
+                    if (req.query?.getAllActive == '0' && req.query?.page && req.query?.limit) { operacao = 'getAllNotActive'; };
+
+                    break;
+                default:
+                    break;
+            }
+
+        // Fim da configuração das possíveis operações de busca.
+
+        // Início da Validação dos parâmetros.
+
+            // Se "page" ou "limit" fores menores que 1, ou for um número real. Entregue BAD_REQUEST.
+            if (req.query.page){
+                if (Number(req.query.page) < 1 || req.query.page != Number.parseInt(req.query.page)) {
+                    return res.status(400).json({
+                        mensagem: 'Algum parâmetro inválido foi passado na URL da requisição.',
+                        code: 'BAD_REQUEST'
+                    });
+                }
+            }
+
+            if (req.query.limit){
+                if (Number(req.query.limit) < 1 || req.query.limit != Number.parseInt(req.query.limit)) {
+                    return res.status(400).json({
+                        mensagem: 'Algum parâmetro inválido foi passado na URL da requisição.',
+                        code: 'BAD_REQUEST'
+                    });
+                }
+            }
+
+        // Fim da Validação dos parâmetros.
+
+        // Início da Normalização dos parâmetros.
+
+            req.query.page = Number(req.query.page);    // Se o valor para a página do sistema de páginação for recebido como String, torne-o um Number.
+            req.query.limit = Number(req.query.limit);  // Se o valor para o limite de entrega de dados do sistema de páginação for recebido como String, torne-o um Number.
+
+            req.query.getAllActive = String(req.query.getAllActive);
+
+        // Fim da Normalização dos parâmetros.
+
+        // Início do processo de listagem dos usuários cadastrados.
+
+            // Início das configurações de paginação.
+                let requestedPage = req.query.page || 1;        // Página por padrão será a primeira.
+                let paginationLimit = req.query.limit || 10;     // Limite padrão de dados por página = 10;
+
+                let paginationOffset = (requestedPage - 1) * paginationLimit;   // Define o índice de partida para coleta dos dados.
+            // Fim das configuração de paginação.
+
+            // Início das operações de busca.
+
+                if (operacao == 'getAll'){
+
+                    // Restrições de Uso.
+                        if (usuario?.e_admin == 0){
+                            // Se o requisitante for um usuário e não for um administrador...
+                            return res.status(401).json({
+                                mensagem: 'Você não possui o nível de acesso adequado para esse recurso.',
+                                code: 'ACCESS_TO_RESOURCE_NOT_ALLOWED'
+                            });
+                        }
+                    // -----------------
+
+                    Usuario.findAndCountAll({
+                        limit: paginationLimit,
+                        offset: paginationOffset,
+                        raw: true
+                    })
+                    .then((resultArr) => {
+
+                        if (resultArr.count === 0){
+                            return res.status(200).json({
+                                mensagem: 'Nenhum usuário está cadastrado.'
+                            });
+                        }
+
+                        // Início da construção do objeto enviado na resposta.
+
+                            let total_usuarios = resultArr.count;
+
+                            let total_paginas = Math.ceil(total_usuarios / paginationLimit);
+
+                            let usuarios = [];
+
+                            let voltar_pagina = undefined;
+                            let avancar_pagina = undefined;
+
+                            if (requestedPage > 1 && requestedPage <= total_paginas){
+                                voltar_pagina = `${req.protocol}://${req.get('host')}/usuarios/?page=${requestedPage - 1}&limit=${paginationLimit}`;
+                            }
+
+                            if (requestedPage < total_paginas){
+                                avancar_pagina = `${req.protocol}://${req.get('host')}/usuarios/?page=${requestedPage + 1}&limit=${paginationLimit}`;
+                            } 
+
+                            if (requestedPage > total_paginas){
+                                return res.status(404).json({
+                                    mensagem: 'Você chegou ao final da lista de usuários cadastrados.',
+                                    code: 'RESOURCE_NOT_FOUND'
+                                });
+                            }
+
+                            resultArr.rows.forEach((usuario) => {
+                                // Adiciona o endereço do end-point para visualizar mais detalhes dos dados do usuário.
+                                usuario.detalhes = `${req.protocol}://${req.get('host')}/usuarios/${usuario.cod_usuario}`
+
+                                usuarios.push(usuario);
+                            });
+                            
+                        // Fim da construção do objeto enviado na resposta.
+
+                        // Início do envio da resposta.
+                            
+                            return res.status(200).json({
+                                mensagem: 'Lista de todos os usuários cadastrados.',
+                                total_usuarios,
+                                total_paginas,
+                                usuarios,
+                                voltar_pagina,
+                                avancar_pagina
+                            });
+                            
+                        // Fim do envio da resposta.
+                        
+                    })
+                    .catch((error) => {
+                        console.error('Algo inesperado aconteceu ao listar os usuários cadastrados.', error);
+    
+                        let customErr = new Error('Algo inesperado aconteceu ao listar os usuários cadastrados. Entre em contato com o administrador.');
+                        customErr.status = 500;
+                        customErr.code = 'INTERNAL_SERVER_ERROR'
+                
+                        return next( customErr );
+                    });
+
+                }
+
+                if (operacao == 'getAllActive'){
+
+                    // Restrições de Uso.
+                        // Essa rota é livre para usuários autenticados em aplicações Pet Adote.
+                        // Afinal as aplicações deverão exibir usuários ativos, para os usuários.
+
+                        // Porém caso o requisitante seja um usuário é necessário levar em consideração a lista de bloqueios do requisitante.
+                    // -----------------
+
+                    Usuario.findAndCountAll({
+                        where: {
+                            esta_ativo: 1
+                        },
+                        limit: paginationLimit,
+                        offset: paginationOffset,
+                        raw: true
+                    })
+                    .then(async (resultArr) => {
+
+                        if (resultArr.count === 0){
+                            return res.status(200).json({
+                                mensagem: 'Nenhum usuário cadastrado está ativo.'
+                            });
+                        }
+
+                        // Início da construção do objeto enviado na resposta.
+
+                            let listaBloqueios = undefined;
+
+                            // Início da Verificação da Lista de Bloqueios de usuários requisitantes.
+
+                                if (usuario){
+                                    listaBloqueios = await checkUserBlockList(usuario.cod_usuario);
+                                }
+
+                            // Fim da Verificação da Lista de Bloqueios de usuários requisitantes.
+
+                            let total_usuarios = resultArr.count - (listaBloqueios?.length || 0);   // Se por algum motivo listaBloqueios ficar NULL ou UNDEFINED, atribua zero à operação.
+
+                            let total_paginas = Math.ceil(total_usuarios / paginationLimit);
+
+                            let usuarios = [];
+
+                            let voltar_pagina = undefined;
+                            let avancar_pagina = undefined;
+
+                            if (requestedPage > 1 && requestedPage <= total_paginas){
+                                voltar_pagina = `${req.protocol}://${req.get('host')}/usuarios/?getAllActive=1&page=${requestedPage - 1}&limit=${paginationLimit}`;
+                            }
+
+                            if (requestedPage < total_paginas){
+                                avancar_pagina = `${req.protocol}://${req.get('host')}/usuarios/?getAllActive=1&page=${requestedPage + 1}&limit=${paginationLimit}`;
+                            } 
+
+                            if (requestedPage > total_paginas){
+                                return res.status(404).json({
+                                    mensagem: 'Você chegou ao final da lista de usuários cadastrados que estão ativos.',
+                                    code: 'RESOURCE_NOT_FOUND'
+                                });
+                            }
+
+                            resultArr.rows.forEach((row) => {
+                                // Adiciona o endereço do end-point para visualizar mais detalhes dos dados do usuário.
+                                row.detalhes = `${req.protocol}://${req.get('host')}/usuarios/${row.cod_usuario}`
+
+                                if (usuario) {
+                                    if (!listaBloqueios.includes(row.cod_usuario)){
+                                        usuarios.push(row);
+                                    }
+                                } else {
+                                    usuarios.push(row);
+                                }
+                                
+                            });
+                            
+                        // Fim da construção do objeto enviado na resposta.
+
+                        // Início do envio da resposta.
+                            
+                            return res.status(200).json({
+                                mensagem: 'Lista de todos os usuários cadastrados que estão ativos.',
+                                total_usuarios,
+                                total_paginas,
+                                usuarios,
+                                voltar_pagina,
+                                avancar_pagina
+                            });
+                            
+                        // Fim do envio da resposta.
+                        
+                    })
+                    .catch((error) => {
+                        console.error('Algo inesperado aconteceu ao listar os usuários cadastrados que estão ativos.', error);
+    
+                        let customErr = new Error('Algo inesperado aconteceu ao listar os usuários cadastrados que estão ativos. Entre em contato com o administrador.');
+                        customErr.status = 500;
+                        customErr.code = 'INTERNAL_SERVER_ERROR'
+                
+                        return next( customErr );
+                    });
+
+                }
+
+                if (operacao  == 'getAllNotActive'){
+
+                    // Restrições de Uso.
+                        if (usuario?.e_admin == 0){
+                            // Se o requisitante for um usuário e não for um administrador...
+                            return res.status(401).json({
+                                mensagem: 'Você não possui o nível de acesso adequado para esse recurso.',
+                                code: 'ACCESS_TO_RESOURCE_NOT_ALLOWED'
+                            });
+                        }
+                    // -----------------
+
+                    Usuario.findAndCountAll({
+                        where: {
+                            esta_ativo: 0
+                        },
+                        limit: paginationLimit,
+                        offset: paginationOffset,
+                        raw: true
+                    })
+                    .then((resultArr) => {
+
+                        if (resultArr.count === 0){
+                            return res.status(200).json({
+                                mensagem: 'Nenhum usuário está cadastrado está inativo.'
+                            });
+                        }
+
+                        // Início da construção do objeto enviado na resposta.
+
+                            let total_usuarios = resultArr.count;
+
+                            let total_paginas = Math.ceil(total_usuarios / paginationLimit);
+
+                            let usuarios = [];
+
+                            let voltar_pagina = undefined;
+                            let avancar_pagina = undefined;
+
+                            if (requestedPage > 1 && requestedPage <= total_paginas){
+                                voltar_pagina = `${req.protocol}://${req.get('host')}/usuarios/?getAllActive=0&page=${requestedPage - 1}&limit=${paginationLimit}`;
+                            }
+
+                            if (requestedPage < total_paginas){
+                                avancar_pagina = `${req.protocol}://${req.get('host')}/usuarios/?getAllActive=0&page=${requestedPage + 1}&limit=${paginationLimit}`;
+                            } 
+
+                            if (requestedPage > total_paginas){
+                                return res.status(404).json({
+                                    mensagem: 'Você chegou ao final da lista de usuários cadastrados que estão inativos.',
+                                    code: 'RESOURCE_NOT_FOUND'
+                                });
+                            }
+
+                            resultArr.rows.forEach((usuario) => {
+                                // Adiciona o endereço do end-point para visualizar mais detalhes dos dados do usuário.
+                                usuario.detalhes = `${req.protocol}://${req.get('host')}/usuarios/${usuario.cod_usuario}`
+
+                                usuarios.push(usuario);
+                            });
+                            
+                        // Fim da construção do objeto enviado na resposta.
+
+                        // Início do envio da resposta.
+                            
+                            return res.status(200).json({
+                                mensagem: 'Lista de todos os usuários cadastrados que estão inativos.',
+                                total_usuarios,
+                                total_paginas,
+                                usuarios,
+                                voltar_pagina,
+                                avancar_pagina
+                            });
+                            
+                        // Fim do envio da resposta.
+                        
+                    })
+                    .catch((error) => {
+                        console.error('Algo inesperado aconteceu ao listar os usuários cadastrados que estão inativos.', error);
+    
+                        let customErr = new Error('Algo inesperado aconteceu ao listar os usuários cadastrados que estão inativos. Entre em contato com o administrador.');
+                        customErr.status = 500;
+                        customErr.code = 'INTERNAL_SERVER_ERROR'
+                
+                        return next( customErr );
+                    });
+
+                }
+
+                if (!operacao){
+                
+                    return res.status(400).json({
+                        mensagem: 'Algum parâmetro inválido foi passado na URL da requisição.',
+                        code: 'BAD_REQUEST'
+                    });
+        
+                };
+
+            // Fim das operações de busca.
+
+        // Fim do processo de listagem dos usuários cadastrados.
 
     };
 

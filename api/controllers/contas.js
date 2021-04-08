@@ -47,7 +47,7 @@
         // Início das Restrições de Acesso à Rota.
 
             // Apenas Aplicações autenticadas poderão acessar a listagem de contas.
-            // Além disso, apenas Aplicações Pet Adote poderão ver detalhs das contas. Aplicações comuns verão apenas meta-dados.
+            // Além disso, apenas Aplicações Pet Adote poderão ver detalhes das contas. Aplicações comuns verão apenas meta-dados.
             if (!req.dadosAuthToken){   
 
                 // Se em algum caso não identificado, a requisição de uma aplicação chegou aqui e não apresentou suas credenciais JWT, não permita o acesso.
@@ -197,22 +197,24 @@
                             });
                         }
 
-                        if (req.dadosAuthToken.tipo_cliente != 'Pet Adote'){
+                        // Início da entrega da resposta para aplicações comuns autenticadas na REST API.
+                            if (req.dadosAuthToken.tipo_cliente != 'Pet Adote'){
 
-                            let total_contas = resultArr.count;
+                                let total_contas = resultArr.count;
 
-                            let total_contas_locais = await ContaLocal.count();
-                            let total_contas_facebook = await ContaFacebook.count();
-                            let total_contas_google = await ContaGoogle.count();
-                            
-                            return res.status(200).json({
-                                mensagem: 'Soma de todas as contas cadastradas.',
-                                total_contas,
-                                total_contas_locais,
-                                total_contas_facebook,
-                                total_contas_google,
-                            });
-                        }
+                                let total_contas_locais = await ContaLocal.count();
+                                let total_contas_facebook = await ContaFacebook.count();
+                                let total_contas_google = await ContaGoogle.count();
+                                
+                                return res.status(200).json({
+                                    mensagem: 'Soma de todas as contas cadastradas.',
+                                    total_contas,
+                                    total_contas_locais,
+                                    total_contas_facebook,
+                                    total_contas_google,
+                                });
+                            }
+                        // Fim da entrega da resposta para aplicações comuns.
 
                         // Início da construção do objeto enviado na resposta.
 
@@ -306,6 +308,16 @@
 
                 if (operacao == 'getByUser'){
 
+                    // Restrições de Uso.
+                        if (req.dadosAuthToken.tipo_cliente != 'Pet Adote'){
+                            // Se a aplicação não for do tipo "Pet Adote"...
+                            return res.status(401).json({
+                                mensagem: 'Você não possui o nível de acesso adequado para esse recurso.',
+                                code: 'ACCESS_TO_RESOURCE_NOT_ALLOWED'
+                            });
+                        }
+                    // -----------------
+
                     Usuario.findByPk(req.query.codUsuario, {
                         attributes: ['cod_usuario'],
                         include: [{
@@ -350,16 +362,19 @@
                             if (result.ContaLocal) { 
                                 conta = result.ContaLocal; 
                                 conta.tipo_cadastro = 'local';
+                                conta.usuario = `${req.protocol}://${req.get('host')}/usuarios/${conta.cod_usuario}`;
                             }
 
                             if (result.ContaFacebook) { 
                                 conta = result.ContaFacebook;
                                 conta.tipo_cadastro = 'facebook'; 
+                                conta.usuario = `${req.protocol}://${req.get('host')}/usuarios/${conta.cod_usuario}`;
                             }
 
                             if (result.ContaGoogle) { 
                                 conta = result.ContaGoogle;
                                 conta.tipo_cadastro = 'google';
+                                conta.usuario = `${req.protocol}://${req.get('host')}/usuarios/${conta.cod_usuario}`;
                             }
                             
                         // Fim da construção do objeto enviado na resposta.
@@ -369,7 +384,7 @@
                             return res.status(200).json({
                                 mensagem: 'Conta encontrada, para mais informações acesse os dados do usuário.',
                                 conta: conta,
-                                usuario: `${req.protocol}://${req.get('host')}/usuarios/${conta.cod_usuario}`,
+                                
                             });
 
                         // Fim do envio da resposta.
@@ -389,6 +404,16 @@
 
                 if (operacao == 'getByTypeAndKey'){
 
+                    // Restrições de Uso.
+                        if (req.dadosAuthToken.tipo_cliente != 'Pet Adote'){
+                            // Se a aplicação não for do tipo "Pet Adote"...
+                            return res.status(401).json({
+                                mensagem: 'Você não possui o nível de acesso adequado para esse recurso.',
+                                code: 'ACCESS_TO_RESOURCE_NOT_ALLOWED'
+                            });
+                        }
+                    // -----------------
+
                     try {
 
                         let getConta = async () => {
@@ -407,12 +432,13 @@
 
                         getConta()
                         .then((conta) => {
-                            console.log(conta);
                             if (conta?.email){ conta.tipo_cadastro = 'local'; }
 
                             if (conta?.cod_facebook){ conta.tipo_cadastro = 'facebook'; }
 
                             if (conta?.cod_google){ conta.tipo_cadastro = 'google'; }
+
+                            if (conta){ conta.usuario = `${req.protocol}://${req.get('host')}/usuarios/${conta.cod_usuario}`; }
 
                             if (!conta){
                                 return res.status(404).json({
@@ -423,8 +449,7 @@
                             
                             return res.status(200).json({
                                 mensagem: 'Conta encontrada, para mais informações acesse os dados do usuário.',
-                                conta,
-                                usuario: `${req.protocol}://${req.get('host')}/usuarios/${conta.cod_usuario}`,
+                                conta
                             });
                         });
 
