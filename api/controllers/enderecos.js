@@ -16,224 +16,328 @@
      */
     const getOneOrAll = (req, res, next) => {
 
-        if (req.url.includes('&')){ // Se a query string possuir mais do que um parâmetro, não permita o acesso.
-            return res.status(400).json({
-                mensagem: "Requisição inválida.",
-                code: 'BAD_REQUEST'
-            });
-        }
-    
-        // Caso 01 - Se "codUsuario" for passado na Query String. Encontre um endeço cuja FK seja igual à "codUsuario".
-        if (req.query.codUsuario){
-    
-            // Início da Verificação da Query String.
+        // Início das Restrições de Acesso à Rota.
+
+            // Apenas aplicações Pet Adote e usuários autenticados nelas poderão acessar a listagem de endereços.
+            // Além disso, para acessar um endereço específico, o usuário deve ser o dono do recurso, ou um administrador.
+            if (!req.dadosAuthToken){   
+
+                // Se em algum caso não identificado, a requisição de uma aplicação chegou aqui e não apresentou suas credenciais JWT, não permita o acesso.
+                return res.status(401).json({
+                    mensagem: 'Requisição inválida - Você não possui o nível de acesso adequado para esse recurso.',
+                    code: 'ACCESS_TO_RESOURCE_NOT_ALLOWED'
+                });
+
+            }
+
+            // Se o Cliente não for do tipo Pet Adote, não permita o acesso.
+                if (req.dadosAuthToken.tipo_cliente !== 'Pet Adote'){
+                    return res.status(401).json({
+                        mensagem: 'Requisição inválida - Você não possui o nível de acesso adequado para esse recurso.',
+                        code: 'ACCESS_TO_RESOURCE_NOT_ALLOWED'
+                    });
+                }
+
+            // Capturando os dados do usuário, se o requisitante for o usuário de uma aplicação Pet Adote.
+                let { usuario } = req.dadosAuthToken;
+
+        // Fim das Restrições de Acesso à Rota.
+
+        // Início da configuração das possíveis operações de busca + verificação dos parâmetros para cada caso.
+
+            let operacao = undefined;   // Se a operação continuar como undefined, envie BAD_REQUEST (400).
+
+            switch (Object.entries(req.query).length){
+                case 0:
+                    operacao = 'getAll';
+
+                    break;
+                case 1:
+                    if (req.query?.page) { operacao = 'getAll' };
+
+                    if (req.query?.codUsuario) { operacao = 'getOneFromUser'; };
+
+                    if (req.query?.codEndereco) { operacao = 'getOneFromAddress'; };
+
+                    break;
+                case 2:
+                    if (req.query?.page && req.query?.limit) { operacao = 'getAll' };
+
+                    break;
+                default:
+                    break;
+            }
+
+        // Fim da configuração das possíveis operações de busca.
+
+        // Início da Validação dos parâmetros.
+
+            if (req.query?.codUsuario){
                 if (req.query.codUsuario.match(/[^\d]+/g)){     // Se "codUsuario" conter algo diferente do esperado.
                     return res.status(400).json({
-                        mensagem: "Requisição inválida - O ID de um Usuario deve conter apenas dígitos.",
-                        code: 'BAD_REQUEST'
+                        mensagem: 'O ID do usuário deve conter apenas dígitos.',
+                        code: 'INVALID_REQUEST_QUERY'
                     });
                 }
-            // Fim da verificação da Query String.
-    
-            // Restrições de acesso à rota.
-                // Apenas as Aplicações Pet Adote, Administradores e o Dono do recurso poderão acessar dados de um endereço vínculado à um usuário específico.
+            }
 
-                if (!req.dadosAuthToken){   
-                    // Se não houver autenticação da aplicação, não permita o acesso.
-                    return res.status(401).json({
-                        mensagem: 'Requisição inválida - Você não possui o nível de acesso adequado para esse recurso.',
-                        code: 'ACCESS_TO_RESOURCE_NOT_ALLOWED'
-                    });
-                } else {
-    
-                    let { usuario } = req.dadosAuthToken;
-    
-                    // Se o Requisitante possuir um ID diferente do ID requisitado e não for um administrador, não permita o acesso.
-                    if (usuario && (usuario.cod_usuario != req.query.codUsuario && usuario.e_admin == 0)){
-                        return res.status(401).json({
-                            mensagem: 'Requisição inválida - Você não possui o nível de acesso adequado para esse recurso.',
-                            code: 'ACCESS_TO_RESOURCE_NOT_ALLOWED'
-                        });
-                    }
-    
-                    // Se o Cliente não for do tipo Pet Adote, não permita o acesso.
-                    if (req.dadosAuthToken.tipo_cliente !== 'Pet Adote'){
-                        return res.status(401).json({
-                            mensagem: 'Requisição inválida - Você não possui o nível de acesso adequado para esse recurso.',
-                            code: 'ACCESS_TO_RESOURCE_NOT_ALLOWED'
-                        });
-                    }
-    
-                }
-
-            // Fim das restrições de acesso à rota.
-    
-            // Início da busca do endereço de um usuário.
-                return EnderecoUsuario.findOne({ 
-                    where: { 
-                        cod_usuario: req.query.codUsuario
-                    }, 
-                    raw: true
-                })
-                .then((result) => {
-                    if (result) {
-                        res.status(200).json({
-                            mensagem: 'Endereço encontrado.',
-                            endereco: result,
-                            usuario: `${req.protocol}://${req.get('host')}/usuarios/${result.cod_usuario}`
-                        });
-                    } else {
-                        res.status(404).json({
-                            mensagem: 'Não foi encontrado nenhum endereço vínculado à este ID de Usuário.',
-                            lista_enderecos: `${req.protocol}://${req.get('host')}/usuarios/enderecos/`,
-                            code: 'RESOURCE_NOT_FOUND'
-                        });
-                    }
-                })
-                .catch((error) => {
-                    console.error(`Algo inesperado aconteceu ao buscar um endereço vinculado à um usuário.`, error);
-                    return next( new Error('Algo inesperado aconteceu ao buscar um endereço vinculado à um usuário. Entre em contato com o administrador.') );
-                })
-            // Fim da busca do endereço de um usuário.
-    
-        }
-    
-        // Fim do Caso 01.
-    
-        // Caso 02 - Se "codEndereco" for passado na Query String. Encontre um endeço por sua PK.
-    
-        if (req.query.codEndereco){
-    
-            // Início da Verificação da Query String.
-                if (req.query.codEndereco.match(/[^\d]+/g)){     // Se "codEndecero" conter algo diferente do esperado.
+            if (req.query?.codEndereco){
+                if (req.query.codEndereco.match(/[^\d]+/g)){     // Se "codEndereco" conter algo diferente do esperado.
                     return res.status(400).json({
-                        mensagem: "Requisição inválida - O ID de um Endereço deve conter apenas dígitos.",
+                        mensagem: 'O ID do endereço deve conter apenas dígitos.',
+                        code: 'INVALID_REQUEST_QUERY'
+                    });
+                }
+            }
+
+            // Se "page" ou "limit" fores menores que 1, ou for um número real. Entregue BAD_REQUEST.
+            if (req.query.page){
+                if (Number(req.query.page) < 1 || req.query.page != Number.parseInt(req.query.page)) {
+                    return res.status(400).json({
+                        mensagem: 'Algum parâmetro inválido foi passado na URL da requisição.',
                         code: 'BAD_REQUEST'
                     });
                 }
-            // Fim da Verificação da Query String.
-    
-            // Restrições de acesso à rota.
-                // Apenas as Aplicações Pet Adote poderão verificar um endereço específico.
+            }
 
-                if (!req.dadosAuthToken){   
-                    // Se não houver autenticação da aplicação, não permita o acesso.
-                    return res.status(401).json({
-                        mensagem: 'Requisição inválida - Você não possui o nível de acesso adequado para esse recurso.',
-                        code: 'ACCESS_TO_RESOURCE_NOT_ALLOWED'
+            if (req.query.limit){
+                if (Number(req.query.limit) < 1 || req.query.limit != Number.parseInt(req.query.limit)) {
+                    return res.status(400).json({
+                        mensagem: 'Algum parâmetro inválido foi passado na URL da requisição.',
+                        code: 'BAD_REQUEST'
                     });
-                } else {
-    
-                    // Se o requisitante for um usuário, não permita o acesso.
-                    if (req.dadosAuthToken.usuario){
-                        return res.status(401).json({
-                            mensagem: 'Requisição inválida - Você não possui o nível de acesso adequado para esse recurso.',
-                            code: 'ACCESS_TO_RESOURCE_NOT_ALLOWED'
-                        });
-                    }
-    
-                    // Se o Cliente não for do tipo Pet Adote, não permita o acesso.
-                    if (req.dadosAuthToken.tipo_cliente !== 'Pet Adote'){
-                        return res.status(401).json({
-                            mensagem: 'Requisição inválida - Você não possui o nível de acesso adequado para esse recurso.',
-                            code: 'ACCESS_TO_RESOURCE_NOT_ALLOWED'
-                        });
-                    }
-    
                 }
-            // Fim das restrições de acesso à rota.
+            }
+
+        // Fim da Validação dos parâmetros.
+
+        // Início da Normalização dos parâmetros.
+
+            req.query.page = Number(req.query.page);    // Se o valor para a página do sistema de páginação for recebido como String, torne-o um Number.
+            req.query.limit = Number(req.query.limit);  // Se o valor para o limite de entrega de dados do sistema de páginação for recebido como String, torne-o um Number.
+
+            req.query.codUsuario = String(req.query.codUsuario);
+            req.query.codEndereco = String(req.query.codEndereco);
+
+        // Fim da Normalização dos parâmetros.
+
+        // Início do processo de listagem dos endereços de usuários cadastrados.
+
+            // Início das configurações de paginação.
+                let requestedPage = req.query.page || 1;        // Página por padrão será a primeira.
+                let paginationLimit = req.query.limit || 10;     // Limite padrão de dados por página = 10;
+
+                let paginationOffset = (requestedPage - 1) * paginationLimit;   // Define o índice de partida para coleta dos dados.
+            // Fim das configuração de paginação.
+
+            // Início das operações de busca.
+
+                if (operacao == 'getAll'){
+
+                    // Restrições de Uso.
+                        if (usuario?.e_admin == 0){
+                            // Se o requisitante for um usuário e não for um administrador...
+                            return res.status(401).json({
+                                mensagem: 'Você não possui o nível de acesso adequado para esse recurso.',
+                                code: 'ACCESS_TO_RESOURCE_NOT_ALLOWED'
+                            });
+                        }
+                    // -----------------
+
+                    EnderecoUsuario.findAndCountAll({
+                        limit: paginationLimit,
+                        offset: paginationOffset,
+                        raw: true
+                    })
+                    .then((resultArr) => {
+
+                        if (resultArr.count === 0){
+                            return res.status(200).json({
+                                mensagem: 'Nenhum endereço está cadastrado.'
+                            });
+                        }
+
+                        // Início da construção do objeto enviado na resposta.
+
+                            let total_enderecos = resultArr.count;
+
+                            let total_paginas = Math.ceil(total_enderecos / paginationLimit);
+
+                            let enderecos = [];
+
+                            let voltar_pagina = undefined;
+                            let avancar_pagina = undefined;
+
+                            if (requestedPage > 1 && requestedPage <= total_paginas){
+                                voltar_pagina = `${req.protocol}://${req.get('host')}/usuarios/enderecos/?page=${requestedPage - 1}&limit=${paginationLimit}`;
+                            }
+
+                            if (requestedPage < total_paginas){
+                                avancar_pagina = `${req.protocol}://${req.get('host')}/usuarios/enderecos/?page=${requestedPage + 1}&limit=${paginationLimit}`;
+                            } 
+
+                            if (requestedPage > total_paginas){
+                                return res.status(404).json({
+                                    mensagem: 'Você chegou ao final da lista de endereços dos usuários cadastrados.',
+                                    code: 'RESOURCE_NOT_FOUND'
+                                });
+                            }
+
+                            resultArr.rows.forEach((endereco) => {
+                                // Adiciona o caminho do end-point para visualizar mais detalhes dos dados do usuário, dono do endereço.
+                                endereco.detalhes_usuario = `${req.protocol}://${req.get('host')}/usuarios/${endereco.cod_usuario}`
+
+                                enderecos.push(endereco);
+                            });
+                            
+                        // Fim da construção do objeto enviado na resposta.
+
+                        // Início do envio da resposta.
+                            
+                            return res.status(200).json({
+                                mensagem: 'Lista de todos os enderecos cadastrados.',
+                                total_enderecos,
+                                total_paginas,
+                                enderecos,
+                                voltar_pagina,
+                                avancar_pagina
+                            });
+                            
+                        // Fim do envio da resposta.
+                        
+                    })
+                    .catch((error) => {
+                        console.error('Algo inesperado aconteceu ao listar os enderecos dos usuários cadastrados.', error);
     
-            // Início da busca de um endereço específico via PK do endereço.
-    
-                return EnderecoUsuario.findByPk(req.query.codEndereco, { 
-                    raw: true
-                })
-                .then((result) => {
-    
-                    if (result) {
-                        res.status(200).json({
-                            mensagem: 'Endereço encontrado.',
-                            endereco: result,
-                            usuario: `${req.protocol}://${req.get('host')}/usuarios/${result.cod_usuario}`
-                        });
-                    } else {
-                        res.status(404).json({
-                            mensagem: 'Nenhum endereço com esse ID foi encontrado.',
-                            code: 'RESOURCE_NOT_FOUND'
-                        });
-                    }
-    
-                })
-                .catch((error) => {
-                    console.error(`Algo inesperado aconteceu ao buscar os dados de um endereço.`, error);
-                    return next( new Error('Algo inesperado aconteceu ao buscar os dados de um endereço. Entre em contato com o administrador.') );
-                });
-    
-            // Fim da busca de um endereço específico via PK do endereço.
-    
-        }
-    
-        // Fim do Caso 02.
-    
-        // Caso 03 - Se nada for passado na Query String... Liste todos os endereços.
-    
-            // Restrições de acesso à rota.
-                // Apenas as Aplicações Pet Adote poderão listar os endereços.
-                if (!req.dadosAuthToken){
-                    // Se não houver autenticação da aplicação, não permita o acesso.
-                    return res.status(401).json({
-                        mensagem: 'Requisição inválida - Você não possui o nível de acesso adequado para esse recurso.',
-                        code: 'ACCESS_TO_RESOURCE_NOT_ALLOWED'
+                        let customErr = new Error('Algo inesperado aconteceu ao listar os enderecos dos usuários cadastrados. Entre em contato com o administrador.');
+                        customErr.status = 500;
+                        customErr.code = 'INTERNAL_SERVER_ERROR'
+                
+                        return next( customErr );
                     });
-                } else {
-    
-                    // Se o requisitante for um usuário, não permita o acesso.
-                    if (req.dadosAuthToken.usuario){
-                        return res.status(401).json({
-                            mensagem: 'Requisição inválida - Você não possui o nível de acesso adequado para esse recurso.',
-                            code: 'ACCESS_TO_RESOURCE_NOT_ALLOWED'
-                        });
-                    }
-    
-                    // Se o Cliente não for do tipo Pet Adote, não permita o acesso.
-                    if (req.dadosAuthToken.tipo_cliente !== 'Pet Adote'){
-                        return res.status(401).json({
-                            mensagem: 'Requisição inválida - Você não possui o nível de acesso adequado para esse recurso.',
-                            code: 'ACCESS_TO_RESOURCE_NOT_ALLOWED'
-                        });
-                    }
-    
+
                 }
-            // Fim das restrições de acesso à rota.
-    
-            // Início da listagem de endereços dos usuários.
-                return EnderecoUsuario.findAll({ raw: true })
-                .then((resultArr) => {
-    
-                    if (resultArr.length === 0){
-                        res.status(200).json({
-                            mensagem: 'Nenhum endereço foi registrado.'
-                        });
-                    } else {
-    
-                        res.status(200).json({
-                            total_enderecos: resultArr.length,
-                            mensagem: 'Lista de enderecos registrados.',
-                            enderecos: resultArr
-                        });
-                    }
-    
-                })
-                .catch((error) => {
-    
-                    console.error(`Algo inesperado aconteceu ao buscar a lista de usuários.`, error);
-                    return next( new Error('Algo inesperado aconteceu ao buscar a lista de usuários. Entre em contato com o administrador.') );
-    
-                });
-            // Fim da listagem dos endereços dos usuários.
-    
-        // Fim do Caso 03.
-    
+
+                if (operacao  == 'getOneFromUser'){
+
+                    // Restrições de Uso.
+                        if (usuario?.e_admin == 0 && usuario?.cod_usuario != req.query.codUsuario){
+                            // Se o requisitante for um usuário e não for um administrador ou o dono do recurso...
+                            return res.status(401).json({
+                                mensagem: 'Você não possui o nível de acesso adequado para esse recurso.',
+                                code: 'ACCESS_TO_RESOURCE_NOT_ALLOWED'
+                            });
+                        };
+                    // -----------------
+
+                    EnderecoUsuario.findOne({
+                        where: {
+                            cod_usuario: req.query.codUsuario
+                        },
+                        raw: true
+                    })
+                    .then((result) => {
+
+                        if (!result) {
+                            return res.status(200).json({
+                                mensagem: 'Nenhum endereço vinculado à esse usuário foi encontrado.'
+                            });
+                        }
+
+                        // Início da construção do objeto enviado na resposta.
+
+                            let endereco = result;
+                        
+                            endereco.detalhes_usuario = `${req.protocol}://${req.get('host')}/usuarios/${req.query.codUsuario}`;
+
+                        // Fim da construção do objeto enviado na resposta.
+
+                        // Início do envio da resposta.
+                            return res.status(200).json({
+                                mensagem: 'Endereço encontrado.',
+                                endereco
+                            });
+                        // Fim do envio da resposta.
+
+                    })
+                    .catch((error) => {
+                        console.error('Algo inesperado aconteceu ao buscar o endereco vinculado ao usuários.', error);
+
+                        let customErr = new Error('Algo inesperado aconteceu ao buscar o endereco vinculado ao usuários. Entre em contato com o administrador.');
+                        customErr.status = 500;
+                        customErr.code = 'INTERNAL_SERVER_ERROR'
+                
+                        return next( customErr );
+                    });
+
+                }
+
+                if (operacao  == 'getOneFromAddress'){
+
+                    // Restrições de Uso.
+                        if (usuario?.e_admin == 0){
+                            // Se o requisitante for um usuário e não for um administrador...
+                            return res.status(401).json({
+                                mensagem: 'Você não possui o nível de acesso adequado para esse recurso.',
+                                code: 'ACCESS_TO_RESOURCE_NOT_ALLOWED'
+                            });
+                        };
+                    // -----------------
+
+                    EnderecoUsuario.findOne({
+                        where: {
+                            cod_end_usuario: req.query.codEndereco
+                        },
+                        raw: true
+                    })
+                    .then((result) => {
+
+                        if (!result) {
+                            return res.status(200).json({
+                                mensagem: 'Nenhum endereço com esse ID foi encontrado.'
+                            });
+                        }
+
+                        // Início da construção do objeto enviado na resposta.
+
+                            let endereco = result;
+                        
+                            endereco.detalhes_usuario = `${req.protocol}://${req.get('host')}/usuarios/${result.cod_usuario}`;
+
+                        // Fim da construção do objeto enviado na resposta.
+
+                        // Início do envio da resposta.
+                            return res.status(200).json({
+                                mensagem: 'Endereço encontrado.',
+                                endereco
+                            });
+                        // Fim do envio da resposta.
+
+                    })
+                    .catch((error) => {
+                        console.error('Algo inesperado aconteceu ao buscar o enderecos.', error);
+
+                        let customErr = new Error('Algo inesperado aconteceu ao buscar o enderecos. Entre em contato com o administrador.');
+                        customErr.status = 500;
+                        customErr.code = 'INTERNAL_SERVER_ERROR'
+                
+                        return next( customErr );
+                    });
+
+                }
+
+                if (!operacao){
+                
+                    return res.status(400).json({
+                        mensagem: 'Algum parâmetro inválido foi passado na URL da requisição.',
+                        code: 'BAD_REQUEST'
+                    });
+        
+                };
+
+            // Fim das operações de busca.
+
+        // Fim do processo de listagem dos endereços de usuários cadastrados.    
     };
 
     /**

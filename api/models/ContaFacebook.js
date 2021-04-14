@@ -29,5 +29,12 @@ const {DataTypes, Model} = require('sequelize');
         }
     });
 
+    Usuario.hasOne(ContaFacebook, {
+        foreignKey: {
+            name: 'cod_usuario',
+            allowNull: false
+        }
+    });
+
 // Exportação.
 module.exports = ContaFacebook;

@@ -4,6 +4,9 @@ const {DataTypes, Model, Sequelize} = require('sequelize');
 // Instância da conexão com a Database.
     const {connection} = require('../../configs/database');
 
+    // Model das associações (FKs).
+        const Usuario = require('./Usuario');
+
 // Definição do Model 'Animal' para 'tbl_animal'.
     const Animal = connection.define('Animal', {
 
@@ -18,7 +21,8 @@ const {DataTypes, Model, Sequelize} = require('sequelize');
         },
         estado_adocao: { type: DataTypes.ENUM('Sob proteção', 'Em anúncio', 'Em processo adotivo', 'Adotado'), allowNull: false, defaultValue: 'Sob proteção'},
         nome: { type: DataTypes.STRING(100), allowNull: false },
-        idade: { type: DataTypes.STRING(8), allowNull: false },
+        foto: { type: DataTypes.STRING(255), allowNull: false, defaultValue: 'default_unknown_pet.jpeg' },
+        data_nascimento: { type: DataTypes.DATEONLY, allowNull: false },
         especie: { type: DataTypes.ENUM('Cão', 'Gato', 'Outros'), allowNull: false },
         raca: { type: DataTypes.STRING(20), allowNull: false },
         genero: { type: DataTypes.ENUM('M', "F"), allowNull: false },
@@ -34,6 +38,18 @@ const {DataTypes, Model, Sequelize} = require('sequelize');
     }, {
         tableName: 'tbl_animal',
     });
+
+    // Associações (FKs).
+        Animal.belongsTo(Usuario, {
+            as: 'dono',
+            foreignKey: 'cod_dono',
+            allowNull: false
+        });
+
+        Animal.belongsTo(Usuario, {
+            as: 'dono_antigo',
+            foreignKey: 'cod_dono_antigo'
+        });
 
 // Exportação.
 module.exports = Animal;

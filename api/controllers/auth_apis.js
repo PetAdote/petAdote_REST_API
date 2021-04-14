@@ -19,8 +19,8 @@
 
         Cliente.findByPk(req.query.cliente)
         .then(async (result) => {
-    
-            if (result) {
+
+            if (req.query.cliente == result.cod_cliente && req.query.senha == result.senha){
     
                 try {
     
@@ -44,15 +44,13 @@
                     return next( customErr );
         
                 }
-    
+
             } else {
-    
                 return res.status(401).json({
                     mensagem: 'Autenticação inválida!',
                     code: 'INVALID_API_CREDENTIALS',
                     exemplo: `${req.protocol}://${req.get('host')}/autenticacao_api/?cliente=SeuID&senha=SuaSenha`
                 });
-    
             }
     
         })

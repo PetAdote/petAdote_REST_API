@@ -169,6 +169,8 @@
     const refresh = async (req, res, next) => {
         // Verifica se o Token de Renovação do usuário é válido para renovar seu Token de Acesso.
 
+        let usuarioReq = req.dadosAuthToken.usuario;
+
         try {
     
             const { refreshToken } = req.body;
@@ -191,6 +193,14 @@
     
                 return next( customErr );
             };
+
+            if (usuarioReq?.cod_usuario != user.usuario.cod_usuario){
+                let customErr = new Error('Você não possui o nível de acesso adequado.');
+                customErr.status = 403;
+                customErr.code = 'NOT_ALLOWED';
+    
+                return next( customErr );
+            }
     
             const user_accessToken = await signUserAccessToken(user.cod_cliente, user.tipo_cliente, user.usuario);
             const user_refreshToken = await signUserRefreshToken(user.cod_cliente, user.tipo_cliente, user.usuario);
@@ -234,6 +244,8 @@
     const logout = async (req, res, next) => {
         // Descarta o Refresh Token do Usuário, assim ele não poderá mais receber Access Tokens até autenticar-se novamente.
 
+        let usuarioReq = req.dadosAuthToken.usuario;
+
         try {
     
             const { refreshToken } = req.body;
@@ -255,6 +267,14 @@
     
                 return next( customErr );
             };
+
+            if (usuarioReq?.cod_usuario != user.usuario.cod_usuario){
+                let customErr = new Error('Você não possui o nível de acesso adequado.');
+                customErr.status = 403;
+                customErr.code = 'NOT_ALLOWED';
+    
+                return next( customErr );
+            }
     
             // Removendo o conjunto de dados contendo o Refresh Token do Cliente.
             redisClient.DEL(`userRefresh:${user.usuario.cod_usuario}`, (error, result) => {

@@ -133,7 +133,7 @@
             };
             const secret = process.env.JWT_ACCESS_TOKEN_SECRET;
             const options = {
-                expiresIn: '2m'
+                expiresIn: '20m'
             };
 
             jwt.sign(payload, secret, options, (error, token) => {
@@ -228,6 +228,22 @@
     verifyAccessToken = (req, res, next) => {
 
         if (req.url.match(/^\/autenticacoes\/apis/)){   // Como a rota de autenticação deverá ser a única rota acessível à qualquer um, simplesmente passamos ela adiante, caso uma requisição chegue para ela.
+            return next();
+        }
+
+        if (req.url.match(/^\/usuarios\/animais\/fotos/)){
+            return next();
+        }
+
+        if (req.url.match(/^\/usuarios\/avatars/)){
+            return next();
+        }
+
+        if (req.url.match(/^\/usuarios\/banners/)){
+            return next();
+        }
+
+        if (req.url.match(/^\/favicon.ico$/)){
             return next();
         }
 

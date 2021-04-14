@@ -95,16 +95,6 @@ CREATE TABLE tbl_end_usuario (
     FOREIGN KEY (cod_usuario) REFERENCES tbl_usuario(cod_usuario)
 );
 
-# CREATE TABLE tbl_token (
-#     cod_token INT UNSIGNED NOT NULL UNIQUE AUTO_INCREMENT,
-#     cod_usuario INT UNSIGNED NOT NULL,
-#     token VARCHAR(255) NOT NULL,
-#     tipo_token ENUM('ativacao', 'recuperacao') NOT NULL,
-#     data_limite DATETIME NOT NULL,
-#     PRIMARY KEY (cod_token),
-#     FOREIGN KEY (cod_usuario) REFERENCES tbl_usuario(cod_usuario)
-# );
-
 # Fim dos cadastros básicos para criação do perfil de um novo usuário #
 #---------------------------------------------------------------------#
 
@@ -116,7 +106,8 @@ CREATE TABLE tbl_animal (
     cod_dono_antigo INT UNSIGNED,
     estado_adocao ENUM('Sob proteção', 'Em anúncio', 'Em processo adotivo', 'Adotado') NOT NULL DEFAULT 'Sob proteção',
     nome VARCHAR(100) NOT NULL,
-    idade VARCHAR(8) NOT NULL,
+    foto VARCHAR(255) NOT NULL DEFAULT 'default_unknown_pet.jpeg',
+    data_nascimento DATE NOT NULL,
     especie ENUM('Cão', 'Gato', 'Outros') NOT NULL,
     raca VARCHAR(20) NOT NULL,
     genero ENUM('M', 'F') NOT NULL,
@@ -134,24 +125,25 @@ CREATE TABLE tbl_animal (
 );
 
 CREATE TABLE tbl_album_animal (
-	cod_album_animal INT UNSIGNED NOT NULL UNIQUE AUTO_INCREMENT,
-    cod_animal INT UNSIGNED UNIQUE NOT NULL,	# Unique pois ao criar o animal, o álbum dele será criado também.
-    titulo_album VARCHAR(100) NOT NULL,
+	cod_album INT UNSIGNED NOT NULL UNIQUE AUTO_INCREMENT,
+    cod_animal INT UNSIGNED NOT NULL,
+    titulo VARCHAR(100) NOT NULL,
     data_criacao DATETIME NOT NULL DEFAULT NOW(),
-    PRIMARY KEY (cod_album_animal),
+    data_modificacao DATETIME NOT NULL DEFAULT NOW(),
+    PRIMARY KEY (cod_album),
     FOREIGN KEY (cod_animal) REFERENCES tbl_animal(cod_animal)
 );
 
 CREATE TABLE tbl_foto_animal (
-	cod_foto_animal INT UNSIGNED NOT NULL UNIQUE AUTO_INCREMENT,
-    cod_animal INT UNSIGNED NOT NULL,
-    cod_album_animal INT UNSIGNED NOT NULL,
-    nome_unico_foto VARCHAR(200) NOT NULL UNIQUE,
+	uid_foto VARCHAR(255) NOT NULL UNIQUE,
+    cod_album INT UNSIGNED NOT NULL,
+    nome VARCHAR(100) NOT NULL,
     descricao VARCHAR(255),
+    ativo TINYINT NOT NULL DEFAULT 1,
     data_criacao DATETIME NOT NULL DEFAULT NOW(),
-    PRIMARY KEY (cod_foto_animal),
-    FOREIGN KEY (cod_animal) REFERENCES tbl_animal(cod_animal),
-    FOREIGN KEY (cod_album_animal) REFERENCES tbl_album_animal(cod_album_animal)
+    data_modificacao DATETIME NOT NULL DEFAULT NOW(),
+    PRIMARY KEY (uid_foto),
+    FOREIGN KEY (cod_album) REFERENCES tbl_album_animal(cod_album)
 );
 
 # Fim das tabelas de cadastro de pets #
@@ -163,7 +155,7 @@ CREATE TABLE tbl_anuncio (
 	cod_anuncio INT UNSIGNED NOT NULL UNIQUE AUTO_INCREMENT,
     cod_animal INT UNSIGNED NOT NULL UNIQUE,	# Unique pois o animal poderá ser anúnciado uma única vez até ser adotado para evitar SPAM.
     cod_usuario INT UNSIGNED NOT NULL,			# Não é UNIQUE pois o usuário poderá anúnciar mais de 1 animal.
-    cod_foto_animal INT UNSIGNED NOT NULL UNIQUE,		# Unique para restringir o uso em múltiplos anúncios
+    uid_foto_animal VARCHAR(255) NOT NULL UNIQUE,		# Unique para restringir o uso em múltiplos anúncios.
     qtd_visualizacao INT UNSIGNED NOT NULL DEFAULT 0,
     qtd_avaliacoes INT UNSIGNED NOT NULL DEFAULT 0,
     estado_adocao ENUM('Me adote!', 'Fui adotado!') NOT NULL DEFAULT 'Me adote!',
@@ -171,19 +163,19 @@ CREATE TABLE tbl_anuncio (
     PRIMARY KEY (cod_anuncio),
     FOREIGN KEY (cod_animal) REFERENCES tbl_animal(cod_animal),
     FOREIGN KEY (cod_usuario) REFERENCES tbl_usuario(cod_usuario),
-    FOREIGN KEY (cod_foto_animal) REFERENCES tbl_foto_animal(cod_foto_animal)
+    FOREIGN KEY (uid_foto_animal) REFERENCES tbl_foto_animal(uid_foto)
 );
 
 CREATE TABLE tbl_momento (
 	cod_momento INT UNSIGNED NOT NULL UNIQUE AUTO_INCREMENT,
     cod_usuario INT UNSIGNED NOT NULL,
-    cod_foto_animal INT UNSIGNED UNIQUE,		# UNIQUE para evitar SPAM da mesma foto.
+    uid_foto_animal VARCHAR(255) UNIQUE,		# UNIQUE para evitar SPAM da mesma foto.
     descricao VARCHAR(255),
     qtd_visualizacao INT UNSIGNED NOT NULL DEFAULT 0,
     data_criacao DATETIME NOT NULL DEFAULT NOW(),
     PRIMARY KEY (cod_momento),
     FOREIGN KEY (cod_usuario) REFERENCES tbl_usuario(cod_usuario),
-    FOREIGN KEY (cod_foto_animal) REFERENCES tbl_foto_animal(cod_foto_animal)
+    FOREIGN KEY (uid_foto_animal) REFERENCES tbl_foto_animal(uid_foto)
 );
 
 CREATE TABLE tbl_postagem (
@@ -201,10 +193,10 @@ CREATE TABLE tbl_postagem (
 CREATE TABLE tbl_foto_postagem (
 	cod_foto_postagem INT UNSIGNED NOT NULL UNIQUE AUTO_INCREMENT,
     cod_postagem INT UNSIGNED NOT NULL,
-    cod_foto_animal INT UNSIGNED NOT NULL,
+    uid_foto_animal VARCHAR(255) NOT NULL,
     PRIMARY KEY (cod_foto_postagem),
     FOREIGN KEY (cod_postagem) REFERENCES tbl_postagem(cod_postagem),
-    FOREIGN KEY (cod_foto_animal) REFERENCES tbl_foto_animal(cod_foto_animal)
+    FOREIGN KEY (uid_foto_animal) REFERENCES tbl_foto_animal(uid_foto)
 );
 
 # Fim das tabelas de publicações dos usuários #
@@ -330,17 +322,59 @@ SELECT * FROM tbl_end_usuario;
 
 SELECT * FROM tbl_bloqueio;
 
-# SELECT * FROM tbl_token;		# Agora está sendo gerenciada pelo Redis.
-
 SELECT * FROM tbl_cliente;
 
-# INSERT INTO tbl_bloqueio
-#	(bloqueante, bloqueado)
-# VALUES
-#	(1, 2);
+# Traz os pets de usuários que estão com a conta ativa.
+SELECT 
+	*
+FROM tbl_animal ta
+	INNER JOIN tbl_usuario tu
+		ON ta.cod_dono = tu.cod_usuario
+WHERE tu.esta_ativo = 1;
 
-# DELETE FROM tbl_token
-# WHERE cod_usuario = 1 AND data_limite < NOW();
+# Traz as fotos do álbum dos pets dos usuários que estão com a conta ativa.
+SELECT 
+	taa.titulo_album AS ALBUM,
+	tfa.nome_unico_foto AS FOTO_PET,
+    tfa.descricao AS FOTO_DESCRICAO,
+    ta.nome AS NOME_PET,
+    ta.idade AS IDADE,
+    ta.especie AS ESPECIE,
+	concat(tu.primeiro_nome,' ', tu.sobrenome ) AS DONO,
+    tu.cod_usuario AS ID_DONO,
+    tu.esta_ativo AS USUARIO_ATIVO
+FROM tbl_foto_animal tfa
+	INNER JOIN tbl_album_animal taa
+		ON tfa.cod_animal = taa.cod_animal
+	INNER JOIN tbl_animal ta
+		ON taa.cod_animal = ta.cod_animal
+	INNER JOIN tbl_usuario tu
+		ON ta.cod_dono = tu.cod_usuario
+WHERE tu.esta_ativo = 1;
+    
+# Traz todos os animais.
+SELECT * FROM tbl_animal;
+
+# Traz todos os álbums.
+DESCRIBE tbl_album_animal;
+SELECT * FROM tbl_album_animal;
+
+# Traz todas as fotos.
+DESCRIBE tbl_foto_animal;
+SELECT * FROM tbl_foto_animal;
+
+START transaction;
+INSERT INTO tbl_foto_animal
+	(uid_foto, cod_album, nome)
+VALUES
+	('24607764-3b61-4411-84b5-918791ecb327-1618257907.jpeg', 1, 'Foto Lucky');
+    
+commit;
+
+rollback;
+
+# 24607764-3b61-4411-84b5-918791ecb327-1618257907.jpeg
+	
 
 SET FOREIGN_KEY_CHECKS = 0;
 TRUNCATE tbl_usuario;
@@ -371,10 +405,13 @@ LIMIT 1;
 
 INSERT INTO tbl_cliente
 	(nome, senha, tipo_cliente)
-VALUES
+VALUES	
 	('Pet Adote Web','123', 'Pet Adote'),
     ('Pet Adote Mobile', '123', 'Pet Adote'),
     ('Pet Shop 01', '123', 'Comum');
+
+
+SELECT * FROM tbl_cliente;
 
 #---------------------------------------------------------------------------------------------#
 # Usuário Local #
@@ -431,3 +468,157 @@ INSERT INTO tbl_end_usuario
 	(cod_usuario, cep, logradouro, bairro, cidade, estado)
 VALUES
 	(3, '16300-265', 'Pavilhão de Liyue', 'Moraxville', 'Liyue', 'Liyue');
+    
+#---------------------------------------------------------------------------------------------#
+# Pets dos usuários #
+
+# SET FOREIGN_KEY_CHECKS = 0;
+# TRUNCATE tbl_animal;
+# TRUNCATE tbl_album_animal;
+# TRUNCATE tbl_foto_animal;
+# SET FOREIGN_KEY_CHECKS = 1;
+
+DESCRIBE tbl_animal;
+
+INSERT INTO tbl_animal
+	(cod_dono, nome, data_nascimento, especie, raca, 
+    genero, porte, esta_castrado, esta_vacinado,
+    detalhes_comportamento,
+    detalhes_saude,
+    historia)
+VALUES
+	(1, 'Lucky', '2021-01-05', 'Cão', 'comum',
+    'M', 'P', '0', '0',
+    'Comportamento calmo',
+    'Não apresentou nenhum problema de saúde',
+    'Abandonaram ele na esquina da rua de casa, não tenho como cuidar dele por muito tempo.');
+    
+INSERT INTO tbl_animal
+	(cod_dono, nome, data_nascimento, especie, raca, 
+    genero, porte, esta_castrado, esta_vacinado,
+    detalhes_comportamento,
+    detalhes_saude,
+    historia)
+VALUES
+	(1, 'Lila', '2021-03-04', 'Gato', 'comum',
+    'F', 'P', '0', '0',
+    'Ela é super calminha',
+    'Não tem problemas de saúde',
+    'É filhote da gata aqui de casa, mas não temos como cuidar dela também :(');
+    
+INSERT INTO tbl_animal
+	(cod_dono, cod_dono_antigo, nome, data_nascimento, especie, raca, 
+    genero, porte, esta_castrado, esta_vacinado,
+    detalhes_comportamento,
+    detalhes_saude,
+    historia)
+VALUES
+	(1, 2, 'Xiquinho', '2020-04-04', 'Cão', 'comum',
+    'M', 'M', '1', '1',
+    'Xiquinha é um companheiro e tanto!',
+    'Nenhum problema de saúde até hoje.',
+    'Adotei ele de um usuário aqui do Pet Adote quando era um dog pequenininho, mas vou ter que sair do país e não posso levar ele imediatamente. Preciso de alguém pra cuidar dele pelo menos temporáriamente.');
+    
+INSERT INTO tbl_animal
+	(cod_dono, nome, data_nascimento, especie, raca, 
+    genero, porte, esta_castrado, esta_vacinado,
+    detalhes_comportamento,
+    detalhes_saude,
+    historia)
+VALUES
+	(3, 'Cinzento', '2020-11-04', 'Gato', 'comum',
+    'M', 'P', '0', '0',
+    'O cinzento é bem quieto',
+    'Não tem problemas de saúde',
+    'Chegou aqui do nada, ficou por uns dias, e no fim tá aqui já faz 5 meses. Mas preciso de alguém pra cuidar dele de verdade.');
+
+# SELECT * FROM tbl_animal;
+    
+#---------------------------------------------------------------------------------------------#
+# Álbum dos Pets dos usuários #
+
+DESCRIBE tbl_album_animal;
+
+INSERT INTO tbl_album_animal
+	(cod_animal, titulo)
+VALUES
+	(1, 'Álbum do Lucky');
+    
+INSERT INTO tbl_album_animal
+	(cod_animal, titulo)
+VALUES
+	(2, 'Álbum da Lila');
+    
+INSERT INTO tbl_album_animal
+	(cod_animal, titulo)
+VALUES
+	(3, 'Álbum do Xiquinho');
+    
+INSERT INTO tbl_album_animal
+	(cod_animal, titulo)
+VALUES
+	(4, 'Álbum do Cinzento');
+    
+#---------------------------------------------------------------------------------------------#
+# Fotos dos Pets dos usuários #
+
+DESCRIBE tbl_foto_animal;
+
+INSERT INTO tbl_foto_animal
+	(uid_foto, cod_album, nome, descricao)
+VALUES
+	('luckychegou.jpeg', 1, 'Lucky Foto 01', 'Foto de quando acolhemos o Lucky.');
+    
+INSERT INTO tbl_foto_animal
+	(uid_foto, cod_album, nome, descricao)
+VALUES
+	('luckyfeliz.jpeg', 1, 'Lucky Foto 02', 'Foto do Lucky feliz por ter sido acolhido.');
+    
+INSERT INTO tbl_foto_animal
+	(uid_foto, cod_album, nome, descricao)
+VALUES
+	('lilabricando.jpeg', 2, 'Foto Lila 01', 'Foto da Lila correndo em circulos tentando pegar a própria calda.');
+    
+INSERT INTO tbl_foto_animal
+	(uid_foto, cod_album, nome, descricao)
+VALUES
+	('lilameow.jpeg', 2, 'Foto Lila 02', 'Foto do Lila miando, tinha acabado de acordar e estava pedindo comida.');
+    
+INSERT INTO tbl_foto_animal
+	(uid_foto, cod_album, nome, descricao)
+VALUES
+	('xiquinho_filhote.jpeg', 3, 'Foto Xiquinho 01', 'Olha só esse doguinho quando chegou, Xiquinho cabia numa mão só.');
+
+INSERT INTO tbl_foto_animal
+	(uid_foto, cod_album, nome, descricao)
+VALUES
+	('xiquinho_crescido.jpeg', 3, 'Foto Xiquinho 02', 'Xiquinho ficou grandão e hoje em dia se tornou esse doguinho companheiro!');
+    
+INSERT INTO tbl_foto_animal
+	(uid_foto, cod_album, nome, descricao)
+VALUES
+	('o_grande_cinzento.jpeg', 4, 'Foto Cinzento 01', 'O Cinzento deu um pulo na câmera quando eu tirei essa foto, pareceu que ele ficou gigante.');
+
+# TRUNCATE tbl_foto_animal;
+
+#---------------------------------------------------------------------------------------------#
+# Bloqueio entre usuários #
+
+INSERT INTO tbl_bloqueio
+	(bloqueante, bloqueado)
+VALUES
+	(1, 3),
+	(3, 1);
+    
+INSERT INTO tbl_bloqueio
+	(bloqueante, bloqueado)
+VALUES
+	(1, 2);
+    
+INSERT INTO tbl_bloqueio
+	(bloqueante, bloqueado)
+VALUES
+	(1, 4);
+
+# TRUNCATE TABLE tbl_bloqueio;
+

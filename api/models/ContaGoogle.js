@@ -29,5 +29,12 @@ const {DataTypes, Model} = require('sequelize');
         }
     });
 
+    Usuario.hasOne(ContaGoogle, {
+        foreignKey: {
+            name: 'cod_usuario',
+            allowNull: false
+        }
+    });
+
 // Exportação.
 module.exports = ContaGoogle;

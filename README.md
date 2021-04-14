@@ -192,14 +192,17 @@ request.body = {
 ## 
 
 - **Alterando os dados de perfil do usuário.**
-  - Aqui devemos nos atentar ao tipo de requisição que é realizada: Dados contendo arquivos (como imagens) devem ser enviados com o encoding **"multipart/form-data"**.
+  - Aqui devemos nos atentar ao tipo de requisição que é realizada:
+    - **Alterações nos campos de texto** — (nome, sobrenome, data_nascimento, etc) podem ser enviadas de várias formas diferentes contanto que cheguem com "chave : valor", por exemplo com encoding **"x-www-form-urlencoded"** ou **"raw"**.
+    - **Alterações nos arquivos** — (imagens, por exemplo) devem ser enviados com o encoding **"multipart/form-data"** e contendo apenas os campos dos exemplos abaixo.
+    
 
 > **PATCH**: http://rest-petadote.ddns.net/usuarios/codigoDoUsuario
 > 
 > **Exemplo**: http://rest-petadote.ddns.net/usuarios/1
 
 ```javascript
-// Campos para dados textuais...
+// Campos para campos de texto...
 request.body = { 
     primeiro_nome: 'Testêncio',
     sobrenome: 'Testeiro',
@@ -224,6 +227,14 @@ request.multipart/form-data = {
     banner_usuario: 'ArquivoDoBannerDoUsuario01.png'	// Será convertido para jpeg.
 };
 ```
+
+- Voltando a foto ou o banner do usuário ao padrão.
+
+> **PATCH**: http://rest-petadote.ddns.net/usuarios/codigoDoUsuario?setDefault=avatar
+> 
+> ou
+> 
+> **PATCH**: http://rest-petadote.ddns.net/usuarios/codigoDoUsuario?setDefault=banner
 
 ## 
 

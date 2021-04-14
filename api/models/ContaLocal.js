@@ -31,5 +31,12 @@ const {DataTypes, Model} = require('sequelize');
         }
     });
 
+    Usuario.hasOne(ContaLocal, {
+        foreignKey: {
+            name: 'cod_usuario',
+            allowNull: false
+        }
+    });
+
 // Exportação.
 module.exports = ContaLocal

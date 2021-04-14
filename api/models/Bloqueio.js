@@ -4,6 +4,9 @@ const {DataTypes, Model} = require('sequelize');
 // Instância da conexão com a Database.
     const {connection} = require('../../configs/database');
 
+    // Model das associações (FKs).
+        const Usuario = require('./Usuario');
+
 // Definição do Model 'Bloqueio' para 'tbl_bloqueio'.
     const Bloqueio = connection.define('Bloqueio', {
 
@@ -20,6 +23,19 @@ const {DataTypes, Model} = require('sequelize');
     }, {
         tableName: 'tbl_bloqueio',
     });
+
+    // Associações (FKs).
+        Bloqueio.belongsTo(Usuario, {
+            as: 'usuario_bloqueante',
+            foreignKey: 'bloqueante',
+            allowNull: false
+        });
+
+        Bloqueio.belongsTo(Usuario, {
+            as: 'usuario_bloqueado',
+            foreignKey: 'bloqueado',
+            allowNull: false
+        });
 
 // Exportação.
 module.exports = Bloqueio;

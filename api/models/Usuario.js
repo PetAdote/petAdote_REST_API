@@ -19,8 +19,8 @@
         telefone: { type: DataTypes.STRING(17), allowNull: false },
         data_nascimento: { type: DataTypes.DATEONLY, allowNull: false },
         descricao: { type: DataTypes.STRING(255) },
-        foto_usuario: { type: DataTypes.STRING(200), allowNull: false, defaultValue: 'avatar_default.jpeg' },
-        banner_usuario: { type: DataTypes.STRING(200), allowNull: false, defaultValue: 'banner_default.jpeg' },
+        foto_usuario: { type: DataTypes.STRING(200), allowNull: false, defaultValue: 'default_avatar_01.jpeg' },
+        banner_usuario: { type: DataTypes.STRING(200), allowNull: false, defaultValue: 'default_banner.jpeg' },
         esta_ativo: { type: DataTypes.TINYINT.UNSIGNED, allowNull: false, defaultValue: 0 },
         ong_ativo: { type: DataTypes.TINYINT.UNSIGNED, allowNull: false, defaultValue: 0 },
         e_admin: { type: DataTypes.TINYINT.UNSIGNED, allowNull: false, defaultValue: 0 },
@@ -34,7 +34,7 @@
         tableName: 'tbl_usuario',
     });
 
-    // Associações
+    // Associações.
     // ...
 
 // Exportação.

@@ -42,254 +42,441 @@
      */
     const getOneOrAll = (req, res, next) => {
 
-        // Instância do EventEmitter dessa rota - Permite o uso de custom listeners nessa rota.
-        const customListeners = new EventEmitter();
-    
-        // Caso 01 - Se apenas "codUsuario" for passado na Query String...
-        if ((req.dadosAuthToken && req.dadosAuthToken.tipo_cliente === 'Pet Adote') && req.query.codUsuario){
-    
-            if (req.query.codUsuario.match(/[^\d]+/g)){     // Se "codUsuario" conter algo diferente do esperado.
-                let customErr = new Error('Requisição inválida - O ID do Usuário deve conter apenas dígitos.');
-                customErr.status = 400;
-                customErr.code = 'INVALID_REQUEST_QUERY';
-                return next(customErr);
+        // Início da Reconstrução da chamada GET em ".../contas/" para exibir a lista de contas dos usuários.
+
+        // Início das Restrições de Acesso à Rota.
+
+            // Apenas Aplicações autenticadas poderão acessar a listagem de contas.
+            // Além disso, apenas Aplicações Pet Adote poderão ver detalhes das contas. Aplicações comuns verão apenas meta-dados.
+            if (!req.dadosAuthToken){   
+
+                // Se em algum caso não identificado, a requisição de uma aplicação chegou aqui e não apresentou suas credenciais JWT, não permita o acesso.
+                return res.status(401).json({
+                    mensagem: 'Requisição inválida - Você não possui o nível de acesso adequado para esse recurso.',
+                    code: 'ACCESS_TO_RESOURCE_NOT_ALLOWED'
+                });
+
             }
-    
-            // Custom Listeners.
-            customListeners.on('gotContaDoUsuario', (conta) => {    // Listener disparado quando uma query encontra a conta desse usuário.
-                res.status(200).json({
-                    mensagem: 'Conta encontrada, para mais informações acesse os dados do usuário.',
-                    conta: conta,
-                    usuario: `${req.protocol}://${req.get('host')}/usuarios/${conta.cod_usuario}`,
+
+            // Se a requisição for realizada por um usuário, não permita o acesso.
+            if (req.dadosAuthToken.usuario){
+                return res.status(401).json({
+                    mensagem: 'Requisição inválida - Você não possui o nível de acesso adequado para esse recurso.',
+                    code: 'ACCESS_TO_RESOURCE_NOT_ALLOWED'
                 });
-            });
-    
-            let buscasConcluidas = 0;
-            customListeners.on('contaNotFound', () => {     // Listener disparado quando uma query não encontra a conta desse usuário.
-                buscasConcluidas ++;
-                if (buscasConcluidas >= 3){
-                    res.status(404).json({
-                        mensagem: 'Este ID de Usuário não existe.',
-                        code: 'RESOURCE_NOT_FOUND',
-                        lista_usuarios: `${req.protocol}://${req.get('host')}/usuarios/`,
-                    });
-                }
-            });
-            // Fim dos Custom Listeners.
-    
-            try {   // Buscando Conta com base na Foreign Key (cod_usuario) do Usuário.
-    
-                ContaLocal.findOne({ attributes: ['email', 'cod_usuario' ], where: { cod_usuario: req.query.codUsuario }, raw: true })
-                .then((result) => {
-                    result ? customListeners.emit('gotContaDoUsuario', result) : customListeners.emit('contaNotFound');
-                });
-    
-                ContaFacebook.findOne({ where: { cod_usuario: req.query.codUsuario }, raw: true })
-                .then((result) => {
-                    result ? customListeners.emit('gotContaDoUsuario', result) : customListeners.emit('contaNotFound');
-                });
-    
-                ContaGoogle.findOne({ where: { cod_usuario: req.query.codUsuario }, raw: true })
-                .then((result) => {
-                    result ? customListeners.emit('gotContaDoUsuario', result) : customListeners.emit('contaNotFound');
-                })
-    
-            } catch (error) {
-                console.error('[/contas/?codUsuario=] Algo inesperado aconteceu ao buscar a conta de um usuário.\n', error);
-    
-                let customErr = new Error('Algo inesperado aconteceu ao buscar a conta de um usuário. Entre em contato com o administrador.');
-                customErr.status = 500;
-                customErr.code = 'INTERNAL_SERVER_ERROR'
-                return next(customErr)
             }
-    
-            return; // Caso tudo dê certo nas condições acima, conclua.
-    
-        }
-    
-        // Caso 02 - Se "tipoCadastro & chaveConta" forem passados na Query String. 
-        //           "tipoCadastro" deverá ser passado também, não podemos pesquisar apenas por "chaveConta" pois em casos extremos os IDs dos provedores sociais podem acabar entrando em conflito. 
-    
-        if ((req.dadosAuthToken && req.dadosAuthToken.tipo_cliente === 'Pet Adote') && req.query.tipoCadastro && req.query.chaveConta){
-    
-            switch(req.query.tipoCadastro){
-                case 'local':
-    
-                    return ContaLocal.findByPk(req.query.chaveConta, { attributes: ['email', 'cod_usuario'], raw: true })
-                    .then((result) => {
-                        if (result) {
-                            res.status(200).json({
-                                mensagem: 'Conta encontrada, para mais informações acesse os dados do usuário.',
-                                conta: result,
-                                usuario: `${req.protocol}://${req.get('host')}/usuarios/${result.cod_usuario}`,
-                            });
-                        } else {
-                            res.status(404).json({
-                                mensagem: 'Nenhuma conta com esse e-mail foi encontrada.',
-                                code: 'RESOURCE_NOT_FOUND'
-                            });
-                        };
-                    })
-                    .catch((error) => {
-                        console.error('[/contas/?tipoCadastro=&chaveConta=] Algo inesperado ocorreu ao buscar os dados de um usuário com cadastro local.\n', error);
-    
-                        let customErr = new Error('Algo inesperado aconteceu ao buscar os dados de um usuário com cadastro local. Entre em contato com o administrador.');
-                        customErr.status = 500;
-                        customErr.code = 'INTERNAL_SERVER_ERROR';
-    
-                        return next( customErr );
-                    });
-    
+
+        // Fim das Restrições de Acesso à Rota.
+
+        // Início das configurações das possíveis opções de busca + verificação dos parâmetros para cada caso.
+
+            let operacao = undefined;
+
+            switch (Object.entries(req.query).length){
+                case 0:
+                    operacao = 'getAll';
                     break;
-                case 'facebook':
-    
-                    return ContaFacebook.findByPk(req.query.chaveConta, { raw: true })
-                    .then((result) => {
-                        if (result) {
-                            res.status(200).json({
-                                mensagem: 'Conta encontrada, para mais informações acesse os dados do usuário.',
-                                conta: result,
-                                usuario: `${req.protocol}://${req.get('host')}/usuarios/${result.cod_usuario}`,
-                            });
-                        } else {
-                            res.status(404).json({
-                                mensagem: 'Nenhuma conta cadastrada via Facebook com esse ID foi encontrada.',
-                                code: 'RESOURCE_NOT_FOUND'
-                            });
-                        };
-                    })
-                    .catch((error) => {
-                        console.error('[/contas/?tipoCadastro=&chaveConta=] Algo inesperado ocorreu ao buscar os dados de um usuário cadastrado via Facebook.\n', error);
-    
-                        let customErr = new Error('Algo inesperado aconteceu ao buscar os dados do usuário cadastrado via Facebook. Entre em contato com o administrador.');
-                        customErr.status = 500;
-                        customErr.code = 'INTERNAL_SERVER_ERROR';
-    
-                        return next( customErr );
-                    });
-    
+                case 1:
+                    if (req.query?.page) { operacao = 'getAll' };
+
+                    if (req.query?.codUsuario) { operacao = 'getByUser' };
                     break;
-                case 'google':
-    
-                    return ContaGoogle.findByPk(req.query.chaveConta, { raw: true })
-                    .then((result) => {
-                        if (result) {
-                            res.status(200).json({
-                                mensagem: 'Conta encontrada, para mais informações acesse os dados do usuário.',
-                                conta: result,
-                                usuario: `${req.protocol}://${req.get('host')}/usuarios/${result.cod_usuario}`,
-                            });
-                        } else {
-                            res.status(404).json({
-                                mensagem: 'Nenhuma conta cadastrada via Google com esse ID foi encontrada.',
-                                code: 'RESOURCE_NOT_FOUND'
-                            });
-                        };
-                    })
-                    .catch((error) => {
-                        console.error('[/contas/?tipoCadastro=&chaveConta=] Algo inesperado ocorreu ao buscar os dados de um usuário cadastrado via Google.\n', error);
-    
-                        let customErr = new Error('Algo inesperado aconteceu ao buscar os dados de um usuário cadastrado via Google. Entre em contato com o administrador.');
-                        customErr.status = 500;
-                        customErr.code = 'INTERNAL_SERVER_ERROR';
-    
-                        return next( customErr );
-                    });
-    
+                case 2:
+                    if (req.query?.page && req.query?.limit) { operacao = 'getAll' };
+
+                    if (req.query?.tipoCadastro && req.query?.chaveConta) { operacao = 'getByTypeAndKey' };
                     break;
                 default:
-                    return res.status(400).json({
-                        mensagem: 'Busca de conta inválida.',
-                        code: 'INVALID_REQUEST_QUERY',
-                        exemplo: `${req.protocol}://${req.get('host')}/contas/?tipoCadastro=['local', 'facebook', 'google']&chaveConta=['email', 'ids sociais']`
-                    });
                     break;
-            };
-    
-        };
-    
-        // Caso 03 - Se nada for passado na Query String ou Cliente não estiver autenticado (Temporário, todo cliente deverá estar autenticado para usar esta REST API).
-        Promise.all([
-            ContaLocal.findAndCountAll({ attributes: ['email'], raw: true }),
-            ContaFacebook.findAndCountAll({ attributes: ['cod_facebook'], raw: true }),
-            ContaGoogle.findAndCountAll({ attributes: ['cod_google'], raw: true })
-        ])
-        .then((resultArr) => {
-    
-            let dadosContas = {}
-    
-            dadosContas.total_contas = (resultArr[0].count + resultArr[1].count + resultArr[2].count);
-    
-            if (dadosContas.total_contas === 0 ){       // Se nenhuma conta está registrada...
-                return res.status(200).json({
-                    mensagem: 'Nenhuma conta está cadastrada.'
-                });
             }
-    
-            dadosContas.total_contas_locais = resultArr[0].count;
-            dadosContas.total_contas_facebook = resultArr[1].count;
-            dadosContas.total_contas_google = resultArr[2].count;
-    
-            if (req.dadosAuthToken && req.dadosAuthToken.tipo_cliente === 'Pet Adote' && !req.dadosAuthToken.usuario){
-                // Se houver Token de Acesso, o tipo de Cliente for "Pet Adote" e não houver um usuário vínculado ao Token (Ou posteriormente, se o usuário vínculado for um Admin...)
-                // Exiba dados expandidos sobre a conta.
-                // Caso contrário, exiba apenas metadados.
-    
-                dadosContas.contas = [];
-    
-                resultArr[0].rows.forEach((row) => {
-                    row.tipo_cadastro = 'local';
-                    row.detalhes = `${req.protocol}://${req.get('host')}/contas/?tipoCadastro=${row.tipo_cadastro}&chaveConta=${row.email}`,
-                    dadosContas.contas.push(row);
-                });
-    
-                resultArr[1].rows.forEach((row) => {
-                    row.tipo_cadastro = 'facebook';
-                    row.detalhes = `${req.protocol}://${req.get('host')}/contas/?tipoCadastro=${row.tipo_cadastro}&chaveConta=${row.cod_facebook}`,
-                    dadosContas.contas.push(row);
-                });
-    
-                resultArr[2].rows.forEach((row) => {
-                    row.tipo_cadastro = 'google';
-                    row.detalhes = `${req.protocol}://${req.get('host')}/contas/?tipoCadastro=${row.tipo_cadastro}&chaveConta=${row.cod_google}`,
-                    dadosContas.contas.push(row);
-                });
-    
-                return res.status(200).json({
-                    mensagem: 'Dados das contas dos usuários.',
-                    total_contas: dadosContas.total_contas,
-                    total_contas_locais: dadosContas.total_contas_locais,
-                    total_contas_facebook: dadosContas.total_contas_facebook,
-                    total_contas_google: dadosContas.total_contas_google,
-                    contas: dadosContas.contas
-                });
-    
-            } else {    // Se o Cliente for de qualquer outro tipo - Exiba apenas meta-dados sobre as contas.       ( RESTRIÇÃO EM TESTE )
-    
-                res.status(200).json({
-                    mensagem: 'Dados das contas dos usuários.',
-                    total_contas: dadosContas.total_contas,
-                    total_contas_locais: dadosContas.total_contas_locais,
-                    total_contas_facebook: dadosContas.total_contas_facebook,
-                    total_contas_google: dadosContas.total_contas_google
-                });
-    
+
+        // Fim das configurações das possíveis opções de busca.
+
+        // Início da Validação dos Parâmetros.
+
+            if (req.query?.codUsuario){
+                if (req.query.codUsuario.match(/[^\d]+/g)){     // Se "codUsuario" conter algo diferente do esperado.
+                    return res.status(400).json({
+                        mensagem: 'Requisição inválida - O ID do Usuário deve conter apenas dígitos.',
+                        code: 'INVALID_REQUEST_QUERY'
+                    });
+                }
             }
-    
-        })
-        .catch((error) => {
-    
-            console.error('[GET: /contas/] Algo inesperado aconteceu ao buscar os dados das contas dos usuários.\n', error);
-    
-            let customErr = new Error('Algo inesperado aconteceu ao buscar os dados das contas dos usuários. Entre em contato com o administrador.');
-            customErr.status = 500;
-            customErr.code = 'INTERNAL_SERVER_ERROR'
-    
-            return next( customErr );
-    
-        });
-    
+
+            if (req.query?.tipoCadastro){
+
+                let allowedTypes = [
+                    'local',
+                    'facebook',
+                    'google'
+                ];
+
+                if (!allowedTypes.includes(req.query.tipoCadastro)){
+                    return res.status(400).json({
+                        mensagem: 'Requisição inválida - Os únicos tipos de cadastro aceitos são [local], [facebook] e [google].',
+                        code: 'INVALID_REQUEST_QUERY'
+                    });
+                }
+            }
+
+            if (req.query?.chaveConta){
+                if (!(req.query.chaveConta.match(/^\d+$/g) || req.query.chaveConta.match(/^([\w\d-+.]{1,64})(@[\w\d-]+)((?:\.\w+)+)$/g))){     // Se "chaveConta" conter algo diferente do esperado, respectivamente não for um dígito ou não for um e-mail.
+                    return res.status(400).json({
+                        mensagem: 'Requisição inválida - A chave do usuário deve ser um valor numérico ou um e-mail.',
+                        code: 'INVALID_REQUEST_QUERY'
+                    });
+                }
+            }
+
+            // Se "page" ou "limit" forem menores que 1, ou for um número real. Entregue BAD_REQUEST.
+            if (req.query?.page){
+                
+                if (Number(req.query.page) < 1 || req.query.page != Number.parseInt(req.query.page)) {
+                    return res.status(400).json({
+                        mensagem: 'Algum parâmetro inválido foi passado na URL da requisição.',
+                        code: 'BAD_REQUEST'
+                    });
+                }
+            }
+
+            if (req.query?.limit){
+                if (Number(req.query.limit) < 1 || req.query.limit != Number.parseInt(req.query.limit)) {
+                    return res.status(400).json({
+                        mensagem: 'Algum parâmetro inválido foi passado na URL da requisição.',
+                        code: 'BAD_REQUEST'
+                    });
+                }
+            }
+        // Fim da Validação dos Parâmetros.
+
+        // Início da Normalização dos parâmetros.
+
+            req.query.page = Number(req.query.page);    // Se o valor para a página do sistema de páginação for recebido como String, torne-o um Number.
+            req.query.limit = Number(req.query.limit);  // Se o valor para o limite de entrega de dados do sistema de páginação for recebido como String, torne-o um Number.
+
+            req.query.codUsuario = String(req.query.codUsuario);
+            req.query.tipoCadastro = String(req.query.tipoCadastro);
+            req.query.chaveConta = String(req.query.chaveConta);
+
+        // Fim da Normalização dos parâmetros.
+
+        // Início do processo de listagem das contas cadastradas.
+
+            // Início das configurações de paginação.
+                let requestedPage = req.query.page || 1;        // Página por padrão será a primeira.
+                let paginationLimit = req.query.limit || 10;     // Limite padrão de dados por página = 10;
+
+                let paginationOffset = (requestedPage - 1) * paginationLimit;   // Define o índice de partida para coleta dos dados.
+            // Fim das configurações de paginação.
+
+            // Início das Operações.
+                if (operacao == 'getAll'){
+
+                    Usuario.findAndCountAll({
+                        attributes: ['cod_usuario'],
+                        include: [{
+                            model: ContaLocal, 
+                            attributes: ['cod_usuario', 'email']
+                        }, {
+                            model: ContaFacebook,
+                            attributes: ['cod_usuario', 'cod_facebook']
+                        }, {
+                            model: ContaGoogle,
+                            attributes: ['cod_usuario', 'cod_google']
+                        }],
+                        limit: paginationLimit,
+                        offset: paginationOffset,
+                        nest: true,
+                        raw: true
+                    })
+                    .then(async (resultArr) => {
+
+                        if (resultArr.count === 0){
+                            return res.status(200).json({
+                                mensagem: 'Nenhuma conta de usuário está cadastrada.'
+                            });
+                        }
+
+                        // Início da entrega da resposta para aplicações comuns autenticadas na REST API.
+                            if (req.dadosAuthToken.tipo_cliente != 'Pet Adote'){
+
+                                let total_contas = resultArr.count;
+
+                                let total_contas_locais = await ContaLocal.count();
+                                let total_contas_facebook = await ContaFacebook.count();
+                                let total_contas_google = await ContaGoogle.count();
+                                
+                                return res.status(200).json({
+                                    mensagem: 'Soma de todas as contas cadastradas.',
+                                    total_contas,
+                                    total_contas_locais,
+                                    total_contas_facebook,
+                                    total_contas_google,
+                                });
+                            }
+                        // Fim da entrega da resposta para aplicações comuns.
+
+                        // Início da construção do objeto enviado na resposta.
+
+                            // Estrutura.
+                            let total_contas = resultArr.count;
+
+                            let total_contas_locais = await ContaLocal.count();
+                            let total_contas_facebook = await ContaFacebook.count();
+                            let total_contas_google = await ContaGoogle.count();
+
+                            let total_paginas = Math.ceil(total_contas / paginationLimit);
+
+                            let contas = [];
+
+                            let voltar_pagina = undefined;
+                            let avancar_pagina = undefined;
+                            // ---------
+
+                            // Verificações e Processamentos.
+
+                            if (requestedPage > 1 && requestedPage <= total_paginas){
+                                voltar_pagina = `${req.protocol}://${req.get('host')}/contas/?page=${requestedPage - 1}&limit=${paginationLimit}`;
+                            }
         
+                            if (requestedPage < total_paginas){
+                                avancar_pagina = `${req.protocol}://${req.get('host')}/contas/?page=${requestedPage + 1}&limit=${paginationLimit}`;
+                            } 
+        
+                            if (requestedPage > total_paginas){
+                                return res.status(404).json({
+                                    mensagem: 'Você chegou ao final da lista de contas cadastradas.',
+                                    code: 'RESOURCE_NOT_FOUND'
+                                });
+                            }
+
+                            resultArr.rows.forEach((registro) => {
+
+                                let { ContaLocal, ContaFacebook, ContaGoogle } = registro;
+
+                                if (ContaLocal.cod_usuario){
+                                    ContaLocal.tipo_cadastro = 'local';
+                                    ContaLocal.detalhes = `${req.protocol}://${req.get('host')}/contas/?codUsuario=${ContaLocal.cod_usuario}`,
+                                    contas.push(ContaLocal);
+                                }
+
+                                if (ContaFacebook.cod_usuario){
+                                    ContaFacebook.tipo_cadastro = 'facebook';
+                                    ContaFacebook.detalhes = `${req.protocol}://${req.get('host')}/contas/?codUsuario=${ContaFacebook.cod_usuario}`,
+                                    contas.push(ContaFacebook);
+                                }
+
+                                if (ContaGoogle.cod_usuario){
+                                    ContaGoogle.tipo_cadastro = 'google';
+                                    ContaGoogle.detalhes = `${req.protocol}://${req.get('host')}/contas/?codUsuario=${ContaGoogle.cod_usuario}`,
+                                    contas.push(ContaGoogle);
+                                }
+                            });
+
+                            // ----------------------------
+
+                        // Fim da construção do objeto enviado na resposta.
+
+                        // Início do envio da resposta.
+
+                            return res.status(200).json({
+                                mensagem: 'Lista de todas as contas cadastradas.',
+                                total_contas,
+                                total_contas_locais,
+                                total_contas_facebook,
+                                total_contas_google,
+                                total_paginas,
+                                contas,
+                                voltar_pagina,
+                                avancar_pagina
+                            });
+
+                        // Fim do envio da resposta.
+
+                    })
+                    .catch((error) => {
+                        console.error('Algo inesperado aconteceu ao listar as contas cadastradas.', error);
+    
+                        let customErr = new Error('Algo inesperado aconteceu ao listar as contas cadastradas. Entre em contato com o administrador.');
+                        customErr.status = 500;
+                        customErr.code = 'INTERNAL_SERVER_ERROR'
+                
+                        return next( customErr );
+                    });
+
+                }
+
+                if (operacao == 'getByUser'){
+
+                    // Restrições de Uso.
+                        if (req.dadosAuthToken.tipo_cliente != 'Pet Adote'){
+                            // Se a aplicação não for do tipo "Pet Adote"...
+                            return res.status(401).json({
+                                mensagem: 'Você não possui o nível de acesso adequado para esse recurso.',
+                                code: 'ACCESS_TO_RESOURCE_NOT_ALLOWED'
+                            });
+                        }
+                    // -----------------
+
+                    Usuario.findByPk(req.query.codUsuario, {
+                        attributes: ['cod_usuario'],
+                        include: [{
+                            model: ContaLocal, 
+                            attributes: ['cod_usuario', 'email']
+                        }, {
+                            model: ContaFacebook,
+                            attributes: ['cod_usuario', 'cod_facebook']
+                        }, {
+                            model: ContaGoogle,
+                            attributes: ['cod_usuario', 'cod_google']
+                        }],
+                        nest: true,
+                        raw: true
+                    })
+                    .then((result) => {
+
+                        if (!result){
+                            res.status(404).json({
+                                mensagem: 'Nenhuma conta está vinculada à esse ID de Usuário.',
+                                code: 'RESOURCE_NOT_FOUND',
+                                lista_usuarios: `${req.protocol}://${req.get('host')}/usuarios/`,
+                            });
+                        }
+
+                        // Início da construção do objeto enviado na resposta.
+
+                            if (!result.ContaLocal?.cod_usuario){
+                                delete result.ContaLocal;
+                            }
+
+                            if (!result.ContaFacebook?.cod_usuario){
+                                delete result.ContaFacebook;
+                            }
+
+                            if (!result.ContaGoogle?.cod_usuario){
+                                delete result.ContaGoogle;
+                            }
+
+                            let conta = undefined;
+
+                            if (result.ContaLocal) { 
+                                conta = result.ContaLocal; 
+                                conta.tipo_cadastro = 'local';
+                                conta.usuario = `${req.protocol}://${req.get('host')}/usuarios/${conta.cod_usuario}`;
+                            }
+
+                            if (result.ContaFacebook) { 
+                                conta = result.ContaFacebook;
+                                conta.tipo_cadastro = 'facebook'; 
+                                conta.usuario = `${req.protocol}://${req.get('host')}/usuarios/${conta.cod_usuario}`;
+                            }
+
+                            if (result.ContaGoogle) { 
+                                conta = result.ContaGoogle;
+                                conta.tipo_cadastro = 'google';
+                                conta.usuario = `${req.protocol}://${req.get('host')}/usuarios/${conta.cod_usuario}`;
+                            }
+                            
+                        // Fim da construção do objeto enviado na resposta.
+
+                        // Início do envio da resposta.
+
+                            return res.status(200).json({
+                                mensagem: 'Conta encontrada, para mais informações acesse os dados do usuário.',
+                                conta: conta,
+                                
+                            });
+
+                        // Fim do envio da resposta.
+
+                    })
+                    .catch((error) => {
+                        console.error('Algo inesperado aconteceu ao buscar a conta de um usuário pelo id do usuário.', error);
+    
+                        let customErr = new Error('Algo inesperado aconteceu ao buscar a conta de um usuário pelo id do usuário. Entre em contato com o administrador.');
+                        customErr.status = 500;
+                        customErr.code = 'INTERNAL_SERVER_ERROR'
+                
+                        return next( customErr );
+                    });
+
+                }
+
+                if (operacao == 'getByTypeAndKey'){
+
+                    // Restrições de Uso.
+                        if (req.dadosAuthToken.tipo_cliente != 'Pet Adote'){
+                            // Se a aplicação não for do tipo "Pet Adote"...
+                            return res.status(401).json({
+                                mensagem: 'Você não possui o nível de acesso adequado para esse recurso.',
+                                code: 'ACCESS_TO_RESOURCE_NOT_ALLOWED'
+                            });
+                        }
+                    // -----------------
+
+                    try {
+
+                        let getConta = async () => {
+                            
+                            switch(req.query.tipoCadastro){
+                                case 'local':
+                                    return await ContaLocal.findByPk(req.query.chaveConta, { attributes: ['email', 'cod_usuario'], raw: true });
+                                case 'facebook':
+                                    return await ContaFacebook.findByPk(req.query.chaveConta, { raw: true });
+                                case 'google':
+                                    return await ContaGoogle.findByPk(req.query.chaveConta, { raw: true });
+                                default:
+                                    break;
+                            };
+                        }
+
+                        getConta()
+                        .then((conta) => {
+                            if (conta?.email){ conta.tipo_cadastro = 'local'; }
+
+                            if (conta?.cod_facebook){ conta.tipo_cadastro = 'facebook'; }
+
+                            if (conta?.cod_google){ conta.tipo_cadastro = 'google'; }
+
+                            if (conta){ conta.usuario = `${req.protocol}://${req.get('host')}/usuarios/${conta.cod_usuario}`; }
+
+                            if (!conta){
+                                return res.status(404).json({
+                                    mensagem: `A chave informada não está vinculada à nenhuma conta ${req.query.tipoCadastro}.`,
+                                    code: 'RESOURCE_NOT_FOUND'
+                                });
+                            }
+                            
+                            return res.status(200).json({
+                                mensagem: 'Conta encontrada, para mais informações acesse os dados do usuário.',
+                                conta
+                            });
+                        });
+
+                    } catch (error) {
+
+                        console.error('Algo inesperado aconteceu ao buscar os dados de um usuário via tipo de cadastro e chave.', error);
+                
+                        let customErr = new Error('Algo inesperado aconteceu ao buscar os dados de um usuário via tipo de cadastro e chave. Entre em contato com o administrador.');
+                        customErr.status = 500;
+                        customErr.code = 'INTERNAL_SERVER_ERROR';
+    
+                        return next( customErr );
+
+                    }
+
+                }
+
+                if (!operacao){
+                    return res.status(400).json({
+                        mensagem: 'Algum parâmetro inválido foi passado na URL da requisição.',
+                        code: 'BAD_REQUEST'
+                    });
+                }
+            // Fim das Operações.
+            
+        // Fim do processo de listagem das contas cadastradas.
+
     };
 
 
@@ -313,7 +500,7 @@
         
                 let { usuario } = req.dadosAuthToken;
         
-                // Se o Requisitante possuir um ID diferente do ID requisitado e não for um administrador, não permita o acesso.
+                // Se o Requisitante não for um administrador, não permita o acesso.
                 if (usuario && usuario.e_admin != 1){
                     return res.status(401).json({
                         mensagem: 'Requisição inválida - Você não possui o nível de acesso adequado para esse recurso.',
@@ -364,10 +551,10 @@
     
             // Se algum dos campos obrigatórios não estiverem presentes no request, responda com a lista de missingFields.
                 if (missingFields.length > 0){
-                    console.log('missingFields detectados, campos obrigatórios estão faltando.');
+                    // console.log('missingFields detectados, campos obrigatórios estão faltando.');
             
                     return res.status(400).json({
-                        mensagem: 'Campos inválidos ou incompletos foram detectados.',
+                        mensagem: 'Campos obrigatórios estão faltando.',
                         code: 'INVALID_REQUEST_FIELDS',
                         missing_fields: missingFields
                     });
@@ -623,7 +810,7 @@
                         
                         if (data_nascimento[0] < 1900){
                             return res.status(400).json({
-                                mensagem: 'DATA DE NASCIMENTO - Ano de nascimento inválido, digite um valor acima de 1900.',
+                                mensagem: 'DATA DE NASCIMENTO - Ano de nascimento inválido, digite um valor para ano acima de 1900.',
                                 code: 'INVALID_DATA_NASCIMENTO_INPUT'
                             })
                         }
@@ -1036,6 +1223,16 @@
             
                 try {
                     await database.transaction( async (transaction) => {
+
+                        
+                        let possibleDefaultAvatar = [
+                            'default_avatar_01.jpeg',
+                            'default_avatar_02.jpeg',
+                            'default_avatar_03.jpeg'
+                        ];
+                        let rngSelector = Number.parseInt((Math.random() * (2.9 - 0)));  // 0 até 2.
+
+                        let defaultUserAvatar = possibleDefaultAvatar[rngSelector];
             
                         const usuario = await Usuario.create({
                             primeiro_nome: req.body.primeiro_nome,
@@ -1043,13 +1240,18 @@
                             data_nascimento: req.body.data_nascimento,
                             cpf: req.body.cpf,
                             telefone: req.body.telefone,
-                            descricao: req.body.descricao || null
+                            descricao: req.body.descricao || null,
+                            foto_usuario: defaultUserAvatar
+                        }, { 
+                            transaction
                         });
             
                         const contaUsuario = await ContaLocal.create({
                             email: req.body.email,
                             cod_usuario: usuario.cod_usuario,
                             senha: req.body.senha,
+                        }, { 
+                            transaction
                         });
             
                         const endUsuario = await EnderecoUsuario.create({
@@ -1059,10 +1261,15 @@
                             bairro: req.body.bairro,
                             cidade: req.body.cidade,
                             estado: req.body.estado
+                        }, { 
+                            transaction
                         });
             
                         idUsuario = usuario.cod_usuario;
                                     
+                    })
+                    .catch((error) => {
+                        throw new Error(error);
                     });
             
                     // Auto-Commit
