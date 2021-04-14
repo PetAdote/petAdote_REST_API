@@ -1242,12 +1242,16 @@
                             telefone: req.body.telefone,
                             descricao: req.body.descricao || null,
                             foto_usuario: defaultUserAvatar
+                        }, { 
+                            transaction
                         });
             
                         const contaUsuario = await ContaLocal.create({
                             email: req.body.email,
                             cod_usuario: usuario.cod_usuario,
                             senha: req.body.senha,
+                        }, { 
+                            transaction
                         });
             
                         const endUsuario = await EnderecoUsuario.create({
@@ -1257,10 +1261,15 @@
                             bairro: req.body.bairro,
                             cidade: req.body.cidade,
                             estado: req.body.estado
+                        }, { 
+                            transaction
                         });
             
                         idUsuario = usuario.cod_usuario;
                                     
+                    })
+                    .catch((error) => {
+                        throw new Error(error);
                     });
             
                     // Auto-Commit

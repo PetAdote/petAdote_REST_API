@@ -21,7 +21,7 @@ const {DataTypes, Model, Sequelize} = require('sequelize');
         },
         estado_adocao: { type: DataTypes.ENUM('Sob proteção', 'Em anúncio', 'Em processo adotivo', 'Adotado'), allowNull: false, defaultValue: 'Sob proteção'},
         nome: { type: DataTypes.STRING(100), allowNull: false },
-        foto_atual: { type: DataTypes.STRING(200), allowNull: false, defaultValue: 'default_unknown_pet.jpeg' },
+        foto: { type: DataTypes.STRING(255), allowNull: false, defaultValue: 'default_unknown_pet.jpeg' },
         data_nascimento: { type: DataTypes.DATEONLY, allowNull: false },
         especie: { type: DataTypes.ENUM('Cão', 'Gato', 'Outros'), allowNull: false },
         raca: { type: DataTypes.STRING(20), allowNull: false },

@@ -231,6 +231,22 @@
             return next();
         }
 
+        if (req.url.match(/^\/usuarios\/animais\/fotos/)){
+            return next();
+        }
+
+        if (req.url.match(/^\/usuarios\/avatars/)){
+            return next();
+        }
+
+        if (req.url.match(/^\/usuarios\/banners/)){
+            return next();
+        }
+
+        if (req.url.match(/^\/favicon.ico$/)){
+            return next();
+        }
+
         if (!req.headers['authorization']){
 
             let customErr = new Error('Requisição não autorizada.');

@@ -666,17 +666,31 @@
 
             if (foto_usuario) {
 
+                let possibleDefaultAvatar = [
+                    'default_avatar_01.jpeg',
+                    'default_avatar_02.jpeg',
+                    'default_avatar_03.jpeg'
+                ];
+                let rngSelector = Number.parseInt((Math.random() * (2.9 - 0)));  // 0 até 2.
+
+                let defaultUserAvatar = possibleDefaultAvatar[rngSelector];
+
                 Usuario.update({ 
-                    foto_usuario: 'avatar_default.jpeg',
+                    foto_usuario: defaultUserAvatar,
                     data_modificacao: new Date()
                  }, {
-                    where: { cod_usuario: req.params.codUsuario },
+                    where: { 
+                        cod_usuario: req.params.codUsuario
+                    },
                     limit: 1
                 })
                 .then((result) => {
 
-                    if (foto_usuario !== 'avatar_default.jpeg'){
-                        fs.unlink(path.resolve(__dirname, '../uploads/images/usersAvatar/', foto_usuario), () => {});
+                    if (!possibleDefaultAvatar.includes(foto_usuario)){
+                        
+                        if (fs.existsSync( path.resolve(__dirname, '../uploads/images/usersAvatar/', foto_usuario) ) ){
+                            fs.unlink(path.resolve(__dirname, '../uploads/images/usersAvatar/', foto_usuario), () => {});
+                        }
                     }
 
                     return res.status(200).json({
@@ -722,7 +736,7 @@
             if (banner_usuario) {
 
                 Usuario.update({ 
-                    banner_usuario: 'banner_default.jpeg',
+                    banner_usuario: 'default_banner.jpeg',
                     data_modificacao: new Date()
                  }, {
                     where: { cod_usuario: req.params.codUsuario },
@@ -730,8 +744,11 @@
                 })
                 .then((result) => {
 
-                    if (banner_usuario !== 'banner_default.jpeg'){
-                        fs.unlink(path.resolve(__dirname, '../uploads/images/usersBanner/', banner_usuario), () => {});
+                    if (banner_usuario !== 'default_banner.jpeg'){
+                        
+                        if (fs.existsSync( path.resolve(__dirname, '../uploads/images/usersBanner/', banner_usuario) ) ){
+                            fs.unlink(path.resolve(__dirname, '../uploads/images/usersBanner/', banner_usuario), () => {});
+                        }
                     }
 
                     return res.status(200).json({
@@ -1469,12 +1486,16 @@
 
                     // console.log(avatarUsuario);
 
-                    let defaultAvatarName = 'avatar_default.jpeg';
+                    let possibleDefaultAvatar = [
+                        'default_avatar_01.jpeg',
+                        'default_avatar_02.jpeg',
+                        'default_avatar_03.jpeg'
+                    ];
                     
                     let oldUserAvatar = avatarUsuario.foto_usuario;
                     let oldUserAvatarPath = path.resolve(__dirname, '../uploads/images/usersAvatar/', oldUserAvatar);
 
-                    let newFileName = `avatar_${uuid.v4()}-${moment().unix()}.jpeg`;
+                    let newFileName = `${uuid.v4()}-${moment().unix()}.jpeg`;
                     let newFilePath = path.resolve(__dirname, '../uploads/tmp/', newFileName);
                     let finalFileDest = path.resolve(__dirname, '../uploads/images/usersAvatar/', newFileName);
 
@@ -1499,18 +1520,25 @@
 
                         } else {
 
-                            fs.unlinkSync(req.files.foto_usuario[0].path);  // Deleta o arquivo original enviado pelo usuário do servidor.
+                            if (fs.existsSync(req.files.foto_usuario[0].path)){
+                                fs.unlinkSync(req.files.foto_usuario[0].path);  // Deleta o arquivo original enviado pelo usuário do servidor.
+                            }
                             
                             await Usuario.update({ 
                                 foto_usuario: newFileName,
                                 data_modificacao: new Date()
                              }, {   // Atualiza o nome do avatar do usuário no banco de dados.
-                                where: { cod_usuario: req.params.codUsuario },
+                                where: { 
+                                    cod_usuario: req.params.codUsuario
+                                },
                                 limit: 1
                             })
                             .then((result) => {
-                                if (oldUserAvatar !== defaultAvatarName){   // Se o avatar não era o padrão, deleta o avatar antigo do usuário.
-                                    fs.unlinkSync(oldUserAvatarPath);
+
+                                if (!possibleDefaultAvatar.includes(oldUserAvatar)){   // Se o avatar não era um dos avatares padrão, deleta o avatar antigo do usuário.
+                                    if (fs.existsSync(oldUserAvatarPath)){
+                                        fs.unlinkSync(oldUserAvatarPath);
+                                    }
                                 }
                                 
                                 mv(newFilePath, finalFileDest, (error) => {
@@ -1556,7 +1584,7 @@
 
                     // console.log(avatarUsuario);
 
-                    let defaultBannerName = 'banner_default.jpeg';
+                    let defaultBannerName = 'default_banner.jpeg';
                     
                     let oldUserBanner = bannerUsuario.banner_usuario;
                     let oldUserBannerPath = path.resolve(__dirname, '../uploads/images/usersBanner/', oldUserBanner);
@@ -1585,18 +1613,25 @@
                             return next( customErr );
                         } else {
 
-                            fs.unlinkSync(req.files.banner_usuario[0].path);  // Deleta o arquivo original enviado pelo usuário do servidor.
+                            if (fs.existsSync(req.files.banner_usuario[0].path)){
+                                fs.unlinkSync(req.files.banner_usuario[0].path);  // Deleta o arquivo original enviado pelo usuário do servidor.
+                            }
                             
                             await Usuario.update({ 
                                 banner_usuario: newFileName,
                                 data_modificacao: new Date()
                              }, {   // Atualiza o nome do avatar do usuário no banco de dados.
-                                where: { cod_usuario: req.params.codUsuario },
+                                where: { 
+                                    cod_usuario: req.params.codUsuario
+                                },
                                 limit: 1
                             })
                             .then((result) => {
+
                                 if (oldUserBanner !== defaultBannerName){   // Se o avatar não era o padrão, deleta o avatar antigo do usuário.
-                                    fs.unlinkSync(oldUserBannerPath);
+                                    if (fs.existsSync(oldUserBannerPath)){
+                                        fs.unlinkSync(oldUserBannerPath);
+                                    }
                                 }
                                 
                                 mv(newFilePath, finalFileDest, (error) => {

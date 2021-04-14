@@ -17,7 +17,7 @@
 
     const schedule = require('node-schedule');
 
-    // const path = require('path');
+    const path = require('path');
 
 // Conexão com o Banco de Dados MySQL.
     database.connection;          // Instância da conexão atual.
@@ -32,14 +32,20 @@
         const rotaEnderecos = require('./api/routes/enderecos');
         const rotaAnimais = require('./api/routes/animais');
 
+    const rotaTestes = require('./api/routes/testes');
+
 // Middlewares.
+    app.use((req, res, next) => {
+        console.log(`This IP made a call: ${req.ip?.replace(/^.*:/, '')} @ ${new Date().toLocaleString()}`);
+        next();
+    })
     app.use(logger('dev'));     // Em todas as requisições, Morgan fará a análise e entregará dados sobre ela no console do servidor, por fim passará a requisição adiante.
 
     app.use((req, res, next) => {      // Configuração CORS - Note que esse Middleware não enviará a resposta, apenas ajustará algumas configurações, para que quando a resposta seja de fato enviada, ela vá com tais configurações.
 
         res.header('Access-Control-Allow-Origin', '*');     // Aceite todas origens '*', ou por exemplo: 'http://localhost:4000' - minha aplicação web (client web) local que roda na porta 4000.
         res.header('Access-Control-Allow-Headers', 
-        'Origin, X-Requested-With, Content-Type, Accept, Authorization, File-Size')    // '*' ou Restrição de quais HTTP Headers podem ser adicionados ao request.
+        'Origin, X-Requested-With, Content-Type, Accept, Authorization')    // '*' ou Restrição de quais HTTP Headers podem ser adicionados ao request.
 
         if (req.method === 'OPTIONS'){  // Sempre que um request modificador (POST, PUT, ...) é enviado, um método OPTIONS é enviado primeiro pelos navegadores, para identificar se tal request pode ser feito ou não.
             res.header('Access-Control-Allow-Methods',
@@ -58,39 +64,47 @@
 
     });
 
-    // app.use('/uploads', express.static(path.join(__dirname, "api/uploads/images/usersAvatar/")));
+    // app.use(express.static(__dirname, { dotfiles: 'allow'}));
+
+    // app.use('/testes', rotaTestes);
 
     app.use(verifyAccessToken);
 
     app.use(express.urlencoded({ extended: true }));     // Se false, não receberá "rich data" (Textos RTF???).
     app.use(express.json());                             // Extrai os campos da requisição no formato JSON para o objeto "req.body".
 
-    
+    app.use('/favicon.ico', express.static( path.resolve(__dirname, "./api/uploads/images/favicon.ico") ) );
 
 // Rotas que vão gerenciar as requisições.
     app.get('/', async (req, res, next) => {
         // Rota livre para testes simples durante a fase de desenvolvimento.
 
-        let checkUserBlockList = require('./helpers/check_user_BlockList');
+        // let checkUserBlockList = require('./helpers/check_user_BlockList');
 
-        let blockList = await checkUserBlockList(1)
-        .catch((error) => {
-            console.error(error);
+        // let blockList = await checkUserBlockList(1)
+        // .catch((error) => {
+        //     console.error(error);
 
-            let customErr = new Error('Algo inesperado aconteceu ao verificar os bloqueios do usuário.');
-            customErr.status = 400;
-            customErr.code = 'INVALID_PARAM';
+        //     let customErr = new Error('Algo inesperado aconteceu ao verificar os bloqueios do usuário.');
+        //     customErr.status = 400;
+        //     customErr.code = 'INVALID_PARAM';
 
-            next(customErr);
-        });
+        //     next(customErr);
+        // });
         
-        console.log(blockList);
+        // console.log(blockList);
+
+        console.log('Oi, eu sou uma rota de testes!');
 
     });
 
     app.use('/autenticacoes', rotaAutenticacoes);
 
     app.use('/contas', rotaContas);
+
+    app.use('/usuarios/animais/fotos', express.static( path.resolve(__dirname, "./api/uploads/images/usersAnimalPhotos") ) );
+    app.use('/usuarios/avatars', express.static( path.resolve(__dirname, "./api/uploads/images/usersAvatar") ) );
+    app.use('/usuarios/banners', express.static( path.resolve(__dirname, "./api/uploads/images/usersbanner") ) );
 
     app.use('/usuarios/animais', rotaAnimais);
     app.use('/usuarios/enderecos', rotaEnderecos);

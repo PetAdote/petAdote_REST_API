@@ -13,8 +13,8 @@ const {DataTypes, Model} = require('sequelize');
         cod_postagem: { type: DataTypes.INTEGER.UNSIGNED, allowNull: false,
             references: { model: Model.Postagem, key: 'cod_postagem' }
         },
-        cod_foto_animal: { type: DataTypes.INTEGER.UNSIGNED, allowNull: false, 
-            references: { model: Model.FotoAnimal, key: 'cod_foto_animal' }
+        uid_foto_animal: { type: DataTypes.STRING(255), allowNull: false, 
+            references: { model: Model.FotoAnimal, key: 'uid_foto' }
         }
 
     }, {
