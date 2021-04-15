@@ -1,74 +1,56 @@
 // Importações.
-    const express = require('express');     // Importa o framework express no arquivo.
-    const app = express();                  // Inicializa o framework express em "app".
 
-    const logger = require('morgan');   // Logger/Profiler que trará informações sobre as requisições e respostas das nossas rotas.
+    // Framework.
+        const express = require('express');     // Importa o framework express no arquivo.
+        const app = express();                  // Inicializa o framework express em "app".
 
-    const bodyParser = require('body-parser');  // Módulo que nos permitirá analisar os campos codificados como (urlencoded) ou (json), enviados nas requisições.
+    // Conexões.
+        const database = require('./configs/database');                 // Importação da conexão com o Banco de Dados MySQL via ORM Sequelize.
+        const redisClient = require('./configs/redis_connection');      // Inicia a conexão com o Redis por meio do Client estabelecido em "./configs/redis_conn".
 
-    const database = require('./configs/database');   // Importação da conexão com o Banco de Dados MySQL via ORM Sequelize.
-    // const ormModelChecker = require('./helpers/check_orm_models');  // Helper que verifica os Models criados com a ORM para cada tabela no Banco de Dados.
+    // Middlewares.
+        const { verifyAccessToken } = require('./helpers/manage_jwt');                              // Utiliza o módulo "jsonwebtoken" para verificar em cada requisição se uma rota possui restrições de acesso e se o Token de Acesso está presente nos Headers e é válido.
+        const checkInactiveUserPermissions = require('./helpers/check_InactiveUserPermissions');    // Se o requisitante for o usuário de uma aplicação, determina se ele pode ou não requisitar algo à um end-point não-GET.
+        const checkRequester = require('./helpers/check_requester');                                // Verifica o IP do requisitante.
+        const manageCORS = require('./helpers/manage_cors');                                        // Gerencia as respostas de Cross-Origin Resource Sharing para navegadores.
 
-    // const autenticadorJWT = require('./api/middlewares/autenticador-jwt');  // Middleware - Utiliza o módulo "jsonwebtoken" para verificar em cada requisição se uma rota possui restrições de acesso e se o Token de Acesso está presente nos Headers e é válido.
-    
-    const { verifyAccessToken } = require('./helpers/manage_jwt');  // Middleware - Utiliza o módulo "jsonwebtoken" para verificar em cada requisição se uma rota possui restrições de acesso e se o Token de Acesso está presente nos Headers e é válido.
+    // Utilidades.
+        const logger = require('morgan');                                   // Logger/Profiler que trará informações sobre as requisições e respostas das nossas rotas.
+                                                                            // Em todas as requisições, Morgan fará a análise e entregará dados sobre ela no console do servidor, por fim passará a requisição adiante.
 
-    const redisClient = require('./configs/redis_connection');    // Inicia a conexão com o Redis por meio do Client estabelecido em "./configs/redis_conn".
+        // const bodyParser = require('body-parser');                       // Módulo que nos permitirá analisar os campos codificados como (urlencoded) ou (json), enviados nas requisições.
+        // const ormModelChecker = require('./helpers/check_orm_models');   // Helper que verifica os Models criados com a ORM para cada tabela no Banco de Dados.
+        // const schedule = require('node-schedule');                       // Permite a utilização de Cron-jobs para realizar o agendamento de tarefas.
 
-    const schedule = require('node-schedule');
+        const path = require('path');                                       // Facilita a aquisição de caminhos até certos diretórios e arquivos no sistema.
 
-    const path = require('path');
+    // Agrupamento de Rotas.
+        const rotaAutenticacoes = require('./api/routes/autenticacoes');
 
-// Conexão com o Banco de Dados MySQL.
-    database.connection;          // Instância da conexão atual.
-    database.checkConnection();   // Verificação da conexão.
-    // ormModelChecker();   // Realiza um [ SELECT * ] limitado à 1 resultado em cada um dos models da lista "./api/models".
+        // const rotaTestes = require('./api/routes/testes');
 
-// Importação dos grupos de rotas.
-    const rotaAutenticacoes = require('./api/routes/autenticacoes');
+        const rotaContas = require('./api/routes/contas');
+        const rotaUsuarios = require('./api/routes/usuarios');
+            const rotaEnderecos = require('./api/routes/enderecos');
+            const rotaAnimais = require('./api/routes/animais');
+                const rotaAlbuns = require('./api/routes/albuns');
 
-    const rotaContas = require('./api/routes/contas');
-    const rotaUsuarios = require('./api/routes/usuarios');
-        const rotaEnderecos = require('./api/routes/enderecos');
-        const rotaAnimais = require('./api/routes/animais');
+// Instânciamentos.
 
-    const rotaTestes = require('./api/routes/testes');
+    // Conexão com o Banco de Dados MySQL.
+        database.connection;            // Instância da conexão atual.
+        database.checkConnection();     // Verificação da conexão.
+        // ormModelChecker();           // Realiza um [ SELECT * ] limitado à 1 resultado em cada um dos models da lista "./api/models".
 
 // Middlewares.
-    app.use((req, res, next) => {
-        console.log(`This IP made a call: ${req.ip?.replace(/^.*:/, '')} @ ${new Date().toLocaleString()}`);
-        next();
-    })
-    app.use(logger('dev'));     // Em todas as requisições, Morgan fará a análise e entregará dados sobre ela no console do servidor, por fim passará a requisição adiante.
+    app.use(checkRequester);
+    app.use(logger('dev'));
 
-    app.use((req, res, next) => {      // Configuração CORS - Note que esse Middleware não enviará a resposta, apenas ajustará algumas configurações, para que quando a resposta seja de fato enviada, ela vá com tais configurações.
-
-        res.header('Access-Control-Allow-Origin', '*');     // Aceite todas origens '*', ou por exemplo: 'http://localhost:4000' - minha aplicação web (client web) local que roda na porta 4000.
-        res.header('Access-Control-Allow-Headers', 
-        'Origin, X-Requested-With, Content-Type, Accept, Authorization')    // '*' ou Restrição de quais HTTP Headers podem ser adicionados ao request.
-
-        if (req.method === 'OPTIONS'){  // Sempre que um request modificador (POST, PUT, ...) é enviado, um método OPTIONS é enviado primeiro pelos navegadores, para identificar se tal request pode ser feito ou não.
-            res.header('Access-Control-Allow-Methods',
-            'GET, POST, PUT, PATCH, DELETE');
-
-            return res.status(200).json({});        // Como nesse caso, o navegador só quer uma resposta dos métodos HTTP que ele pode utilizar. Respondemos apenas com a modificação do Header.
-        }
-
-        next();     // Passa a requisição adiante para o próximo "handler".
-
-        /* Observação:  Erros CORS acontecem nos navegadores, pois é um mecanismo de segurança fornecido pelos navegadores.
-                        Mesmo se restringirmos apenas a origem sendo nossa aplicação, ferramentas como o POSTMAN poderão enviar as requisições sem problemas.
-
-                        Pesquise como restringir requisições por outras ferramentas no futuro, para garantir uma maior segurança à API.
-        */
-
-    });
-
-    // app.use(express.static(__dirname, { dotfiles: 'allow'}));
-
-    // app.use('/testes', rotaTestes);
+    app.use(manageCORS);
 
     app.use(verifyAccessToken);
+
+    app.use(checkInactiveUserPermissions);
 
     app.use(express.urlencoded({ extended: true }));     // Se false, não receberá "rich data" (Textos RTF???).
     app.use(express.json());                             // Extrai os campos da requisição no formato JSON para o objeto "req.body".
@@ -79,33 +61,24 @@
     app.get('/', async (req, res, next) => {
         // Rota livre para testes simples durante a fase de desenvolvimento.
 
-        // let checkUserBlockList = require('./helpers/check_user_BlockList');
-
-        // let blockList = await checkUserBlockList(1)
-        // .catch((error) => {
-        //     console.error(error);
-
-        //     let customErr = new Error('Algo inesperado aconteceu ao verificar os bloqueios do usuário.');
-        //     customErr.status = 400;
-        //     customErr.code = 'INVALID_PARAM';
-
-        //     next(customErr);
-        // });
-        
-        // console.log(blockList);
-
         console.log('Oi, eu sou uma rota de testes!');
 
+        next();
     });
+
+    // app.use('/testes', rotaTestes);
 
     app.use('/autenticacoes', rotaAutenticacoes);
 
     app.use('/contas', rotaContas);
 
+    // (Temporário) - Entrega estática dos arquivos de imagem.
     app.use('/usuarios/animais/fotos', express.static( path.resolve(__dirname, "./api/uploads/images/usersAnimalPhotos") ) );
     app.use('/usuarios/avatars', express.static( path.resolve(__dirname, "./api/uploads/images/usersAvatar") ) );
     app.use('/usuarios/banners', express.static( path.resolve(__dirname, "./api/uploads/images/usersbanner") ) );
+    // -------------------------------------------------------
 
+    app.use('/usuarios/animais/albuns', rotaAlbuns);
     app.use('/usuarios/animais', rotaAnimais);
     app.use('/usuarios/enderecos', rotaEnderecos);
     app.use('/usuarios', rotaUsuarios);

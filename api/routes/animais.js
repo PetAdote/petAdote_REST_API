@@ -151,7 +151,7 @@ router.get('/', async (req, res, next) => {
             }
         }
 
-        // Se "page" ou "limit" fores menores que 1, ou for um número real. Entregue BAD_REQUEST.
+        // Se "page" ou "limit" forem menores que 1, ou for um número real. Entregue BAD_REQUEST.
         if (req.query.page){
             if (Number(req.query.page) < 1 || req.query.page != Number.parseInt(req.query.page)) {
                 return res.status(400).json({
@@ -356,6 +356,7 @@ router.get('/', async (req, res, next) => {
                         // Removendo estruturas que agora são desnecessárias.
                             delete animal.dono;
                             delete animal.dono_antigo;
+                            delete animal.AlbumAnimal;
                         // --------------------------------------------------
 
                         // Início da adição de atributos extras ao objeto.
@@ -474,6 +475,7 @@ router.get('/', async (req, res, next) => {
                         // Removendo estruturas que agora são desnecessárias.
                             delete animal.dono;
                             delete animal.dono_antigo;
+                            delete animal.AlbumAnimal;
                         // --------------------------------------------------
 
                         // Início da adição de atributos extras ao objeto.
@@ -644,7 +646,8 @@ router.get('/', async (req, res, next) => {
                     all: true
                 }],
                 where: {
-                    cod_animal
+                    cod_animal,
+                    '$dono.esta_ativo$': 1
                 },
                 nest: true,
                 raw: true,
@@ -653,9 +656,9 @@ router.get('/', async (req, res, next) => {
 
                 if (!result){
                     return res.status(404).json({
-                        mensagem: 'Nenhum animal está vinculado à esse ID.',
+                        mensagem: 'Nenhum animal de um usuário ativo está vinculado à esse ID.',
                         code: 'RESOURCE_NOT_FOUND',
-                        lista_usuarios: `${req.protocol}://${req.get('host')}/usuarios/`,
+                        lista_animais: `${req.protocol}://${req.get('host')}/usuarios/animais/`,
                     });
                 }
 
@@ -669,6 +672,7 @@ router.get('/', async (req, res, next) => {
 
                     delete result.dono;
                     delete result.dono_antigo;
+                    delete result.AlbumAnimal;
 
                     let animal = result;
 
@@ -1214,6 +1218,8 @@ router.post('/', async (req, res, next) => {
                     detalhes_comportamento: req.body.detalhes_comportamento,
                     detalhes_saude: req.body.detalhes_saude,
                     historia: req.body.historia
+                }, {
+                    transaction
                 });
 
                 let albumPrefix = undefined;
@@ -1233,6 +1239,8 @@ router.post('/', async (req, res, next) => {
                 const albumAnimal = await AlbumAnimal.create({
                     cod_animal: animal.cod_animal,
                     titulo: `${albumPrefix} ${animal.nome}`,
+                }, {
+                    transaction
                 });
 
                 // Início da entrega da mensagem de conclusão do cadastro do animal para o usuário.
@@ -1244,6 +1252,9 @@ router.post('/', async (req, res, next) => {
 
                 // Fim da entrega da mensagem de conclusão do cadastro do animal para o usuário.
 
+            })
+            .catch((error) => {
+                throw new Error(error);
             });
             // Se chegou aqui: Auto-commit.            
         } catch (error) {
@@ -1948,7 +1959,7 @@ router.patch('/:codAnimal', async (req, res, next) => {
                             }
 
                             // Verificando se a foto selecionada está no Álbum do Animal.
-                            
+
                                 let isSelectedPhotoInAlbum = await AlbumAnimal.findOne({
                                     where: { 
                                         cod_animal: cod_animal,

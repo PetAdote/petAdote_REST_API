@@ -479,7 +479,7 @@
     
         // Coleta dos dados a respeito do CEP do endereço atual do Usuário na api "ViaCEP".
     
-            let urlVerificacaoViaCep = `http://viacep.com.br/ws/${enderecoAtual.cep}/json/`;
+            let urlVerificacaoViaCep = `http://viacep.com.br/ws/${operacoes.cep}/json/`;
     
             let infoCEP = await axios.get(urlVerificacaoViaCep)
             .then((result) => {
@@ -579,6 +579,8 @@
                     }
     
                     if (!infoCEP.localidade.toLowerCase().includes(operacoes.cidade.toLowerCase())){
+                        console.log(infoCEP);
+                        console.log(operacoes.cidade);
                         return res.status(400).json({
                             mensagem: 'CIDADE - A cidade informada não está de acordo com o CEP.',
                             code: 'CIDADE_DONT_BELONG_TO_CEP'
