@@ -33,7 +33,8 @@
         const rotaUsuarios = require('./api/routes/usuarios');
             const rotaEnderecos = require('./api/routes/enderecos');
             const rotaAnimais = require('./api/routes/animais');
-                const rotaAlbuns = require('./api/routes/albuns');
+                const rotaAlbuns = require('./api/routes/albuns_animais');
+                    const rotaFotos = require('./api/routes/fotos_animais');
 
 // Instânciamentos.
 
@@ -72,12 +73,13 @@
 
     app.use('/contas', rotaContas);
 
-    // (Temporário) - Entrega estática dos arquivos de imagem.
-    app.use('/usuarios/animais/fotos', express.static( path.resolve(__dirname, "./api/uploads/images/usersAnimalPhotos") ) );
+    // Entrega dos arquivos de imagem.
+    app.use('/usuarios/animais/albuns/fotos', express.static( path.resolve(__dirname, "./api/uploads/images/usersAnimalPhotos") ) );
     app.use('/usuarios/avatars', express.static( path.resolve(__dirname, "./api/uploads/images/usersAvatar") ) );
     app.use('/usuarios/banners', express.static( path.resolve(__dirname, "./api/uploads/images/usersbanner") ) );
     // -------------------------------------------------------
 
+    app.use('/usuarios/animais/albuns/fotos', rotaFotos);
     app.use('/usuarios/animais/albuns', rotaAlbuns);
     app.use('/usuarios/animais', rotaAnimais);
     app.use('/usuarios/enderecos', rotaEnderecos);

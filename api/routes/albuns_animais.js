@@ -35,7 +35,7 @@
 // Rotas.
 
 router.get('/', async (req, res, next) => {
-    /* 5 formas de listar os dados sobre os álbuns dos animais.
+    /* 5 formas de capturar os dados sobre os álbuns dos animais.
      1. Listar todos os álbuns.
      2. Listar todos os álbuns dos animais cujo dono está ativo.
      3. Listar todos os álbuns dos animais cujo dono está inativo.
@@ -73,12 +73,12 @@ router.get('/', async (req, res, next) => {
             let { usuario } = req.dadosAuthToken;
 
         // Se o usuário da aplicação estiver requisitando qualquer rota além de "getAllActive=1", "getAllFromUser" ou "getOne". Não permita o acesso.
-            // if (usuario && !(req.query.getAllActive == 1 || req.query.getAllFromUser || req.query.getOne)){
-            //     return res.status(401).json({
-            //         mensagem: 'Você não possui o nível de acesso adequado para esse recurso.',
-            //         code: 'ACCESS_TO_RESOURCE_NOT_ALLOWED'
-            //     });
-            // }
+            if (usuario && !(req.query.getAllActive == 1 || req.query.getAllFromAnimal || req.query.getOne)){
+                return res.status(401).json({
+                    mensagem: 'Você não possui o nível de acesso adequado para esse recurso.',
+                    code: 'ACCESS_TO_RESOURCE_NOT_ALLOWED'
+                });
+            }
 
     // Fim das Restrições de acesso à rota.
 
@@ -328,10 +328,10 @@ router.get('/', async (req, res, next) => {
                                     '$Animal.cod_dono$': listaBloqueios,
                                     '$Animal.dono.esta_ativo$': 1
                                 },
-                                limit: paginationLimit,
-                                offset: paginationOffset,
-                                nest: true,
-                                raw: true
+                                // limit: paginationLimit,
+                                // offset: paginationOffset,
+                                // nest: true,
+                                // raw: true
                             })
 
                         };
@@ -398,7 +398,7 @@ router.get('/', async (req, res, next) => {
                 // Início do envio da resposta.
 
                     return res.status(200).json({
-                        mensagem: 'Lista de todos os álbuns de animais cadastrados por usuários ativos.',
+                        mensagem: 'Lista de todos os álbuns de animais cadastrados dos usuários ativos.',
                         total_albuns,
                         total_paginas,
                         albuns,
@@ -729,7 +729,7 @@ router.get('/', async (req, res, next) => {
                     // --------------------------------------------------
 
                     // Início da adição de atributos extras ao objeto.
-                        result.fotos_album = `${req.protocol}://${req.get('host')}/usuarios/animais/albuns/fotos/?getAllFromAlbum=${result.cod_album}`;
+                        result.fotos_album = `${req.protocol}://${req.get('host')}/usuarios/animais/albuns/fotos/?getAllActiveFromAlbum=${result.cod_album}`;
                     // Fim da adição de atributos extras ao objeto.
 
                 // Fim da construção do objeto enviado na resposta.
@@ -738,7 +738,7 @@ router.get('/', async (req, res, next) => {
 
                     return res.status(200).json({
                         mensagem: 'Exibindo os dados do álbum do animal.',
-                        result
+                        album: result
                     });
 
                 // Fim do envio da resposta.

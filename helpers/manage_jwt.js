@@ -231,15 +231,15 @@
             return next();
         }
 
-        if (req.url.match(/^\/usuarios\/animais\/fotos/)){
+        if (req.url.match(/^\/usuarios\/animais\/albuns\/fotos\/[^?/]+\.jpeg$/)){   // Se for a rota de exibição de fotos de animais, permita.
             return next();
         }
 
-        if (req.url.match(/^\/usuarios\/avatars/)){
+        if (req.url.match(/^\/usuarios\/avatars\/[^?/]+\.jpeg$/)){   // Se for a rota de exibição de fotos de animais, permita.
             return next();
         }
 
-        if (req.url.match(/^\/usuarios\/banners/)){
+        if (req.url.match(/^\/usuarios\/banners\/[^?/]+\.jpeg$/)){   // Se for a rota de exibição de fotos de animais, permita.
             return next();
         }
 
