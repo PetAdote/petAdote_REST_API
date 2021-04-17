@@ -231,20 +231,24 @@
             return next();
         }
 
-        if (req.url.match(/^\/usuarios\/animais\/albuns\/fotos\/[^?/]+\.jpeg$/)){   // Se for a rota de exibição de fotos de animais, permita.
-            return next();
-        }
+        if (req.method == 'GET'){
 
-        if (req.url.match(/^\/usuarios\/avatars\/[^?/]+\.jpeg$/)){   // Se for a rota de exibição de fotos de animais, permita.
-            return next();
-        }
+            if (req.url.match(/^\/usuarios\/animais\/albuns\/fotos\/[^?/]+\.jpeg$/)){   // Se for a rota de exibição de fotos de animais, permita.
+                return next();
+            }
 
-        if (req.url.match(/^\/usuarios\/banners\/[^?/]+\.jpeg$/)){   // Se for a rota de exibição de fotos de animais, permita.
-            return next();
-        }
+            if (req.url.match(/^\/usuarios\/avatars\/[^?/]+\.jpeg$/)){   // Se for a rota de exibição de fotos de animais, permita.
+                return next();
+            }
 
-        if (req.url.match(/^\/favicon.ico$/)){
-            return next();
+            if (req.url.match(/^\/usuarios\/banners\/[^?/]+\.jpeg$/)){   // Se for a rota de exibição de fotos de animais, permita.
+                return next();
+            }
+
+            if (req.url.match(/^\/favicon.ico$/)){
+                return next();
+            }
+
         }
 
         if (!req.headers['authorization']){

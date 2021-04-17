@@ -685,7 +685,7 @@ router.get('/', async (req, res, next) => {
                     return res.status(404).json({
                         mensagem: 'Nenhum álbum está vínculado ao ID fornecido. O dono do animal pode não estar ativo, ou o álbum não existir.',
                         code: 'RESOURCE_NOT_FOUND',
-                        lista_albuns: `${req.protocol}://${req.get('host')}/usuarios/animais/albuns/`,
+                        lista_albuns: `${req.protocol}://${req.get('host')}/usuarios/animais/albuns/?getAllActive=1`,
                     });
                 }
 

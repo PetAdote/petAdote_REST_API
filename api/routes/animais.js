@@ -1287,10 +1287,8 @@ router.patch('/:codAnimal', async (req, res, next) => {
 
     // Início das Restrições de acesso à rota.
 
-        // Apenas aplicações Pet Adote e Usuários das aplicações Pet Adote poderão acessar a listagem dos animais dos usuários.
-
-        // Apenas aplicações Pet Adote, usuários de aplicações pet Adote poderão realizar alterações em animais cadastrados.
-        // Além disso, o usuário deve ser um adaministrador ou dono do recurso para alterar os dados do animal.
+        // Apenas aplicações Pet Adote e seus usuários poderão realizar alterações em animais cadastrados.
+        // Além disso, o usuário deve ser um Administrador ou Dono do Recurso para alterar os dados do animal.
         if (!req.dadosAuthToken){   
 
             // Se em algum caso não identificado, a requisição de uma aplicação chegou aqui e não apresentou suas credenciais JWT, não permita o acesso.
@@ -1309,7 +1307,7 @@ router.patch('/:codAnimal', async (req, res, next) => {
                 });
             }
         
-        // Capturando os dados do usuário, se o requisitante for o usuário de uma aplicação Pet Adote.
+        // Capturando os dados do usuário.
             let { usuario } = req.dadosAuthToken;
 
     // Fim das Restrições de acesso à rota.
@@ -1319,10 +1317,18 @@ router.patch('/:codAnimal', async (req, res, next) => {
     // ----------------------------------------
 
     // Início da verificação do cadastro do animal.
-        let animal = await Animal.findByPk(cod_animal, {
-            raw: true
-        })
-        .catch((error) => {
+        let animal = undefined;
+
+        try {
+
+            animal = await Animal.findByPk(cod_animal, {
+                raw: true
+            })
+            .catch((error) => {
+                throw new Error(error);
+            });
+
+        } catch (error) {
 
             console.error('Algo inesperado aconteceu ao buscar os dados do animal.', error);
 
@@ -1332,7 +1338,7 @@ router.patch('/:codAnimal', async (req, res, next) => {
     
             return next( customErr );
 
-        });
+        }
 
         if (!animal) {
             // Se o animal não for encontrado...
@@ -1499,7 +1505,7 @@ router.patch('/:codAnimal', async (req, res, next) => {
             // Verificando se o pacote da requisição tem conteúdo.
                 if (!req.headers['content-type']){
                     return res.status(400).json({
-                        mensagem: 'Dados não encontrados na requisição',
+                        mensagem: 'Dados não foram encontrados na requisição',
                         code: 'INVALID_REQUEST_CONTENT'
                     })
                 }
@@ -1509,7 +1515,7 @@ router.patch('/:codAnimal', async (req, res, next) => {
                 
                 if (req.headers['content-type'].includes('multipart/form-data')){
 
-                    // Início da verificação básica do tamanho do pacote.
+                    // Início da verificação básica do tamanho do pacote de dados.
 
                         if (Number(req.headers['content-length']) > (3 * 1024 * 1024)){
                             req.pause();
@@ -1519,7 +1525,7 @@ router.patch('/:codAnimal', async (req, res, next) => {
                             });
                         }
 
-                    // Fim da verificação básica do tamanho do pacote.
+                    // Fim da verificação básica do tamanho do pacote de dados.
 
                     // Início do gerenciamento de arquivos do usuário para a foto do animal.
 
@@ -1641,7 +1647,7 @@ router.patch('/:codAnimal', async (req, res, next) => {
                                 let newFile_path = path.resolve(__dirname, '../uploads/tmp/', newFile_name);
                                 let newFile_dest = path.resolve(__dirname, '../uploads/images/usersAnimalPhotos/', newFile_name);
 
-                                console.log('Iniciando processamento da foto do animal do usuário...');
+                                // console.log('Iniciando processamento da foto do animal do usuário...');
 
                                 sharp(sentFile_path)
                                 .resize({
@@ -1786,6 +1792,20 @@ router.patch('/:codAnimal', async (req, res, next) => {
                                             
                                             // Fim da atualização da foto do animal nos dados do animal.
 
+                                            // Início da relocação da imagem tratada pelo Sharp para o diretório de imagens dos animais.
+                                                mv(newFile_path, newFile_dest, (mvError) => {
+                                                    if (mvError){
+                                                        console.error('Algo inesperado aconteceu ao processar a imagem enviada pelo usuário.', mvError);
+
+                                                        let customErr = new Error('Algo inesperado aconteceu ao processar a imagem enviada pelo usuário. Entre em contato com o administrador.');
+                                                        customErr.status = 500;
+                                                        customErr.code = 'INTERNAL_SERVER_MODULE_ERROR';
+
+                                                        return next( customErr );
+                                                    }
+                                                });
+                                            // Fim da relocação da imagem tratada pelo Sharp para o diretório de imagens dos animais.
+
                                         })
                                         .catch((error) => {
                                             // Se qualquer erro acontecer no bloco acima, cairemos em CATCH do bloco TRY e faremos o rollback;
@@ -1793,20 +1813,6 @@ router.patch('/:codAnimal', async (req, res, next) => {
                                         });
                                         
                                         // Se chegou aqui, o ORM da auto-commit...
-
-                                        // Início da relocação da imagem tratada pelo Sharp para o diretório de imagens dos animais.
-                                            mv(newFile_path, newFile_dest, (mvError) => {
-                                                if (mvError){
-                                                    console.error('Algo inesperado aconteceu ao processar a imagem enviada pelo usuário.', mvError);
-
-                                                    let customErr = new Error('Algo inesperado aconteceu ao processar a imagem enviada pelo usuário. Entre em contato com o administrador.');
-                                                    customErr.status = 500;
-                                                    customErr.code = 'INTERNAL_SERVER_MODULE_ERROR';
-
-                                                    return next( customErr );
-                                                }
-                                            });
-                                        // Fim da relocação da imagem tratada pelo Sharp para o diretório de imagens dos animais.
 
                                     } catch (error) {
 
@@ -1881,7 +1887,7 @@ router.patch('/:codAnimal', async (req, res, next) => {
 
                     // Fim da verificação de campos não permitidos.
 
-                // Fim da das restrições de envio de campos.
+                // Fim das restrições de envio de campos.
 
                 // Início da Normalização dos campos recebidos.
 
