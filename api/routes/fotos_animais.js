@@ -1298,7 +1298,7 @@ router.get('/', async (req, res, next) => {
 
                     return res.status(200).json({
                         mensagem: 'Exibindo os dados da foto do álbum do animal.',
-                        foto_animal: result
+                        foto: result
                     });
 
                 // Fim do envio da resposta.
@@ -1439,6 +1439,14 @@ router.post('/:codAlbum', async (req, res, next) => {
                 code: 'INVALID_REQUEST_CONTENT'
             })
         }
+
+        if (!req.headers['content-type'].includes('multipart/form-data')){
+            // Se o content-type não for "multipart/form-data"...
+            return res.status(400).json({
+                mensagem: 'Requisição inválida - É necessário que o encoding de envio do arquivo seja multipart/form-data',
+                code: 'INVALID_REQUEST_CONTENT'
+            })
+        };
     // Fim da verificação de conteúdo do pacote de dados da requisição.
 
     // Início do processo de inclusão de uma foto no álbum requisitado.
@@ -1493,7 +1501,7 @@ router.post('/:codAlbum', async (req, res, next) => {
 
                     }
                 }).fields([
-                    { name: 'foto_animal', maxCount: 1 }
+                    { name: 'foto', maxCount: 1 }
                 ]); 
             // Fim das configurações do receptor de arquivos via encoding multipart/form-data.
 
@@ -1559,7 +1567,7 @@ router.post('/:codAlbum', async (req, res, next) => {
                     // Fim do tratamento de erros conhecidos.
 
                     // Início do processamento do arquivo de imagem.
-                        let sentFile_path = req.files.foto_animal[0].path;
+                        let sentFile_path = req.files.foto[0].path;
 
                         let newFile_name = `${uuid.v4()}-${moment().unix()}.jpeg`;
                         let newFile_path = path.resolve(__dirname, '../uploads/tmp/', newFile_name);

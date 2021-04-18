@@ -139,7 +139,7 @@ request.body = {
 
 ---
 <details id='detailsUsuarios'>
-<summary><b>2. Contas, usuários e endereços</b></summary>
+<summary><b>2. Contas, usuários e endereços.</b></summary>
 
 ## 2.1 - Cadastrando novos usuários
 
@@ -465,6 +465,259 @@ Temos 3 meios de busca dos endereços cadastrados. Os end-points refletem o fato
 ## 
 
 [Voltar ao início](#comoUsar)
+</details>
+
+---
+
+<details id='detailsAnimais'>
+<summary><b>3. Animais, álbuns e fotos.</b></summary>
+
+## 3.1 - Cadastrando novos animais.
+
+- Para cadastrar novos animais, a REST API precisa receber uma requisição com o método http **POST** contendo o seguinte conteúdo no corpo da requisição (as chaves devem ser as mesmas dos exemplos abaixo).
+
+- **Atenção**: O cadastro de animais só pode ser feito por usuários de aplicações Pet Adote.
+
+> **POST:** http://rest-petadote.ddns.net/usuarios/animais/
+
+```javascript
+request.body = {
+	nome: 'Tom',
+    data_nascimento: '2021-04-18',
+    especie: 'Gato',	// Aceita: "Gato", "Cão", "Outros".
+    raca: 'Comum',		// A raça é irrestrita, o usuário que define.
+    genero: 'M',		// Aceita: "M", "F".
+    porte: 'M',			// Aceita: "P", "M", "G".
+    esta_castrado: '1',	// Aceita: "1", "0".
+    esta_vacinado: '1', // Aceita: "1", "0".
+    detalhes_comportamento: 'O Tom é um pouco bagunceiro, mas só quando está brincando.',
+    detalhes_saude: 'Sempre teve boa saúde.',
+    historia: 'Meu vizinho deixou o Tom comigo porque estava se mudando e não podia levá-lo pra nova casa, mas eu não tenho tempo para dar atenção pra ele, preciso que alguém adote o Tom e cuide bem dele.'
+}
+```
+
+- Quando um animal é cadastrado, ele imediatamente recebe um Álbum para adição de fotos no futuro.
+
+
+- Se a aplicação deseja alterar a foto de exibição do animal, poderá utilizar o _"cod_animal"_ recebido na resposta da requisição para fazer a alteração. A nova foto de exibição será adicionada ao álbum do animal automáticamente.
+
+##
+
+#### 3.1.1 - Atualizando dados do animal cadastrado
+
+- **Alterando os dados comuns do animal.**
+  - Aqui devemos nos atentar ao tipo de requisição que é realizada:
+    - **Alterações nos campos de texto** - Podem ser enviadas de várias formas diferentes contanto que cheguem no formato "Chave : Valor". Por exemplo, utilizando o encoding **"x-www-form-urlencoded"** ou **"raw"**.
+    - **Alterações nos arquivos (imagens)** - Arquivos devem ser enviados um a um, com o encoding **"multipart/form-data"**.
+
+- Os dados do animal podem ser alterados por administradores caso necessário.
+
+- Abaixo temos a lista de campos que devem ser utilizados em cada tipo de requisição de alteração, observe que não é necessário enviar todos os campos de uma só vez, é possível por exemplo alterar só o nome do animal. Entretanto é necessário separar requisições entre campos comuns e campos de arquivos, já que usam encodings diferentes.
+
+> **PATCH**: http://rest-petadote.ddns.net/usuarios/animais/codigoDoAnimal
+>
+> **Exemplo**: http://rest-petadote.ddns.net/usuarios/animais/1
+
+```javascript
+// Campos comuns.
+request.body = {
+	nome: '',
+    foto: '',		// Aceita apenas UID de fotos que estão no álbum do animal.
+    data_nascimento: '',
+    especie: '',	// Aceita: "Gato", "Cão", "Outros".
+    raca: '',		// A raça é irrestrita, o usuário que define.
+    genero: '',		// Aceita: "M", "F".
+    porte: '',			// Aceita: "P", "M", "G".
+    esta_castrado: '',	// Aceita: "1", "0".
+    esta_vacinado: '', 	// Aceita: "1", "0".
+    detalhes_comportamento: '',
+    detalhes_saude: '',
+    historia: ''
+}
+```
+
+```javascript
+// Campos para arquivos.
+request.multipart/form-data = {
+    foto: 'ArquivoDaFotoDoAnimal.jpeg'
+}
+```
+
+- **Para retornar a foto de exibição do animal para o padrão faça a seguinte chamada.**
+
+> **PATCH**: http://rest-petadote.ddns.net/usuarios/animais/codigoDoAnimal?setDefault=foto
+>
+> **Exemplo**: http://rest-petadote.ddns.net/usuarios/animais/1?setDefault=foto
+
+## 3.1.2 - Acessando dados sobre Animais.
+
+Temos 4 meios de acessar dados sobre os animais cadastrados.
+
+- **Lista de todos os animais cadastrados.**
+> **GET**: http://rest-petadote.ddns.net/usuarios/animais/
+
+- **Lista de todos os animais cadastrados de usuários ativos.**
+> **GET**: http://rest-petadote.ddns.net/usuarios/animais/?getAllActive=1
+
+- **Lista de todos os animais cadastrados de usuários inativos.**
+> **GET**: http://rest-petadote.ddns.net/usuarios/animais/?getAllActive=0
+
+- **Lista de todos os animais cadastrados de um usuário específico.**
+> **GET**: http://rest-petadote.ddns.net/usuarios/animais/?getAllFromUser=codigoUsuarioAqui
+
+- **Exibe os dados de um animal específico.**
+> **GET**: http://rest-petadote.ddns.net/usuarios/animais/?getOne=codigoAnimalAqui
+
+- **Paginação**: Todos os meios de acesso a listagem de dados acima permitem que os clientes declarem limites para a listagem, por exemplo, se você deseja visualizar apenas 5 animais por requisição na lista de todos os animais cadastrados, forme sua query string da seguinte maneira:
+
+> **GET**: http://rest-petadote.ddns.net/usuarios/animais/?page=1&limit=5
+
+- **"page"** declara a página atual; **"limit"** declara o limite de dados que serão exibidos.
+
+## 3.2 - Acessando dados sobre os Álbuns dos animais.
+
+Durante o cadastro do animal, um álbum é criado para que o usuário possa adicionar novas fotos do animal. Por enquanto apenas esse álbum pode ser utilizado.
+
+Os álbuns criados pelo sistema não podem ser alterados.
+
+Temos 4 maneiras de acessar os dados dos álbuns.
+
+- **Lista de todos os Álbuns de animais cadastrados.**
+> **GET**: http://rest-petadote.ddns.net/usuarios/animais/albuns/
+
+- **Lista de todos os Álbuns de animais cadastrados de usuários ativos.**
+> **GET**: http://rest-petadote.ddns.net/usuarios/animais/albuns/?getAllActive=1
+
+- **Lista de todos os Álbuns de animais cadastrados de usuários inativos.**
+> **GET**: http://rest-petadote.ddns.net/usuarios/animais/albuns/?getAllActive=0
+
+- **Lista de todos os Álbuns de um animal específico.**
+> **GET**: http://rest-petadote.ddns.net/usuarios/animais/albuns/?getAllFromAnimal=codigoAnimalAqui
+
+- **Exibe os dados de um Álbum específico.**
+> **GET**: http://rest-petadote.ddns.net/usuarios/animais/albuns/?getOne=codigoDoAlbumAqui
+
+- **O sistema de paginação mencionado no tópico (3.1.2) também funciona aqui.**
+
+## 3.3 - Adicionando fotos ao álbum do animal.
+
+- Para cadastrar novas fotos ao álbum de um animal, a REST API precisa receber uma requisição com o método http **POST** contendo o seguinte conteúdo no corpo da requisição (as chaves devem ser as mesmas dos exemplos abaixo).
+
+- **Atenção**: É necessário que o requisitante seja o dono do animal para cadastrar novas fotos no álbum do animal. Além disso, como estaremos lidando com arquivos (imagens), o encoding utilizado para enviar essa requisição deve ser **multipart/form-data**.
+
+> **POST:** http://rest-petadote.ddns.net/usuarios/animais/
+
+```javascript
+request.multipart/form-data = {
+	foto: 'ArquivoDaFotoDoAnimal.jpeg'
+}
+```
+
+##
+
+#### 3.3.1 - Alterando os dados da foto.
+
+- Uma vez que a foto foi enviada com sucesso, podemos utilizar seu UID para alterar os dados da foto, como o nome ("Nome" é diferente de UID, ok?) dela, a descrição, e o estado de ativação dela (O usuário poderá apenas desativar fotos - Isso significa que ele "deletou" a foto).
+
+
+- Vejamos abaixo como realizar a chamada de alteração dos dados da foto, lembre-se que o nome dos campos devem ser iguais ao enviar os dados na requisição.
+
+
+- **Atenção**: O requisitante deve ser o dono do recurso (Ou seja, o dono do animal que possui a foto em seus álbuns).
+
+> **PATCH:** http://rest-petadote.ddns.net/usuarios/animais/uidDaFotoDoAnimal.jpeg
+
+```javascript
+request.body = {
+	nome: '',
+    descricao: '',
+    ativo: ''			// Aceita apenas: '0' - Administradores podem ativá-la novamente caso necessário.
+}
+```
+
+## 3.3.2 - Acessando dados sobre as fotos dos animais.
+
+Existem 10 formas de acessar dados sobre as fotos dos animais, sendo que 3 dessas formas são dedicadas à usuários comuns (Que não são administradores).
+
+- **01. Lista de todas as fotos dos álbuns dos animais. (Apps/Admins)**
+> **GET**: http://rest-petadote.ddns.net/usuarios/animais/albuns/fotos/
+
+- **02. Lista de todas as fotos ativas dos álbuns dos animais. (Apps/Admins)**
+> **GET**: http://rest-petadote.ddns.net/usuarios/animais/albuns/fotos/?getAllActive=1
+
+- **03. Lista de todas as fotos inativas dos álbuns dos animais. (Apps/Admins)**
+> **GET**: http://rest-petadote.ddns.net/usuarios/animais/albuns/fotos/?getAllActive=0
+
+- **04. Lista de todas as fotos ativas dos álbuns dos animais cujo dono está ativo. (Apps/Admins/Usuários)**
+> **GET**: http://rest-petadote.ddns.net/usuarios/animais/albuns/fotos/?getAllActive=1&activeOwner=1
+
+- **05. Lista de todas as fotos inativas dos álbuns dos animais cujo dono está ativo. (Apps/Admins)**
+> **GET**: http://rest-petadote.ddns.net/usuarios/animais/albuns/fotos/?getAllActive=0&activeOwner=1
+
+- **06. Lista de todas as fotos ativas dos álbuns dos animais cujo dono está inativo. (Apps/Admins)**
+> **GET**: http://rest-petadote.ddns.net/usuarios/animais/albuns/fotos/?getAllActive=1&activeOwner=0
+
+- **07. Lista de todas as fotos inativas dos álbuns dos animais cujo dono está inativo. (Apps/Admins)**
+> **GET**: http://rest-petadote.ddns.net/usuarios/animais/albuns/fotos/?getAllActive=0&activeOwner=0
+
+- **08. Lista de todas as fotos ativas de um álbum específico. (Apps/Admins/Usuários)**
+> **GET**: http://rest-petadote.ddns.net/usuarios/animais/albuns/fotos/?getAllActiveFromAlbum=codigoAlbumAqui
+
+- **09. Lista de todas as fotos inativas de um álbum específico. (Apps/Admins)**
+> **GET**: http://rest-petadote.ddns.net/usuarios/animais/albuns/fotos/?getAllNotActiveFromAlbum=codigoAlbumAqui
+
+- **10. Exibe os dados de uma foto específica. (Apps/Admins/Usuários)**
+> **GET**: http://rest-petadote.ddns.net/usuarios/animais/albuns/fotos/?getOne=uidDaFotoAqui.jpeg
+
+- **O sistema de paginação funciona em todas as chamadas citadas acima.**
+
+## 3.4 - Lista de Códigos de Possíveis Erros
+
+<details>
+<summary>Clique aqui para ver a lista de Error Codes</summary>
+
+- ACCESS_TO_RESOURCE_NOT_ALLOWED (401)
+- INVALID_REQUEST_QUERY (400)
+- BAD_REQUEST (400)
+- RESOURCE_NOT_FOUND (404)
+- INTERNAL_SERVER_ERROR (500)
+- INTERNAL_SERVER_MODULE_ERROR (500)
+- INVALID_REQUEST_FIELDS (400)
+- INVALID_REQUEST_CONTENT (400)
+- FILE_SIZE_TOO_LARGE (413)
+- INVALID_FILE_MIME (406)
+- LIMIT_FILE_COUNT (400)
+- LIMIT_FILE_SIZE (413)
+- LIMIT_UNEXPECTED_FILE (400)
+- LIMIT_FIELD_COUNT (400)
+- INVALID_FILE_INPUT (400)
+- INVALID_INPUT_NOME (400)
+- INVALID_LENGTH_NOME (400)
+- INVALID_INPUT_FOTO (400)
+- INVALID_SELECTION_FOTO (400)
+- INVALID_LENGTH_DATA_NASCIMENTO (400)
+- INVALID_INPUT_DATA_NASCIMENTO (400)
+- INVALID_DATA_NASCIMENTO_FOR_LEAP_YEAR (400)
+- INVALID_DATA_NASCIMENTO_FOR_COMMON_YEAR (400)
+- INVALID_INPUT_ESPECIE (400)
+- INVALID_INPUT_RACA (400)
+- INVALID_LENGTH_RACA (400)
+- INVALID_INPUT_GENERO (400)
+- INVALID_INPUT_PORTE (400)
+- INVALID_INPUT_ESTA_CASTRADO (400)
+- INVALID_INPUT_ESTA_VACINADO (400)
+- INVALID_LENGTH_DETALHES_COMPORTAMENTO (400)
+- INVALID_LENGTH_DETALHES_SAUDE (400)
+- INVALID_LENGTH_HISTORIA (400)
+- INVALID_LENGTH_DESCRICAO (400)
+- INVALID_INPUT_ATIVO (400)
+
+</details>
+
+## 
+
+[Voltar ao início](#comoUsar)
+
 </details>
 
 ---
