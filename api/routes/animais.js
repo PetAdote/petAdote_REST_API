@@ -151,7 +151,7 @@ router.get('/', async (req, res, next) => {
             }
         }
 
-        // Se "page" ou "limit" fores menores que 1, ou for um número real. Entregue BAD_REQUEST.
+        // Se "page" ou "limit" forem menores que 1, ou for um número real. Entregue BAD_REQUEST.
         if (req.query.page){
             if (Number(req.query.page) < 1 || req.query.page != Number.parseInt(req.query.page)) {
                 return res.status(400).json({
@@ -253,6 +253,14 @@ router.get('/', async (req, res, next) => {
                             animal.detalhes_dono_antigo = `${req.protocol}://${req.get('host')}/usuarios/${animal.cod_dono_antigo}`
                         }
 
+                        // Adicionando o end-point para exibição da foto do animal.
+                            animal.download_foto = `${req.protocol}://${req.get('host')}/usuarios/animais/albuns/fotos/${animal.foto}`
+                        // --------------------------------------------------------
+                        
+                        // Adicionando o end-point para listagem de álbuns do animal.
+                            animal.lista_albuns = `${req.protocol}://${req.get('host')}/usuarios/animais/albuns/?getAllFromAnimal=${animal.cod_animal}`
+                        // ----------------------------------------------------------
+                        
                         animais.push(animal);
                     });
                     
@@ -356,6 +364,7 @@ router.get('/', async (req, res, next) => {
                         // Removendo estruturas que agora são desnecessárias.
                             delete animal.dono;
                             delete animal.dono_antigo;
+                            delete animal.AlbumAnimal;
                         // --------------------------------------------------
 
                         // Início da adição de atributos extras ao objeto.
@@ -366,6 +375,13 @@ router.get('/', async (req, res, next) => {
                             if (animal.cod_dono_antigo){
                                 animal.detalhes_dono_antigo = `${req.protocol}://${req.get('host')}/usuarios/${animal.cod_dono_antigo}`;
                             }
+                            // Adicionando o end-point para exibição da foto do animal.
+                                animal.download_foto = `${req.protocol}://${req.get('host')}/usuarios/animais/albuns/fotos/${animal.foto}`
+                            // --------------------------------------------------------
+
+                            // Adicionando o end-point para listagem de álbuns do animal.
+                                animal.lista_albuns = `${req.protocol}://${req.get('host')}/usuarios/animais/albuns/?getAllFromAnimal=${animal.cod_animal}`
+                            // ----------------------------------------------------------
                         // Fim da adição de atributos extras ao objeto.
 
                         if (usuario){
@@ -474,6 +490,7 @@ router.get('/', async (req, res, next) => {
                         // Removendo estruturas que agora são desnecessárias.
                             delete animal.dono;
                             delete animal.dono_antigo;
+                            delete animal.AlbumAnimal;
                         // --------------------------------------------------
 
                         // Início da adição de atributos extras ao objeto.
@@ -484,6 +501,14 @@ router.get('/', async (req, res, next) => {
                             if (animal.cod_dono_antigo){
                                 animal.detalhes_dono_antigo = `${req.protocol}://${req.get('host')}/usuarios/${animal.cod_dono_antigo}`;
                             }
+
+                            // Adicionando o end-point para exibição da foto do animal.
+                                animal.download_foto = `${req.protocol}://${req.get('host')}/usuarios/animais/albuns/fotos/${animal.foto}`
+                            // --------------------------------------------------------
+
+                            // Adicionando o end-point para listagem de álbuns do animal.
+                                animal.lista_albuns = `${req.protocol}://${req.get('host')}/usuarios/animais/albuns/?getAllFromAnimal=${animal.cod_animal}`
+                            // ----------------------------------------------------------
                         // Fim da adição de atributos extras ao objeto.
 
                         animais.push(animal);
@@ -599,6 +624,14 @@ router.get('/', async (req, res, next) => {
                             if (animal.cod_dono_antigo){
                                 animal.detalhes_dono_antigo = `${req.protocol}://${req.get('host')}/usuarios/${animal.cod_dono_antigo}`;
                             }
+
+                            // Adicionando o end-point para exibição da foto do animal.
+                                animal.download_foto = `${req.protocol}://${req.get('host')}/usuarios/animais/albuns/fotos/${animal.foto}`
+                            // --------------------------------------------------------
+
+                            // Adicionando o end-point para listagem de álbuns do animal.
+                                animal.lista_albuns = `${req.protocol}://${req.get('host')}/usuarios/animais/albuns/?getAllFromAnimal=${animal.cod_animal}`
+                            // ----------------------------------------------------------
                         // Fim da adição de atributos extras ao objeto.
                         
                         animais.push(animal);
@@ -644,7 +677,8 @@ router.get('/', async (req, res, next) => {
                     all: true
                 }],
                 where: {
-                    cod_animal
+                    cod_animal,
+                    '$dono.esta_ativo$': 1
                 },
                 nest: true,
                 raw: true,
@@ -653,9 +687,9 @@ router.get('/', async (req, res, next) => {
 
                 if (!result){
                     return res.status(404).json({
-                        mensagem: 'Nenhum animal está vinculado à esse ID.',
+                        mensagem: 'Nenhum animal de um usuário ativo está vinculado à esse ID.',
                         code: 'RESOURCE_NOT_FOUND',
-                        lista_usuarios: `${req.protocol}://${req.get('host')}/usuarios/`,
+                        lista_animais: `${req.protocol}://${req.get('host')}/usuarios/animais/`,
                     });
                 }
 
@@ -669,8 +703,17 @@ router.get('/', async (req, res, next) => {
 
                     delete result.dono;
                     delete result.dono_antigo;
+                    delete result.AlbumAnimal;
 
                     let animal = result;
+
+                    // Adicionando o end-point para exibição da foto do animal.
+                        animal.download_foto = `${req.protocol}://${req.get('host')}/usuarios/animais/albuns/fotos/${animal.foto}`
+                    // --------------------------------------------------------
+
+                    // Adicionando o end-point para listagem de álbuns do animal.
+                        animal.lista_albuns = `${req.protocol}://${req.get('host')}/usuarios/animais/albuns/?getAllFromAnimal=${animal.cod_animal}`
+                    // ----------------------------------------------------------
 
                     // Início da verificação de bloqueios para usuário requisitante.
                     
@@ -1155,7 +1198,7 @@ router.post('/', async (req, res, next) => {
 
                 if (req.body.historia.length == 0){
                     return res.status(400).json({
-                        mensagem: 'O campo de detalhes de saúde do animal está vazio ou possui mais do que 255 caracteres.',
+                        mensagem: 'O campo de detalhes de saúde do animal está vazio.',
                         code: 'INVALID_LENGTH_HISTORIA'
                     });
                 }
@@ -1200,7 +1243,7 @@ router.post('/', async (req, res, next) => {
 
             await database.transaction( async (transaction) => {
 
-                const animal = await Animal.create({
+                let animal = await Animal.create({
                     cod_dono: usuario.cod_usuario,
                     nome: req.body.nome,
                     foto: defaultAnimalPicture,
@@ -1214,6 +1257,8 @@ router.post('/', async (req, res, next) => {
                     detalhes_comportamento: req.body.detalhes_comportamento,
                     detalhes_saude: req.body.detalhes_saude,
                     historia: req.body.historia
+                }, {
+                    transaction
                 });
 
                 let albumPrefix = undefined;
@@ -1233,19 +1278,39 @@ router.post('/', async (req, res, next) => {
                 const albumAnimal = await AlbumAnimal.create({
                     cod_animal: animal.cod_animal,
                     titulo: `${albumPrefix} ${animal.nome}`,
+                }, {
+                    transaction
                 });
+
+                // Início da construção do objeto que vai ser enviado na resposta.
+                    let objAnimal = animal.get({ plain: true });
+
+                    // Início da adição de atributos extras ao objeto.
+
+                        // Adicionando o end-point para exibição da foto do animal.
+                            objAnimal.download_foto = `${req.protocol}://${req.get('host')}/usuarios/animais/albuns/fotos/${animal.foto}`
+                        // --------------------------------------------------------
+
+                    // Fim da adição de atributos extras ao objeto.
+
+                // Fim da construção do objeto que vai ser enviado na resposta.
 
                 // Início da entrega da mensagem de conclusão do cadastro do animal para o usuário.
 
                     return res.status(200).json({
-                        mensagem: 'Cadastro do animal foi realizado com sucesso! Utilize o "cod_animal" para alterar dados do animal. É possível alterar a foto padrão do animal ao adicionar uma foto ao álbum do animal e depois alterar a "foto_atual" do animal para a nova foto do álbum.',
-                        cod_animal: animal.cod_animal
+                        mensagem: 'Cadastro do animal foi realizado com sucesso! Utilize o [ cod_animal ] para alterar dados do animal, como por exemplo, trocar a [ foto ] padrão.',
+                        animal: objAnimal
                     });
 
                 // Fim da entrega da mensagem de conclusão do cadastro do animal para o usuário.
 
+            })
+            .catch((error) => {
+                throw new Error(error);
             });
+
             // Se chegou aqui: Auto-commit.            
+
         } catch (error) {
             // Se algo deu errado: Auto-rollback.
             console.error('Algo inesperado aconteceu ao cadastrar os dados do novo usuário.', error);
@@ -1276,10 +1341,8 @@ router.patch('/:codAnimal', async (req, res, next) => {
 
     // Início das Restrições de acesso à rota.
 
-        // Apenas aplicações Pet Adote e Usuários das aplicações Pet Adote poderão acessar a listagem dos animais dos usuários.
-
-        // Apenas aplicações Pet Adote, usuários de aplicações pet Adote poderão realizar alterações em animais cadastrados.
-        // Além disso, o usuário deve ser um adaministrador ou dono do recurso para alterar os dados do animal.
+        // Apenas aplicações Pet Adote e seus usuários poderão realizar alterações em animais cadastrados.
+        // Além disso, o usuário deve ser um Administrador ou Dono do Recurso para alterar os dados do animal.
         if (!req.dadosAuthToken){   
 
             // Se em algum caso não identificado, a requisição de uma aplicação chegou aqui e não apresentou suas credenciais JWT, não permita o acesso.
@@ -1298,7 +1361,7 @@ router.patch('/:codAnimal', async (req, res, next) => {
                 });
             }
         
-        // Capturando os dados do usuário, se o requisitante for o usuário de uma aplicação Pet Adote.
+        // Capturando os dados do usuário.
             let { usuario } = req.dadosAuthToken;
 
     // Fim das Restrições de acesso à rota.
@@ -1308,10 +1371,18 @@ router.patch('/:codAnimal', async (req, res, next) => {
     // ----------------------------------------
 
     // Início da verificação do cadastro do animal.
-        let animal = await Animal.findByPk(cod_animal, {
-            raw: true
-        })
-        .catch((error) => {
+        let animal = undefined;
+
+        try {
+
+            animal = await Animal.findByPk(cod_animal, {
+                raw: true
+            })
+            .catch((error) => {
+                throw new Error(error);
+            });
+
+        } catch (error) {
 
             console.error('Algo inesperado aconteceu ao buscar os dados do animal.', error);
 
@@ -1321,7 +1392,7 @@ router.patch('/:codAnimal', async (req, res, next) => {
     
             return next( customErr );
 
-        });
+        }
 
         if (!animal) {
             // Se o animal não for encontrado...
@@ -1450,7 +1521,7 @@ router.patch('/:codAnimal', async (req, res, next) => {
                             cod_animal: req.params.codAnimal
                         }
                     })
-                    .then((result) => {
+                    .then( async (result) => {
 
                         if (!isPhotoInAlbum && !possibleDefaultPhotoAnimal.includes(animal.foto)){
                             // Se a foto do animal não estiver no Álbum do animal e não for uma das fotos padrão... Remova-a.
@@ -1463,9 +1534,27 @@ router.patch('/:codAnimal', async (req, res, next) => {
                             
                         }
 
+                        // Início da construção do objeto que vai ser enviado na resposta.
+
+                            let updatedAnimal = await Animal.findByPk(cod_animal, {
+                                raw: true
+                            });
+
+                            // Início da adição de atributos extras ao objeto.
+
+                                // Adicionando o end-point para exibição da foto do animal.
+                                    updatedAnimal.download_foto = `${req.protocol}://${req.get('host')}/usuarios/animais/albuns/fotos/${updatedAnimal.foto}`
+                                // --------------------------------------------------------
+
+                                // Adicionando o end-point para listagem de álbuns do animal.
+                                    updatedAnimal.lista_albuns = `${req.protocol}://${req.get('host')}/usuarios/animais/albuns/?getAllFromAnimal=${updatedAnimal.cod_animal}`
+                                // ----------------------------------------------------------
+
+                            // Fim da adição de atributos extras ao objeto.
+                        // Fim da construção do objeto que vai ser enviado na resposta.
                         return res.status(200).json({
                             mensagem: 'A foto do animal foi redefinida para o padrão.',
-                            foto: defaultPhotoAnimal
+                            animal: updatedAnimal
                         });
 
                     })
@@ -1488,7 +1577,7 @@ router.patch('/:codAnimal', async (req, res, next) => {
             // Verificando se o pacote da requisição tem conteúdo.
                 if (!req.headers['content-type']){
                     return res.status(400).json({
-                        mensagem: 'Dados não encontrados na requisição',
+                        mensagem: 'Dados não foram encontrados na requisição',
                         code: 'INVALID_REQUEST_CONTENT'
                     })
                 }
@@ -1498,7 +1587,7 @@ router.patch('/:codAnimal', async (req, res, next) => {
                 
                 if (req.headers['content-type'].includes('multipart/form-data')){
 
-                    // Início da verificação básica do tamanho do pacote.
+                    // Início da verificação básica do tamanho do pacote de dados.
 
                         if (Number(req.headers['content-length']) > (3 * 1024 * 1024)){
                             req.pause();
@@ -1508,7 +1597,7 @@ router.patch('/:codAnimal', async (req, res, next) => {
                             });
                         }
 
-                    // Fim da verificação básica do tamanho do pacote.
+                    // Fim da verificação básica do tamanho do pacote de dados.
 
                     // Início do gerenciamento de arquivos do usuário para a foto do animal.
 
@@ -1549,7 +1638,7 @@ router.patch('/:codAnimal', async (req, res, next) => {
             
                             }
                         }).fields([
-                            { name: 'foto_animal', maxCount: 1 }
+                            { name: 'foto', maxCount: 1 }
                         ]);
 
                         return uploadHandler(req, res, async (error) => {
@@ -1624,13 +1713,13 @@ router.patch('/:codAnimal', async (req, res, next) => {
                                 let originalFile_name = animal.foto;
                                 let originalFile_path = path.resolve(__dirname, '../uploads/images/usersAnimalPhotos/', animal.foto);
 
-                                let sentFile_path = req.files.foto_animal[0].path;
+                                let sentFile_path = req.files.foto[0].path;
 
                                 let newFile_name = `${uuid.v4()}-${moment().unix()}.jpeg`;
                                 let newFile_path = path.resolve(__dirname, '../uploads/tmp/', newFile_name);
                                 let newFile_dest = path.resolve(__dirname, '../uploads/images/usersAnimalPhotos/', newFile_name);
 
-                                console.log('Iniciando processamento da foto do animal do usuário...');
+                                // console.log('Iniciando processamento da foto do animal do usuário...');
 
                                 sharp(sentFile_path)
                                 .resize({
@@ -1775,6 +1864,20 @@ router.patch('/:codAnimal', async (req, res, next) => {
                                             
                                             // Fim da atualização da foto do animal nos dados do animal.
 
+                                            // Início da relocação da imagem tratada pelo Sharp para o diretório de imagens dos animais.
+                                                mv(newFile_path, newFile_dest, (mvError) => {
+                                                    if (mvError){
+                                                        console.error('Algo inesperado aconteceu ao processar a imagem enviada pelo usuário.', mvError);
+
+                                                        let customErr = new Error('Algo inesperado aconteceu ao processar a imagem enviada pelo usuário. Entre em contato com o administrador.');
+                                                        customErr.status = 500;
+                                                        customErr.code = 'INTERNAL_SERVER_MODULE_ERROR';
+
+                                                        return next( customErr );
+                                                    }
+                                                });
+                                            // Fim da relocação da imagem tratada pelo Sharp para o diretório de imagens dos animais.
+
                                         })
                                         .catch((error) => {
                                             // Se qualquer erro acontecer no bloco acima, cairemos em CATCH do bloco TRY e faremos o rollback;
@@ -1782,20 +1885,6 @@ router.patch('/:codAnimal', async (req, res, next) => {
                                         });
                                         
                                         // Se chegou aqui, o ORM da auto-commit...
-
-                                        // Início da relocação da imagem tratada pelo Sharp para o diretório de imagens dos animais.
-                                            mv(newFile_path, newFile_dest, (mvError) => {
-                                                if (mvError){
-                                                    console.error('Algo inesperado aconteceu ao processar a imagem enviada pelo usuário.', mvError);
-
-                                                    let customErr = new Error('Algo inesperado aconteceu ao processar a imagem enviada pelo usuário. Entre em contato com o administrador.');
-                                                    customErr.status = 500;
-                                                    customErr.code = 'INTERNAL_SERVER_MODULE_ERROR';
-
-                                                    return next( customErr );
-                                                }
-                                            });
-                                        // Fim da relocação da imagem tratada pelo Sharp para o diretório de imagens dos animais.
 
                                     } catch (error) {
 
@@ -1809,12 +1898,38 @@ router.patch('/:codAnimal', async (req, res, next) => {
 
                                         return next( customErr );
                                     }
-                                    
 
-                                    return res.status(200).json({
-                                        mensagem: 'A foto do animal foi atualizada com sucesso.',
-                                        foto: newFile_name
-                                    });
+                                    // Início do envio da resposta com os dados do animal atualizados.
+                                    await Animal.findByPk(cod_animal, {
+                                        raw: true
+                                    })
+                                    .then((resultFindAnimal) => {
+
+
+                                        // Início da construção do objeto que vai ser enviado na resposta.
+                                            // Início da adição de atributos extras ao objeto.
+
+                                                // Adicionando o end-point para exibição da foto do animal.
+                                                    resultFindAnimal.download_foto = `${req.protocol}://${req.get('host')}/usuarios/animais/albuns/fotos/${resultFindAnimal.foto}`;
+                                                // --------------------------------------------------------
+
+                                                // Adicionando o end-point para listagem de álbuns do animal.
+                                                    resultFindAnimal.lista_albuns = `${req.protocol}://${req.get('host')}/usuarios/animais/albuns/?getAllFromAnimal=${resultFindAnimal.cod_animal}`
+                                                // ----------------------------------------------------------
+
+                                            // Fim da adição de atributos extras ao objeto.
+                                        // Fim da construção do objeto que vai ser enviado na resposta.
+
+                                        return res.status(200).json({
+                                            mensagem: 'A foto do animal foi atualizada com sucesso.',
+                                            animal: resultFindAnimal
+                                        });
+
+                                    })
+                                    .catch((errorFindAnimal) => {
+
+                                    })
+                                    // Fim do envio da resposta com os dados do animal atualizados.
 
                                 })
 
@@ -1870,7 +1985,7 @@ router.patch('/:codAnimal', async (req, res, next) => {
 
                     // Fim da verificação de campos não permitidos.
 
-                // Fim da das restrições de envio de campos.
+                // Fim das restrições de envio de campos.
 
                 // Início da Normalização dos campos recebidos.
 
@@ -1948,7 +2063,7 @@ router.patch('/:codAnimal', async (req, res, next) => {
                             }
 
                             // Verificando se a foto selecionada está no Álbum do Animal.
-                            
+
                                 let isSelectedPhotoInAlbum = await AlbumAnimal.findOne({
                                     where: { 
                                         cod_animal: cod_animal,
@@ -1956,7 +2071,8 @@ router.patch('/:codAnimal', async (req, res, next) => {
                                     include: [{
                                         model: FotoAnimal,
                                         where: { 
-                                            uid_foto: req.body.foto
+                                            uid_foto: req.body.foto,
+                                            ativo: 1
                                         },
                                     }],
                                     nest: true,
@@ -1980,7 +2096,7 @@ router.patch('/:codAnimal', async (req, res, next) => {
 
                                 if (!isSelectedPhotoInAlbum){
                                     return res.status(400).json({
-                                        mensagem: 'Só é possível utilizar fotos registradas nos álbuns do animal.',
+                                        mensagem: 'Só é possível utilizar fotos ativas registradas nos álbuns do animal.',
                                         code: 'INVALID_SELECTION_FOTO'
                                     });
                                 }
@@ -2252,10 +2368,27 @@ router.patch('/:codAnimal', async (req, res, next) => {
                             raw: true
                         })
                         .then((updatedResult) => {
+
+                            // Início da construção do objeto que vai ser enviado na resposta.
+                                // Início da adição de atributos extras ao objeto.
+
+                                    // Adicionando o end-point para exibição da foto do animal.
+                                        updatedResult.download_foto = `${req.protocol}://${req.get('host')}/usuarios/animais/albuns/fotos/${updatedResult.foto}`
+                                    // --------------------------------------------------------
+
+                                    // Adicionando o end-point para listagem de álbuns do animal.
+                                        updatedResult.lista_albuns = `${req.protocol}://${req.get('host')}/usuarios/animais/albuns/?getAllFromAnimal=${updatedResult.cod_animal}`
+                                    // ----------------------------------------------------------
+
+                                // Fim da adição de atributos extras ao objeto.
+                            // Fim da construção do objeto que vai ser enviado na resposta.
+
                             return res.status(200).json({
                                 mensagem: 'Os dados do animal foram atualizados com sucesso.',
                                 animal: updatedResult
                             });
+
+
                         })
                         .catch((updatedError) => {
                             console.error(`Algo inesperado aconteceu ao buscar os dados atualizados do animal.`, updatedError);

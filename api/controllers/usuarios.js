@@ -190,7 +190,13 @@
 
                             resultArr.rows.forEach((usuario) => {
                                 // Adiciona o endereço do end-point para visualizar mais detalhes dos dados do usuário.
-                                usuario.detalhes = `${req.protocol}://${req.get('host')}/usuarios/${usuario.cod_usuario}`
+                                    usuario.detalhes = `${req.protocol}://${req.get('host')}/usuarios/${usuario.cod_usuario}`;
+                                // ------------------------------------------------------------------------------------
+
+                                // Adicionando o end-point para exibição do Avatar e do Banner do usuário.
+                                    usuario.download_avatar = `${req.protocol}://${req.get('host')}/usuarios/avatars/${usuario.foto_usuario}`;
+                                    usuario.download_banner = `${req.protocol}://${req.get('host')}/usuarios/banners/${usuario.banner_usuario}`;
+                                // -----------------------------------------------------------------------
 
                                 usuarios.push(usuario);
                             });
@@ -286,7 +292,13 @@
 
                             resultArr.rows.forEach((row) => {
                                 // Adiciona o endereço do end-point para visualizar mais detalhes dos dados do usuário.
-                                row.detalhes = `${req.protocol}://${req.get('host')}/usuarios/${row.cod_usuario}`
+                                    row.detalhes = `${req.protocol}://${req.get('host')}/usuarios/${row.cod_usuario}`;
+                                // ------------------------------------------------------------------------------------
+
+                                // Adicionando o end-point para exibição do Avatar e do Banner do usuário.
+                                    row.download_avatar = `${req.protocol}://${req.get('host')}/usuarios/avatars/${row.foto_usuario}`;
+                                    row.download_banner = `${req.protocol}://${req.get('host')}/usuarios/banners/${row.banner_usuario}`;
+                                // -----------------------------------------------------------------------
 
                                 if (usuario) {
                                     if (!listaBloqueios.includes(row.cod_usuario)){
@@ -382,7 +394,13 @@
 
                             resultArr.rows.forEach((usuario) => {
                                 // Adiciona o endereço do end-point para visualizar mais detalhes dos dados do usuário.
-                                usuario.detalhes = `${req.protocol}://${req.get('host')}/usuarios/${usuario.cod_usuario}`
+                                    usuario.detalhes = `${req.protocol}://${req.get('host')}/usuarios/${usuario.cod_usuario}`;
+                                // ------------------------------------------------------------------------------------
+
+                                // Adicionando o end-point para exibição do Avatar e do Banner do usuário.
+                                    usuario.download_avatar = `${req.protocol}://${req.get('host')}/usuarios/avatars/${usuario.foto_usuario}`;
+                                    usuario.download_banner = `${req.protocol}://${req.get('host')}/usuarios/banners/${usuario.banner_usuario}`;
+                                // -----------------------------------------------------------------------
 
                                 usuarios.push(usuario);
                             });
@@ -485,6 +503,11 @@
 
             if (result) {
 
+                // Adicionando o end-point para exibição do Avatar e do Banner do usuário.
+                    result.download_avatar = `${req.protocol}://${req.get('host')}/usuarios/avatars/${result.foto_usuario}`;
+                    result.download_banner = `${req.protocol}://${req.get('host')}/usuarios/banners/${result.banner_usuario}`;
+                // -----------------------------------------------------------------------
+
                 /* Exibir lista de rotas com base nos níveis de acesso.
                 Cliente (API); Usuário Admin; Usuário dono do recurso; Usuário visitante do recurso. */
 
@@ -495,59 +518,59 @@
                         usuario: result,
                         conta: `${req.protocol}://${req.get('host')}/contas/?codUsuario=${result.cod_usuario}`,
                         endereco: `${req.protocol}://${req.get('host')}/usuarios/enderecos/?codUsuario=${result.cod_usuario}`,
-                        seguidos: `${req.protocol}://${req.get('host')}/usuarios/seguidas/?seguidos=${result.cod_usuario}`,
-                        seguidores: `${req.protocol}://${req.get('host')}/usuarios/seguidas/?seguidores=${result.cod_usuario}`,
-                        denunciados: `${req.protocol}://${req.get('host')}/usuarios/denuncias/?denunciados=${result.cod_usuario}`,
-                        denunciantes: `${req.protocol}://${req.get('host')}/usuarios/denuncias/?denunciantes=${result.cod_usuario}`,
-                        bloqueados: `${req.protocol}://${req.get('host')}/usuarios/bloqueios/?bloqueados=${result.cod_usuario}`,
-                        bloqueantes: `${req.protocol}://${req.get('host')}/usuarios/bloqueios/?bloqueantes=${result.cod_usuario}`,
-                        animais: `${req.protocol}://${req.get('host')}/animais/?codDono=${result.cod_usuario}`,
-                        momentos: `${req.protocol}://${req.get('host')}/momentos/?codUsuario=${result.cod_usuario}`,
-                        postagens: `${req.protocol}://${req.get('host')}/postagens/?codUsuario=${result.cod_usuario}`,
-                        postagens_avaliadas: `${req.protocol}://${req.get('host')}/postagens/avaliacoes/?codUsuario=${result.cod_usuario}`,
-                        anuncios: `${req.protocol}://${req.get('host')}/anuncios/?codUsuario=${result.cod_usuario}`,
-                        anuncios_favoritos: `${req.protocol}://${req.get('host')}/anuncios/favoritos/?codUsuario=${result.cod_usuario}`,
-                        anuncios_avaliados: `${req.protocol}://${req.get('host')}/anuncios/avaliacoes/?codUsuario=${result.cod_usuario}`,
-                        candidaturas: `${req.protocol}://${req.get('host')}/anuncios/candidaturas/?codUsuario=${result.cod_usuario}`,
-                        conversas: `${req.protocol}://${req.get('host')}/conversas/?codUsuario=${result.cod_usuario}`
+                        // seguidos: `${req.protocol}://${req.get('host')}/usuarios/seguidas/?seguidos=${result.cod_usuario}`,
+                        // seguidores: `${req.protocol}://${req.get('host')}/usuarios/seguidas/?seguidores=${result.cod_usuario}`,
+                        // denunciados: `${req.protocol}://${req.get('host')}/usuarios/denuncias/?denunciados=${result.cod_usuario}`,
+                        // denunciantes: `${req.protocol}://${req.get('host')}/usuarios/denuncias/?denunciantes=${result.cod_usuario}`,
+                        // bloqueados: `${req.protocol}://${req.get('host')}/usuarios/bloqueios/?bloqueados=${result.cod_usuario}`,
+                        // bloqueantes: `${req.protocol}://${req.get('host')}/usuarios/bloqueios/?bloqueantes=${result.cod_usuario}`,
+                        animais: `${req.protocol}://${req.get('host')}/usuarios/animais/?getAllFromUser=${result.cod_usuario}`,
+                        // momentos: `${req.protocol}://${req.get('host')}/momentos/?codUsuario=${result.cod_usuario}`,
+                        // postagens: `${req.protocol}://${req.get('host')}/postagens/?codUsuario=${result.cod_usuario}`,
+                        // postagens_avaliadas: `${req.protocol}://${req.get('host')}/postagens/avaliacoes/?codUsuario=${result.cod_usuario}`,
+                        // anuncios: `${req.protocol}://${req.get('host')}/anuncios/?codUsuario=${result.cod_usuario}`,
+                        // anuncios_favoritos: `${req.protocol}://${req.get('host')}/anuncios/favoritos/?codUsuario=${result.cod_usuario}`,
+                        // anuncios_avaliados: `${req.protocol}://${req.get('host')}/anuncios/avaliacoes/?codUsuario=${result.cod_usuario}`,
+                        // candidaturas: `${req.protocol}://${req.get('host')}/anuncios/candidaturas/?codUsuario=${result.cod_usuario}`,
+                        // conversas: `${req.protocol}://${req.get('host')}/conversas/?codUsuario=${result.cod_usuario}`
                     });
                 } else if (req.dadosAuthToken.usuario && req.dadosAuthToken.usuario.cod_usuario != req.params.codUsuario){
                     // Chamada de um Usuário visitante.
 
                     return res.status(200).json({
-                        conta: `${req.protocol}://${req.get('host')}/contas/?codUsuario=${result.cod_usuario}`,
                         usuario: result,
-                        seguidos: `${req.protocol}://${req.get('host')}/usuarios/seguidas/?seguidos=${result.cod_usuario}`,
-                        seguidores: `${req.protocol}://${req.get('host')}/usuarios/seguidas/?seguidores=${result.cod_usuario}`,
-                        animais: `${req.protocol}://${req.get('host')}/animais/?codDono=${result.cod_usuario}`,
-                        momentos: `${req.protocol}://${req.get('host')}/momentos/?codUsuario=${result.cod_usuario}`,
-                        postagens: `${req.protocol}://${req.get('host')}/postagens/?codUsuario=${result.cod_usuario}`,
-                        postagens_avaliadas: `${req.protocol}://${req.get('host')}/postagens/avaliacoes/?codUsuario=${result.cod_usuario}`,
-                        anuncios: `${req.protocol}://${req.get('host')}/anuncios/?codUsuario=${result.cod_usuario}`,
-                        anuncios_favoritos: `${req.protocol}://${req.get('host')}/anuncios/favoritos/?codUsuario=${result.cod_usuario}`,
-                        anuncios_avaliados: `${req.protocol}://${req.get('host')}/anuncios/avaliacoes/?codUsuario=${result.cod_usuario}`,
+                        // conta: `${req.protocol}://${req.get('host')}/contas/?codUsuario=${result.cod_usuario}`,
+                        // seguidos: `${req.protocol}://${req.get('host')}/usuarios/seguidas/?seguidos=${result.cod_usuario}`,
+                        // seguidores: `${req.protocol}://${req.get('host')}/usuarios/seguidas/?seguidores=${result.cod_usuario}`,
+                        animais: `${req.protocol}://${req.get('host')}/usuarios/animais/?getAllFromUser=${result.cod_usuario}`,
+                        // momentos: `${req.protocol}://${req.get('host')}/momentos/?codUsuario=${result.cod_usuario}`,
+                        // postagens: `${req.protocol}://${req.get('host')}/postagens/?codUsuario=${result.cod_usuario}`,
+                        // postagens_avaliadas: `${req.protocol}://${req.get('host')}/postagens/avaliacoes/?codUsuario=${result.cod_usuario}`,
+                        // anuncios: `${req.protocol}://${req.get('host')}/anuncios/?codUsuario=${result.cod_usuario}`,
+                        // anuncios_favoritos: `${req.protocol}://${req.get('host')}/anuncios/favoritos/?codUsuario=${result.cod_usuario}`,
+                        // anuncios_avaliados: `${req.protocol}://${req.get('host')}/anuncios/avaliacoes/?codUsuario=${result.cod_usuario}`,
                     });
 
                 } else if (req.dadosAuthToken.usuario && req.dadosAuthToken.usuario.cod_usuario == req.params.codUsuario){
                     // Chamada do Usuário dono do recurso.
 
                     return res.status(200).json({
-                        conta: `${req.protocol}://${req.get('host')}/contas/?codUsuario=${result.cod_usuario}`,
                         usuario: result,
+                        conta: `${req.protocol}://${req.get('host')}/contas/?codUsuario=${result.cod_usuario}`,
                         endereco: `${req.protocol}://${req.get('host')}/usuarios/enderecos/?codUsuario=${result.cod_usuario}`,
-                        seguidos: `${req.protocol}://${req.get('host')}/usuarios/seguidas/?seguidos=${result.cod_usuario}`,
-                        seguidores: `${req.protocol}://${req.get('host')}/usuarios/seguidas/?seguidores=${result.cod_usuario}`,
-                        denunciados: `${req.protocol}://${req.get('host')}/usuarios/denuncias/?denunciados=${result.cod_usuario}`,
-                        bloqueados: `${req.protocol}://${req.get('host')}/usuarios/bloqueios/?bloqueados=${result.cod_usuario}`,
-                        animais: `${req.protocol}://${req.get('host')}/animais/?codDono=${result.cod_usuario}`,
-                        momentos: `${req.protocol}://${req.get('host')}/momentos/?codUsuario=${result.cod_usuario}`,
-                        postagens: `${req.protocol}://${req.get('host')}/postagens/?codUsuario=${result.cod_usuario}`,
-                        postagens_avaliadas: `${req.protocol}://${req.get('host')}/postagens/avaliacoes/?codUsuario=${result.cod_usuario}`,
-                        anuncios: `${req.protocol}://${req.get('host')}/anuncios/?codUsuario=${result.cod_usuario}`,
-                        anuncios_favoritos: `${req.protocol}://${req.get('host')}/anuncios/favoritos/?codUsuario=${result.cod_usuario}`,
-                        anuncios_avaliados: `${req.protocol}://${req.get('host')}/anuncios/avaliacoes/?codUsuario=${result.cod_usuario}`,
-                        candidaturas: `${req.protocol}://${req.get('host')}/anuncios/candidaturas/?codUsuario=${result.cod_usuario}`,
-                        conversas: `${req.protocol}://${req.get('host')}/conversas/?codUsuario=${result.cod_usuario}`
+                        // seguidos: `${req.protocol}://${req.get('host')}/usuarios/seguidas/?seguidos=${result.cod_usuario}`,
+                        // seguidores: `${req.protocol}://${req.get('host')}/usuarios/seguidas/?seguidores=${result.cod_usuario}`,
+                        // denunciados: `${req.protocol}://${req.get('host')}/usuarios/denuncias/?denunciados=${result.cod_usuario}`,
+                        // bloqueados: `${req.protocol}://${req.get('host')}/usuarios/bloqueios/?bloqueados=${result.cod_usuario}`,
+                        animais: `${req.protocol}://${req.get('host')}/usuarios/animais/?getAllFromUser=${result.cod_usuario}`,
+                        // momentos: `${req.protocol}://${req.get('host')}/momentos/?codUsuario=${result.cod_usuario}`,
+                        // postagens: `${req.protocol}://${req.get('host')}/postagens/?codUsuario=${result.cod_usuario}`,
+                        // postagens_avaliadas: `${req.protocol}://${req.get('host')}/postagens/avaliacoes/?codUsuario=${result.cod_usuario}`,
+                        // anuncios: `${req.protocol}://${req.get('host')}/anuncios/?codUsuario=${result.cod_usuario}`,
+                        // anuncios_favoritos: `${req.protocol}://${req.get('host')}/anuncios/favoritos/?codUsuario=${result.cod_usuario}`,
+                        // anuncios_avaliados: `${req.protocol}://${req.get('host')}/anuncios/avaliacoes/?codUsuario=${result.cod_usuario}`,
+                        // candidaturas: `${req.protocol}://${req.get('host')}/anuncios/candidaturas/?codUsuario=${result.cod_usuario}`,
+                        // conversas: `${req.protocol}://${req.get('host')}/conversas/?codUsuario=${result.cod_usuario}`
                     });
 
                 }

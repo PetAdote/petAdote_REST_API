@@ -27,12 +27,12 @@ const {DataTypes, Model, Sequelize} = require('sequelize');
     });
 
     // Associações (FKs).
-        // FotoAnimal.belongsTo(AlbumAnimal, {
-        //     foreignKey: {
-        //         name: 'cod_album',
-        //         allowNull: false
-        //     }
-        // });
+        FotoAnimal.belongsTo(AlbumAnimal, {
+            foreignKey: {
+                name: 'cod_album',
+                allowNull: false
+            }
+        });
 
         AlbumAnimal.hasMany(FotoAnimal, {
             foreignKey: {
