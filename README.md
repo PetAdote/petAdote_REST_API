@@ -482,14 +482,14 @@ Temos 3 meios de busca dos endereços cadastrados. Os end-points refletem o fato
 
 ```javascript
 request.body = {
-	nome: 'Tom',
+    nome: 'Tom',
     data_nascimento: '2021-04-18',
-    especie: 'Gato',	// Aceita: "Gato", "Cão", "Outros".
-    raca: 'Comum',		// A raça é irrestrita, o usuário que define.
-    genero: 'M',		// Aceita: "M", "F".
-    porte: 'M',			// Aceita: "P", "M", "G".
-    esta_castrado: '1',	// Aceita: "1", "0".
-    esta_vacinado: '1', // Aceita: "1", "0".
+    especie: 'Gato',    // Aceita: "Gato", "Cão", "Outros".
+    raca: 'Comum',    // A raça é irrestrita, o usuário que define.
+    genero: 'M',    // Aceita: "M", "F".
+    porte: 'M',    // Aceita: "P", "M", "G".
+    esta_castrado: '1',    // Aceita: "1", "0".
+    esta_vacinado: '1',    // Aceita: "1", "0".
     detalhes_comportamento: 'O Tom é um pouco bagunceiro, mas só quando está brincando.',
     detalhes_saude: 'Sempre teve boa saúde.',
     historia: 'Meu vizinho deixou o Tom comigo porque estava se mudando e não podia levá-lo pra nova casa, mas eu não tenho tempo para dar atenção pra ele, preciso que alguém adote o Tom e cuide bem dele.'
@@ -521,15 +521,15 @@ request.body = {
 ```javascript
 // Campos comuns.
 request.body = {
-	nome: '',
-    foto: '',		// Aceita apenas UID de fotos que estão no álbum do animal.
+    nome: '',
+    foto: '',    // Aceita apenas UID de fotos que estão no álbum do animal.
     data_nascimento: '',
-    especie: '',	// Aceita: "Gato", "Cão", "Outros".
-    raca: '',		// A raça é irrestrita, o usuário que define.
-    genero: '',		// Aceita: "M", "F".
-    porte: '',			// Aceita: "P", "M", "G".
-    esta_castrado: '',	// Aceita: "1", "0".
-    esta_vacinado: '', 	// Aceita: "1", "0".
+    especie: '',    // Aceita: "Gato", "Cão", "Outros".
+    raca: '',    // A raça é irrestrita, o usuário que define.
+    genero: '',    // Aceita: "M", "F".
+    porte: '',    // Aceita: "P", "M", "G".
+    esta_castrado: '',    // Aceita: "1", "0".
+    esta_vacinado: '',    // Aceita: "1", "0".
     detalhes_comportamento: '',
     detalhes_saude: '',
     historia: ''
@@ -609,7 +609,7 @@ Temos 4 maneiras de acessar os dados dos álbuns.
 
 ```javascript
 request.multipart/form-data = {
-	foto: 'ArquivoDaFotoDoAnimal.jpeg'
+    foto: 'ArquivoDaFotoDoAnimal.jpeg'
 }
 ```
 
@@ -629,9 +629,9 @@ request.multipart/form-data = {
 
 ```javascript
 request.body = {
-	nome: '',
+    nome: '',
     descricao: '',
-    ativo: ''			// Aceita apenas: '0' - Administradores podem ativá-la novamente caso necessário.
+    ativo: ''    // Aceita apenas: '0' - Administradores podem ativá-la novamente caso necessário.
 }
 ```
 

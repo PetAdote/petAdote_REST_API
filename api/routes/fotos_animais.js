@@ -49,7 +49,7 @@ router.get('/', async (req, res, next) => {
      10. Exibe os dados de uma foto específica.  (Apps/Admins/Usuarios - Restrições de uso mais específicas)
     */
 
-     // Início da Verificação dos Parâmetros da Rota.
+    // Início da Verificação dos Parâmetros da Rota.
         // As verificações dos parâmetros desta rota acontecem nas configurações das opções de busca.
     // Fim da verificação dos parâmetros da Rota.
 
@@ -506,10 +506,6 @@ router.get('/', async (req, res, next) => {
                         mensagem: 'Nenhum álbum de animais dos usuários ativos possui fotos ativas.'
                     });
                 }
-
-                // return res.status(200).json({
-                //     resultArr
-                // });
 
                 // Início da construção do objeto enviado na resposta.
 
@@ -1241,13 +1237,23 @@ router.get('/', async (req, res, next) => {
                 }
 
                 // Início da verificação do estado de ativação do dono do recurso.
-                    if (usuario?.e_admin == 0 && result.AlbumAnimal.Animal.dono.esta_ativo == 0){
-                        // Se o dono do recurso estiver inativo, dados relativos à ele não podem ser encontrados por outros usuários.
-                        return res.status(404).json({
-                            mensagem: 'Nenhuma foto com este UID foi encontrada.',
-                            code: 'RESOURCE_NOT_FOUND',
-                            lista_fotos: `${req.protocol}://${req.get('host')}/usuarios/animais/albuns/fotos/?getAllActive=1&activeOwner=1`
-                        });
+
+                    let dono_recurso = result.AlbumAnimal.Animal.dono.cod_usuario;
+                    let dono_ativo = result.AlbumAnimal.Animal.dono.esta_ativo;
+
+                    if (usuario?.e_admin == 0 && usuario?.cod_usuario != dono_recurso){
+
+                        if (dono_ativo == 0){
+
+                            // Se o dono do recurso estiver inativo, dados relativos à ele não podem ser encontrados por outros usuários além do dono do recurso.
+                            return res.status(404).json({
+                                mensagem: 'Nenhuma foto com este UID foi encontrada.',
+                                code: 'RESOURCE_NOT_FOUND',
+                                lista_fotos: `${req.protocol}://${req.get('host')}/usuarios/animais/albuns/fotos/?getAllActive=1&activeOwner=1`
+                            });
+
+                        }
+
                     }
                 // Fim da verificação do estado de ativação do dono do recurso.
 

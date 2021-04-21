@@ -253,10 +253,16 @@
 
         if (!req.headers['authorization']){
 
-            let customErr = new Error('Requisição não autorizada.');
-            customErr.status = 401;
-            customErr.code = 'ACCESS_NOT_ALLOWED';
-            return next( customErr );
+            console.log('[manage_jwt.254] - Access not allowed. Authorization header not sent.');
+            return res.status(401).json({
+                mensagem: 'Requisição não autorizada.',
+                code: 'ACCESS_NOT_ALLOWED'
+            });
+
+            // let customErr = new Error('Requisição não autorizada.');
+            // customErr.status = 401;
+            // customErr.code = 'ACCESS_NOT_ALLOWED';
+            // return next( customErr );
         }
 
         const token = req.headers['authorization'].split(" ")[1];

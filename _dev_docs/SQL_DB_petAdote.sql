@@ -65,8 +65,6 @@ CREATE TABLE tbl_conta_local (
     FOREIGN KEY (cod_usuario) REFERENCES tbl_usuario(cod_usuario)
 );
 
-DROP TABLE tbl_conta_local;
-
 CREATE TABLE tbl_conta_facebook (
 	cod_facebook VARCHAR(255) NOT NULL UNIQUE,
 	cod_usuario INT UNSIGNED NOT NULL UNIQUE,
@@ -153,18 +151,24 @@ CREATE TABLE tbl_foto_animal (
 
 CREATE TABLE tbl_anuncio (
 	cod_anuncio INT UNSIGNED NOT NULL UNIQUE AUTO_INCREMENT,
-    cod_animal INT UNSIGNED NOT NULL UNIQUE,	# Unique pois o animal poderá ser anúnciado uma única vez até ser adotado para evitar SPAM.
+    cod_animal INT UNSIGNED NOT NULL UNIQUE,	# Unique pois o animal poderá ser anúnciado uma única vez até ser adotado para evitar SPAM. Se o anúncio foi inativado alguma vez e o usuário tentar cadastrá-lo novamente, simplesmente realizamos a re-ativação dele com novos dados.
     cod_usuario INT UNSIGNED NOT NULL,			# Não é UNIQUE pois o usuário poderá anúnciar mais de 1 animal.
-    uid_foto_animal VARCHAR(255) NOT NULL UNIQUE,		# Unique para restringir o uso em múltiplos anúncios.
-    qtd_visualizacao INT UNSIGNED NOT NULL DEFAULT 0,
+    uid_foto_animal VARCHAR(255) NOT NULL,
+    qtd_visualizacoes INT UNSIGNED NOT NULL DEFAULT 0,
     qtd_avaliacoes INT UNSIGNED NOT NULL DEFAULT 0,
-    estado_adocao ENUM('Me adote!', 'Fui adotado!') NOT NULL DEFAULT 'Me adote!',
+    estado_anuncio ENUM('Aberto', 'Concluido', 'Fechado') NOT NULL DEFAULT 'Aberto',
     data_criacao DATETIME NOT NULL DEFAULT NOW(),
+    data_modificacao DATETIME NOT NULL DEFAULT NOW(),
     PRIMARY KEY (cod_anuncio),
     FOREIGN KEY (cod_animal) REFERENCES tbl_animal(cod_animal),
     FOREIGN KEY (cod_usuario) REFERENCES tbl_usuario(cod_usuario),
     FOREIGN KEY (uid_foto_animal) REFERENCES tbl_foto_animal(uid_foto)
 );
+
+DESCRIBE tbl_anuncio;
+
+SET FOREIGN_KEY_CHECKS = 0;
+DROP TABLE tbl_anuncio;
 
 CREATE TABLE tbl_momento (
 	cod_momento INT UNSIGNED NOT NULL UNIQUE AUTO_INCREMENT,
@@ -237,8 +241,10 @@ CREATE TABLE tbl_candidatura (
 	cod_candidatura INT UNSIGNED NOT NULL UNIQUE AUTO_INCREMENT,
     cod_anuncio INT UNSIGNED NOT NULL,
     cod_usuario INT UNSIGNED NOT NULL,
-    data_candidatura DATETIME NOT NULL DEFAULT NOW(),
     estado_candidatura ENUM('Em avaliação', 'Candidatura aceita', 'Candidatura rejeitada') NOT NULL DEFAULT 'Em avaliação',
+    ativo TINYINT UNSIGNED NOT NULL DEFAULT 1,
+    data_criacao DATETIME NOT NULL DEFAULT NOW(),
+    data_modificacao DATETIME NOT NULL DEFAULT NOW(),
     PRIMARY KEY (cod_candidatura),
     FOREIGN KEY (cod_anuncio) REFERENCES tbl_anuncio(cod_anuncio),
     FOREIGN KEY (cod_usuario) REFERENCES tbl_usuario(cod_usuario)
@@ -373,8 +379,8 @@ commit;
 
 rollback;
 
-# 24607764-3b61-4411-84b5-918791ecb327-1618257907.jpeg
-	
+
+
 
 SET FOREIGN_KEY_CHECKS = 0;
 TRUNCATE tbl_usuario;
@@ -384,6 +390,10 @@ TRUNCATE tbl_conta_google;
 TRUNCATE tbl_end_usuario;
 TRUNCATE tbl_bloqueio;
 SET FOREIGN_KEY_CHECKS = 1;
+
+
+
+
 
 SELECT 	pu.*,
 		al.*,
@@ -621,4 +631,36 @@ VALUES
 	(1, 4);
 
 # TRUNCATE TABLE tbl_bloqueio;
+
+#---------------------------------------------------------------------------------------------#
+# Cadastro de Anúncios #
+
+DESCRIBE tbl_anuncio;
+
+SELECT * FROM tbl_anuncio;
+
+SELECT * FROM tbl_animal;
+SELECT * FROM tbl_foto_animal;
+
+SELECT * 
+	FROM tbl_album_animal taa
+INNER JOIN tbl_foto_animal tfa
+	ON taa.cod_album = tfa.cod_album
+WHERE taa.cod_animal = 2;
+
+INSERT INTO tbl_anuncio
+	(cod_animal, cod_usuario, uid_foto_animal)
+VALUES
+	(2, 1, 'lilabricando.jpeg');
+    
+INSERT INTO tbl_anuncio
+	(cod_animal, cod_usuario, uid_foto_animal)
+VALUES
+	(1, 1, 'luckyfeliz.jpeg');
+        
+INSERT INTO tbl_anuncio
+	(cod_animal, cod_usuario, uid_foto_animal)
+VALUES
+	(4, 3, 'o_grande_cinzento.jpeg');
+
 

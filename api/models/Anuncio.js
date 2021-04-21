@@ -4,6 +4,11 @@ const {DataTypes, Model, Sequelize} = require('sequelize');
 // Instância da conexão com a Database.
     const {connection} = require('../../configs/database');
 
+    // Models das Associações (Chaves Estrangeiras).
+        const Animal = require('./Animal');
+        const FotoAnimal = require('./FotoAnimal');
+        const Usuario = require('./Usuario');
+
 // Definição do Model 'Anuncio' para 'tbl_anuncio'.
     const Anuncio = connection.define('Anuncio', {
 
@@ -16,17 +21,40 @@ const {DataTypes, Model, Sequelize} = require('sequelize');
         cod_usuario: { type: DataTypes.INTEGER.UNSIGNED, allowNull: false, 
             references: { model: Model.Usuario, key: 'cod_usuario' }
         },
-        uid_foto_animal: { type: DataTypes.STRING(255), allowNull: false, unique: true ,  // Unique para restringir o uso da mesma foto em múltiplos anúncios.
+        uid_foto_animal: { type: DataTypes.STRING(255), allowNull: false,
             references: { model: Model.FotoAnimal, key: 'cod_foto' }
         },
-        qtd_visualizacao: { type: DataTypes.INTEGER.UNSIGNED, allowNull: false, defaultValue: 0 },
+        qtd_visualizacoes: { type: DataTypes.INTEGER.UNSIGNED, allowNull: false, defaultValue: 0 },
         qtd_avaliacoes: { type: DataTypes.INTEGER.UNSIGNED, allowNull: false, defaultValue: 0 },
-        estado_adocao: { type: DataTypes.ENUM('Me adote!', 'Fui adotado!')},
-        data_criacao: { type: DataTypes.DATE, allowNull: false, defaultValue: Sequelize.NOW }
+        estado_anuncio: { type: DataTypes.ENUM('Aberto', 'Concluido', 'Fechado'), allowNull: false, defaultValue: 'Aberto' },
+        data_criacao: { type: DataTypes.DATE, allowNull: false, defaultValue: Sequelize.NOW },
+        data_modificacao: { type: DataTypes.DATE, allowNull: false, defaultValue: Sequelize.NOW }
 
     }, {
         tableName: 'tbl_anuncio',
     });
+
+    // Associações (FKs).
+        Anuncio.belongsTo(Animal, {
+            foreignKey: {
+                name: 'cod_animal',
+                allowNull: false
+            }
+        });
+
+        Anuncio.belongsTo(FotoAnimal, {
+            foreignKey: {
+                name: 'uid_foto_animal',
+                allowNull: false
+            }
+        });
+
+        Anuncio.belongsTo(Usuario, {
+            foreignKey: {
+                name: 'cod_usuario',
+                allowNull: false
+            }
+        });
 
 // Exportação.
 module.exports = Anuncio;
