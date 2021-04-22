@@ -46,10 +46,22 @@ const {DataTypes, Model, Sequelize} = require('sequelize');
             allowNull: false
         });
 
+        Usuario.hasMany(Animal, {
+            as: 'dono',
+            foreignKey: 'cod_dono',
+            allowNull: false
+        })
+
         Animal.belongsTo(Usuario, {
             as: 'dono_antigo',
             foreignKey: 'cod_dono_antigo'
         });
+
+        Usuario.hasMany(Animal, {
+            as: 'dono_antigo',
+            foreignKey: 'cod_dono_antigo',
+            allowNull: false
+        })
 
 // Exportação.
 module.exports = Animal;

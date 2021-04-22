@@ -348,7 +348,7 @@ router.get('/', (req, res, next) => {
                     // Início da inclusão de atributos extra.
                         resultArr.rows.forEach((anuncio) => {
                             anuncio.detalhes_anuncio = `GET ${req.protocol}://${req.get('host')}/anuncios/?getOne=${anuncio.cod_anuncio}`;
-                            
+
                             anuncio.download_foto = `GET ${req.protocol}://${req.get('host')}/usuarios/animais/albuns/fotos/${anuncio.uid_foto_animal}`;
 
                             anuncio.add_avaliacao = `POST ${req.protocol}://${req.get('host')}/anuncios/avaliacoes/${anuncio.cod_anuncio}`;
@@ -1983,7 +1983,9 @@ router.get('/', (req, res, next) => {
 
             Anuncio.findOne({
                 include: [{
-                    all: true
+                    model: Animal
+                }, {
+                    model: Usuario
                 }],
                 where: {
                     cod_anuncio: req.query.getOne
@@ -2091,6 +2093,342 @@ router.get('/', (req, res, next) => {
         }
 
     // Início dos processos de listagem dos anúncios de animais dos usuários.
+});
+
+router.post('/:codAnimal', async (req, res, next) => {
+
+    // Início da verificação do parâmetro de rota.
+
+        if (String(req.params.codAnimal).match(/[^\d]+/g)){
+            return res.status(400).json({
+                mensagem: "Requisição inválida - O ID de um Animal deve conter apenas dígitos.",
+                code: 'BAD_REQUEST'
+            });
+        }
+
+    // Fim da verificação do parâmetro de rota.
+
+    // Início das restrições de acesso à rota.
+
+        // Apenas usuários poderão gerar anúncios para seus animais.
+        if (!req.dadosAuthToken){   
+
+            // Se em algum caso não identificado, a requisição de uma aplicação chegou aqui e não apresentou suas credenciais JWT, não permita o acesso.
+            return res.status(401).json({
+                mensagem: 'Você não possui o nível de acesso adequado para esse recurso.',
+                code: 'ACCESS_TO_RESOURCE_NOT_ALLOWED'
+            });
+
+        }
+
+        // Se o Cliente não for do tipo Pet Adote, não permita o acesso.
+            if (req.dadosAuthToken.tipo_cliente !== 'Pet Adote'){
+                return res.status(401).json({
+                    mensagem: 'Você não possui o nível de acesso adequado para esse recurso.',
+                    code: 'ACCESS_TO_RESOURCE_NOT_ALLOWED'
+                });
+            }
+        
+        // Capturando os dados do usuário, se o requisitante for o usuário de uma aplicação Pet Adote.
+            const { usuario } = req.dadosAuthToken;
+
+        // Se o requisitante não for um usuário, não permita o acesso.
+        if (!usuario){
+            return res.status(401).json({
+                mensagem: 'Requisição inválida - Você não possui o nível de acesso adequado para esse recurso.',
+                code: 'ACCESS_TO_RESOURCE_NOT_ALLOWED'
+            });
+        };
+        
+    // Fim das restrições de acesso à rota.
+
+    // Normalizando o parâmetro recebido.
+        req.params.codAnimal = Number(req.params.codAnimal);
+    // ----------------------------------
+
+    // Capturando o código do animal que será anúnciado.
+        const cod_animal = req.params.codAnimal;
+    // -------------------------------------------------
+
+    // Início da verificação dos dados do animal.
+
+        let animal = undefined;
+
+        try {
+            // Para gerar um anúncio do animal, o dono do animal deve estar ativo.
+            animal = await Animal.findOne({
+                include: [{
+                    model: Usuario,
+                    as: 'dono'
+                }, {
+                    model: Anuncio
+                }],
+                where: {
+                    cod_animal: cod_animal,
+                    // ativo: 1,
+                    '$dono.esta_ativo$': 1
+                },
+                nest: true,
+                raw: true
+            })
+            .catch((error) => {
+                throw new Error(error);
+            })
+            
+        } catch (error) {
+            console.error('Algo inesperado aconteceu ao buscar os dados do animal que será anúnciado.', error);
+
+            let customErr = new Error('Algo inesperado aconteceu ao buscar os dados do animal que será anúnciado. Entre em contato com o administrador.');
+            customErr.status = 500;
+            customErr.code = 'INTERNAL_SERVER_ERROR'
+    
+            return next( customErr );
+        }
+
+        if (!animal){
+            // Se o animal não foi encontrado, ele não existe ou o dono do animal está inativo.
+            return res.status(404).json({
+                mensagem: 'Não foi possível encontrar o animal para gerar o anúncio.',
+                code: 'RESOURCE_NOT_FOUND'
+            });
+        }
+
+        if (animal.Anuncio.estado_anuncio == 'Concluido'){
+            return res.status(409).json({
+                mensagem: 'Não é possível cadastrar um novo anúncio para um animal que já teve o anúncio como concluído.',
+                code: 'DUPLICATE_NOT_ALLOWED'
+            });
+        }
+
+        if (animal.Anuncio.estado_anuncio == 'Aberto'){
+            return res.status(409).json({
+                mensagem: 'Não é possível cadastrar um novo anúncio para um animal que já possui um anúncio em aberto.',
+                code: 'DUPLICATE_NOT_ALLOWED'
+            });
+        }
+
+    // Fim da verificação dos dados do animal.
+
+    // Início das restrições de uso da rota.
+        if (usuario?.e_admin == 0 && animal.cod_dono != usuario?.cod_usuario){
+            // Se o requisitante é um usuário comum que não é o dono do recurso...
+            return res.status(401).json({
+                mensagem: 'Você não possui o nível de acesso adequado para esse recurso.',
+                code: 'ACCESS_TO_RESOURCE_NOT_ALLOWED'
+            });
+        }
+    // Fim das restrições de uso da rota.
+
+    // Início da verificação de conteúdo do pacote de dados da requisição.
+        if (!req.headers['content-type']){
+            return res.status(400).json({
+                mensagem: 'Dados não foram encontrados na requisição',
+                code: 'INVALID_REQUEST_CONTENT'
+            });
+        }
+    // Fim da verificação de conteúdo do pacote de dados da requisição.
+
+    // Início do processo de criação do anúncio.
+
+        // Início das restrições de envio de campos.
+
+            let hasUnauthorizedField = false;
+
+            // Lista de campos permitidos.
+
+                let allowedFields = [
+                    'uid_foto_animal'
+                ];
+
+            // Fim da lista de campos permitidos.
+
+            // Início da verificação de campos não permitidos.
+
+                Object.entries(req.body).forEach((pair) => {
+                    if (!allowedFields.includes(pair[0])){
+                        hasUnauthorizedField = true;
+                    };
+                });
+
+                if (hasUnauthorizedField){
+                    return res.status(400).json({
+                        mensagem: 'Algum dos campos enviados é inválido.',
+                        code: 'INVALID_REQUEST_FIELDS'
+                    });
+                }
+
+            // Fim da verificação de campos não permitidos.
+
+        // Fim das restrições de envio de campos.
+
+        // Início da Normalização dos campos recebidos.
+
+            Object.entries(req.body).forEach((pair) => {
+
+                req.body[pair[0]] = String(pair[1]).trim();     // Remove espaços excessivos no início e no fim do valor.
+
+                // let partes = undefined;     // Será útil para tratar partes individuais de um valor.
+
+                // switch(pair[0]){
+                //     default:
+                //         break;
+                // }
+
+            });
+
+        // Fim da Normalização dos campos recebidos.
+
+        // Início da Validação dos Campos.
+
+            // Validação "uid_foto_animal".
+                if (req.body.uid_foto_animal?.length >= 0){
+
+                    if (!String(req.body.uid_foto_animal).match(/^[^?/]+\.jpeg+$/g)){
+                        return res.status(400).json({
+                            mensagem: 'O UID da foto não parece ser válido.',
+                            code: 'INVALID_INPUT_UID_FOTO'
+                        })
+                    }
+
+                    try {
+                        let dadosFotoAnimal = await FotoAnimal.findOne({
+                            include: [{
+                                model: AlbumAnimal
+                            }],
+                            where: {
+                                uid_foto: req.body.uid_foto_animal,
+                                '$AlbumAnimal.cod_animal$': animal.cod_animal
+                            },
+                            raw: true
+                        });
+
+                        if (!dadosFotoAnimal){
+                            return res.status(400).json({
+                                mensagem: 'A foto indicada não pertence aos álbuns do animal.',
+                                code: 'INVALID_REQUEST_FIELDS'
+                            });
+                        }
+
+                    } catch (error) {
+                        console.error('Algo inesperado aconteceu ao verificar a foto indicada para o anúncio.', error);
+        
+                        let customErr = new Error('Algo inesperado aconteceu ao verificar a foto indicada para o anúncio. Entre em contato com o administrador.');
+                        customErr.status = 500;
+                        customErr.code = 'INTERNAL_SERVER_ERROR'
+                
+                        return next( customErr );
+                    }
+
+                };
+            // ----------------------------
+
+        // Fim da Validação dos Campos.
+
+        // Início da efetivação do cadastro de um novo anúncio.
+
+            let novoAnuncio = undefined;
+
+            try {
+
+                await database.transaction( async (transaction) => {
+
+                    // Início da renovação de um anúncio, caso um anúncio tenha sido fechado pelo usuário.
+
+                        if (animal.Anuncio.estado_anuncio == 'Fechado'){
+
+                            await Anuncio.update({
+                                uid_foto_animal: req.body.uid_foto_animal,
+                                estado_anuncio: 'Aberto'
+                            }, {
+                                where: {
+                                    cod_anuncio: animal.Anuncio.cod_anuncio
+                                },
+                                transaction
+                            });
+
+                            novoAnuncio = await Anuncio.findOne({
+                                where: {
+                                    cod_animal: cod_animal,
+                                    estado_anuncio: 'Aberto'
+                                },
+                                transaction
+                            });
+
+                            novoAnuncio = await novoAnuncio.get({ plain: true });
+
+                        }
+                    // Fim da renovação de um anúncio, caso um anúncio tenha sido fechado pelo usuário.
+
+                    // Início do cadastro de um novo anúncio, caso o anúncio nunca existiu.
+                        if (!animal.Anuncio.cod_anuncio){
+
+                            novoAnuncio = await Anuncio.create({
+                                cod_animal: cod_animal,
+                                cod_anunciante: usuario.cod_usuario,
+                                uid_foto_animal: req.body.uid_foto_animal
+                            }, {
+                                transaction
+                            });
+
+                            novoAnuncio = await novoAnuncio.get({ plain: true });
+
+                        }
+                    // Fim do cadastro de um novo anúncio, caso o anúncio nunca existiu.
+
+                    // Início da atualização do "estado_adocao" do animal.
+                        await Animal.update({
+                            estado_adocao: 'Em anúncio',
+                            data_modificacao: new Date()
+                        }, {
+                            where: {
+                                cod_animal: cod_animal
+                            },
+                            transaction
+                        });
+                    // Fim da atualização do "estado_adocao" do animal.
+
+                })
+                .catch((error) => {
+                    // Se qualquer erro acontecer no bloco acima, cairemos em CATCH do bloco TRY e faremos o rollback;
+                    throw new Error(error);
+                })
+
+                // Se chegou aqui, o ORM da auto-commit...
+
+            } catch (error) {
+
+                console.error('Algo inesperado aconteceu ao cadastrar um novo anúncio.', error);
+
+                let customErr = new Error('Algo inesperado aconteceu ao cadastrar um novo anúncio. Entre em contato com o administrador.');
+                customErr.status = 500;
+                customErr.code = 'INTERNAL_SERVER_MODULE_ERROR';
+
+                return next( customErr );
+
+            }
+        // Fim da efetivação do cadastro de um novo anúncio.
+
+        // Inicio do envio da resposta de sucesso.
+
+            if (novoAnuncio) {
+
+                // Início da adição de atributos ao objeto que será enviado na resposta.
+                    novoAnuncio.detalhes_anuncio = `GET ${req.protocol}://${req.get('host')}/anuncios/?getOne=${novoAnuncio.cod_anuncio}`;
+                // Fim da adição de atributos ao objeto que será enviado na resposta.
+
+                return res.status(200).json({
+                    mensagem: 'O anúncio foi cadastrado com sucesso.',
+                    anuncio: novoAnuncio
+                });
+            }
+        // Fim do envio da resposta de sucesso.
+
+    // Fim do processo de criação do anúncio.
+
+});
+
+router.patch('/:codAnuncio', (req, res, next) => {
+
 });
 
 // Exportações.

@@ -152,7 +152,7 @@ CREATE TABLE tbl_foto_animal (
 CREATE TABLE tbl_anuncio (
 	cod_anuncio INT UNSIGNED NOT NULL UNIQUE AUTO_INCREMENT,
     cod_animal INT UNSIGNED NOT NULL UNIQUE,	# Unique pois o animal poderá ser anúnciado uma única vez até ser adotado para evitar SPAM. Se o anúncio foi inativado alguma vez e o usuário tentar cadastrá-lo novamente, simplesmente realizamos a re-ativação dele com novos dados.
-    cod_usuario INT UNSIGNED NOT NULL,			# Não é UNIQUE pois o usuário poderá anúnciar mais de 1 animal.
+    cod_anunciante INT UNSIGNED NOT NULL,			# Não é UNIQUE pois o usuário poderá anúnciar mais de 1 animal.
     uid_foto_animal VARCHAR(255) NOT NULL,
     qtd_visualizacoes INT UNSIGNED NOT NULL DEFAULT 0,
     qtd_avaliacoes INT UNSIGNED NOT NULL DEFAULT 0,
@@ -161,13 +161,13 @@ CREATE TABLE tbl_anuncio (
     data_modificacao DATETIME NOT NULL DEFAULT NOW(),
     PRIMARY KEY (cod_anuncio),
     FOREIGN KEY (cod_animal) REFERENCES tbl_animal(cod_animal),
-    FOREIGN KEY (cod_usuario) REFERENCES tbl_usuario(cod_usuario),
+    FOREIGN KEY (cod_anunciante) REFERENCES tbl_usuario(cod_usuario),
     FOREIGN KEY (uid_foto_animal) REFERENCES tbl_foto_animal(uid_foto)
 );
 
 DESCRIBE tbl_anuncio;
 
-SET FOREIGN_KEY_CHECKS = 0;
+SET FOREIGN_KEY_CHECKS = 1;
 DROP TABLE tbl_anuncio;
 
 CREATE TABLE tbl_momento (
@@ -649,18 +649,17 @@ INNER JOIN tbl_foto_animal tfa
 WHERE taa.cod_animal = 2;
 
 INSERT INTO tbl_anuncio
-	(cod_animal, cod_usuario, uid_foto_animal)
+	(cod_animal, cod_anunciante, uid_foto_animal)
 VALUES
 	(2, 1, 'lilabricando.jpeg');
     
 INSERT INTO tbl_anuncio
-	(cod_animal, cod_usuario, uid_foto_animal)
+	(cod_animal, cod_anunciante, uid_foto_animal)
 VALUES
 	(1, 1, 'luckyfeliz.jpeg');
         
 INSERT INTO tbl_anuncio
-	(cod_animal, cod_usuario, uid_foto_animal)
+	(cod_animal, cod_anunciante, uid_foto_animal)
 VALUES
 	(4, 3, 'o_grande_cinzento.jpeg');
-
 

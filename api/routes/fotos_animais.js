@@ -82,7 +82,7 @@ router.get('/', async (req, res, next) => {
 
             // * Substitua isso por uma lista de queries permitidas.
 
-            if (usuario && !( (req.query.getAllActive == 1 & req.query.activeOwner == 1) || req.query.getAllFromAlbum || req.query.getOne)){
+            if (usuario && !( (req.query.getAllActive == 1 & req.query.activeOwner == 1) || req.query.getAllActiveFromAlbum || req.query.getOne)){
                 return res.status(401).json({
                     mensagem: 'Requisição inválida - Você não possui o nível de acesso adequado para esse recurso.',
                     code: 'ACCESS_TO_RESOURCE_NOT_ALLOWED'

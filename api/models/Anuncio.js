@@ -18,7 +18,7 @@ const {DataTypes, Model, Sequelize} = require('sequelize');
         cod_animal: { type: DataTypes.INTEGER.UNSIGNED, allowNull: false, unique: true, 
             references: { model: Model.Animal, key: 'cod_animal' }
         },
-        cod_usuario: { type: DataTypes.INTEGER.UNSIGNED, allowNull: false, 
+        cod_anunciante: { type: DataTypes.INTEGER.UNSIGNED, allowNull: false, 
             references: { model: Model.Usuario, key: 'cod_usuario' }
         },
         uid_foto_animal: { type: DataTypes.STRING(255), allowNull: false,
@@ -42,6 +42,13 @@ const {DataTypes, Model, Sequelize} = require('sequelize');
             }
         });
 
+        Animal.hasOne(Anuncio, {
+            foreignKey: {
+                name: 'cod_animal',
+                allowNull: false
+            }
+        });
+
         Anuncio.belongsTo(FotoAnimal, {
             foreignKey: {
                 name: 'uid_foto_animal',
@@ -49,12 +56,26 @@ const {DataTypes, Model, Sequelize} = require('sequelize');
             }
         });
 
+        FotoAnimal.hasOne(Anuncio, {
+            foreignKey: {
+                name: 'uid_foto_animal',
+                allowNull: false
+            }
+        })
+
         Anuncio.belongsTo(Usuario, {
             foreignKey: {
-                name: 'cod_usuario',
+                name: 'cod_anunciante',
                 allowNull: false
             }
         });
+
+        Usuario.hasMany(Anuncio, {
+            foreignKey: {
+                name: 'cod_anunciante',
+                allowNull: false
+            }
+        })
 
 // Exportação.
 module.exports = Anuncio;

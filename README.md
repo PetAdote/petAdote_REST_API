@@ -605,7 +605,7 @@ Temos 4 maneiras de acessar os dados dos álbuns.
 
 - **Atenção**: É necessário que o requisitante seja o dono do animal para cadastrar novas fotos no álbum do animal. Além disso, como estaremos lidando com arquivos (imagens), o encoding utilizado para enviar essa requisição deve ser **multipart/form-data**.
 
-> **POST:** http://rest-petadote.ddns.net/usuarios/animais/
+> **POST:** http://rest-petadote.ddns.net/usuarios/animais/albuns/fotos/codigoDoAlbumAqui
 
 ```javascript
 request.multipart/form-data = {
@@ -625,7 +625,7 @@ request.multipart/form-data = {
 
 - **Atenção**: O requisitante deve ser o dono do recurso (Ou seja, o dono do animal que possui a foto em seus álbuns).
 
-> **PATCH:** http://rest-petadote.ddns.net/usuarios/animais/uidDaFotoDoAnimal.jpeg
+> **PATCH:** http://rest-petadote.ddns.net/usuarios/animais/albuns/fotos/uidDaFotoDoAnimal.jpeg
 
 ```javascript
 request.body = {

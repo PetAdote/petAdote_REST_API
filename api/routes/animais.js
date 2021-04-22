@@ -292,7 +292,10 @@ router.get('/', async (req, res, next) => {
 
             Animal.findAndCountAll({
                 include: [{
-                    all: true
+                    model: Usuario,
+                    as: 'dono'
+                }, {
+                    model: AlbumAnimal
                 }],
                 where: {
                     '$dono.esta_ativo$': 1
@@ -323,7 +326,10 @@ router.get('/', async (req, res, next) => {
 
                             qtdAnimaisDosBloqueados = await Animal.count({
                                 include: [{
-                                    all: true
+                                    model: Usuario,
+                                    as: 'dono'
+                                }, {
+                                    model: AlbumAnimal
                                 }],
                                 where: {
                                     cod_dono: listaBloqueios,
@@ -441,7 +447,10 @@ router.get('/', async (req, res, next) => {
 
             Animal.findAndCountAll({
                 include: [{
-                    all: true
+                    model: Usuario,
+                    as: 'dono'
+                }, {
+                    model: AlbumAnimal
                 }],
                 where: {
                     '$dono.esta_ativo$': 0
@@ -674,7 +683,7 @@ router.get('/', async (req, res, next) => {
 
             Animal.findOne({
                 include: [{ 
-                    all: true
+                    all: true   // Ao entregar os dados, trate todos os dados provenientes dos relacionamentos.
                 }],
                 where: {
                     cod_animal,
@@ -699,11 +708,16 @@ router.get('/', async (req, res, next) => {
                         delete result.dono_antigo;  // Garante que {dono_antigo} só vai existir se "cod_dono_antigo" existir.
                     };
 
-                    let { dono, dono_antigo } = result;
+                    if (!result.Anuncio.cod_anuncio){
+                        delete result.Anuncio;      // Garanteu que {Anuncio} só vai existir se "Anuncio.cod_anuncio" existir.
+                    }
+
+                    let { dono, dono_antigo, Anuncio } = result;
 
                     delete result.dono;
                     delete result.dono_antigo;
                     delete result.AlbumAnimal;
+                    delete result.Anuncio;
 
                     let animal = result;
 
@@ -740,7 +754,8 @@ router.get('/', async (req, res, next) => {
                         mensagem: 'Exibindo os dados do animal encontrado.',
                         animal,
                         dono,
-                        dono_antigo
+                        dono_antigo,
+                        anuncio: Anuncio
                     });
                 // Fim do envio da resposta.
                 
