@@ -1747,16 +1747,16 @@ router.patch('/:uidFoto', async (req, res, next) => {
 
     // Fim das Restrições de acesso à rota.
 
-    // Capturando o código do álbum onde a foto será adicionada.
+    // Capturando o código da foto que terá seus dados alterados.
         const uid_foto = req.params.uidFoto;
-    // ---------------------------------------------------------
+    // ----------------------------------------------------------
 
-    // Início da verificação dos dados do álbum.
+    // Início da verificação dos dados da foto.
 
         let foto = undefined;
 
         try {
-            // Para alterar os dados de uma foto, ela deve estar ativa e o dono do animal que possui a foto deve estar ativo.
+            // Para alterar os dados de uma foto, ela deve estar ativa e o dono do animal que possui a foto deve estar ativo. Isso é tratado mais adiante no código...
             foto = await FotoAnimal.findOne({
                 include: [{
                     model: AlbumAnimal,
@@ -1769,9 +1769,7 @@ router.patch('/:uidFoto', async (req, res, next) => {
                     }]
                 }],
                 where: {
-                    uid_foto: uid_foto,
-                    // ativo: 1,
-                    // '$AlbumAnimal.Animal.dono.esta_ativo$': 1
+                    uid_foto: uid_foto
                 },
                 nest: true,
                 raw: true
@@ -1844,6 +1842,8 @@ router.patch('/:uidFoto', async (req, res, next) => {
 
             let hasUnauthorizedField = false;
 
+            let emptyFields = [];   // Se campos vazios forem detectados, envie (400 - INVALID_REQUEST_FIELDS)
+
             // Lista de campos permitidos.
 
                 let allowedFields = [
@@ -1860,12 +1860,24 @@ router.patch('/:uidFoto', async (req, res, next) => {
                     if (!allowedFields.includes(pair[0])){
                         hasUnauthorizedField = true;
                     };
+
+                    if (String(pair[1]).length == 0){
+                        emptyFields.push(String(pair[0]));
+                    };
                 });
 
                 if (hasUnauthorizedField){
                     return res.status(400).json({
                         mensagem: 'Algum dos campos enviados é inválido.',
                         code: 'INVALID_REQUEST_FIELDS'
+                    });
+                }
+
+                if (emptyFields.length > 0){
+                    return res.status(400).json({
+                        mensagem: `Campos vazios foram detectados.`,
+                        code: 'INVALID_REQUEST_FIELDS',
+                        campos_vazios: emptyFields
                     });
                 }
 

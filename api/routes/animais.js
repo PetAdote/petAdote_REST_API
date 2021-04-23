@@ -826,6 +826,8 @@ router.post('/', async (req, res, next) => {
 
         let hasUnauthorizedField = false;
 
+        let emptyFields = [];   // Se campos vazios forem detectados, envie (400 - INVALID_REQUEST_FIELDS)
+
         // Lista de campos permitidos.
 
             let allowedFields = [
@@ -850,12 +852,24 @@ router.post('/', async (req, res, next) => {
                 if (!allowedFields.includes(pair[0])){
                     hasUnauthorizedField = true;
                 };
+
+                if (String(pair[1]).length == 0){
+                    emptyFields.push(String(pair[0]));
+                };
             });
 
             if (hasUnauthorizedField){
                 return res.status(400).json({
                     mensagem: 'Algum dos campos enviados é inválido.',
                     code: 'INVALID_REQUEST_FIELDS'
+                });
+            }
+
+            if (emptyFields.length > 0){
+                return res.status(400).json({
+                    mensagem: `Campos vazios foram detectados.`,
+                    code: 'INVALID_REQUEST_FIELDS',
+                    campos_vazios: emptyFields
                 });
             }
 
@@ -1066,7 +1080,7 @@ router.post('/', async (req, res, next) => {
             if (req.body.especie?.length >= 0){
 
                 let allowedSpecies = [
-                    'Cão',
+                    'Cao',
                     'Gato',
                     'Outros'
                 ];
@@ -1243,7 +1257,7 @@ router.post('/', async (req, res, next) => {
 
                     defaultAnimalPicture = possibleDefaultImages[rngSelector];
                     break;
-                case 'Cão':
+                case 'Cao':
                     possibleDefaultImages = [
                         'default_dog_01.jpeg',
                         'default_dog_02.jpeg'
@@ -1477,7 +1491,7 @@ router.patch('/:codAnimal', async (req, res, next) => {
                 let defaultPhotoAnimal = undefined;
 
                 switch (animal.especie){
-                    case 'Cão':
+                    case 'Cao':
                         rngSelector = Number.parseInt(Math.random() * 1.9); // 0 ou 1.
                         defaultPhotoAnimal = possibleDefaultPhotoAnimal[rngSelector];
                         break;
@@ -1964,6 +1978,8 @@ router.patch('/:codAnimal', async (req, res, next) => {
 
                     let hasUnauthorizedField = false;
 
+                    let emptyFields = [];
+
                     // Lista de campos permitidos.
 
                         let allowedFields = [
@@ -1989,12 +2005,24 @@ router.patch('/:codAnimal', async (req, res, next) => {
                             if (!allowedFields.includes(pair[0])){
                                 hasUnauthorizedField = true;
                             };
+
+                            if (String(pair[1]).length == 0){
+                                emptyFields.push(String(pair[0]));
+                            }
                         });
 
                         if (hasUnauthorizedField){
                             return res.status(400).json({
                                 mensagem: 'Algum dos campos enviados é inválido.',
                                 code: 'INVALID_REQUEST_FIELDS'
+                            });
+                        }
+
+                        if (emptyFields.length > 0){
+                            return res.status(400).json({
+                                mensagem: `Campos vazios foram detectados.`,
+                                code: 'INVALID_REQUEST_FIELDS',
+                                campos_vazios: emptyFields
                             });
                         }
 
@@ -2212,7 +2240,7 @@ router.patch('/:codAnimal', async (req, res, next) => {
                         if (req.body.especie?.length >= 0){
 
                             let allowedSpecies = [
-                                'Cão',
+                                'Cao',
                                 'Gato',
                                 'Outros'
                             ];

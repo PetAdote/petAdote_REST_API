@@ -10,6 +10,7 @@ const router = express.Router();
         const AlbumAnimal = require('../models/AlbumAnimal');
         const FotoAnimal = require('../models/FotoAnimal');
         const Anuncio = require('../models/Anuncio');
+        const Candidatura = require('../models/Candidatura');
 
         const Usuario = require('../models/Usuario');
         const Bloqueio = require('../models/Bloqueio');
@@ -36,7 +37,7 @@ const router = express.Router();
 
 // Rotas.
 
-router.get('/', (req, res, next) => {
+router.get('/', async (req, res, next) => {
     /* 16 Formas de capturar os dados dos anúncios.
      01. Listar todos os anúncios.              (Apps/Admins)
      02. Listar todos os anúncios abertos.      (Apps/Admins)
@@ -306,8 +307,14 @@ router.get('/', (req, res, next) => {
             // -----------------
 
             Anuncio.findAndCountAll({
+                include: [{
+                    model: Animal
+                }, {
+                    model: Usuario
+                }],
                 limit: paginationLimit,
                 offset: paginationOffset,
+                nest: true,
                 raw: true 
             })
             .then((resultArr) => {
@@ -347,22 +354,37 @@ router.get('/', (req, res, next) => {
 
                     // Início da inclusão de atributos extra.
                         resultArr.rows.forEach((anuncio) => {
-                            anuncio.detalhes_anuncio = `GET ${req.protocol}://${req.get('host')}/anuncios/?getOne=${anuncio.cod_anuncio}`;
 
-                            anuncio.download_foto = `GET ${req.protocol}://${req.get('host')}/usuarios/animais/albuns/fotos/${anuncio.uid_foto_animal}`;
+                            // Início da adição de atributos essenciais aos Clientes.
+                                anuncio.download_foto = `GET ${req.protocol}://${req.get('host')}/usuarios/animais/albuns/fotos/${anuncio.uid_foto_animal}`;
 
-                            anuncio.add_avaliacao = `POST ${req.protocol}://${req.get('host')}/anuncios/avaliacoes/${anuncio.cod_anuncio}`;
-                            anuncio.rmv_avaliacao = `DELETE ${req.protocol}://${req.get('host')}/anuncios/avaliacoes/${anuncio.cod_anuncio}`;
+                                anuncio.dados_animal = anuncio.Animal;
 
-                            anuncio.add_favorito = `POST ${req.protocol}://${req.get('host')}/anuncios/favoritos/${anuncio.cod_anuncio}`;
-                            anuncio.rmv_favorito = `DELETE ${req.protocol}://${req.get('host')}/anuncios/favoritos/${anuncio.cod_anuncio}`;
+                                anuncio.dados_anunciante = anuncio.Usuario;
+                                anuncio.dados_anunciante.download_foto = `GET ${req.protocol}://${req.get('host')}/usuarios/avatars/${anuncio.Usuario.foto_usuario}`;
 
-                            anuncio.add_candidatura = `POST ${req.protocol}://${req.get('host')}/anuncios/candidaturas/${anuncio.cod_anuncio}`;
-                            // anuncio.rmv_candidatura = `PATCH ${req.protocol}://${req.get('host')}/anuncios/candidaturas/${anuncio.cod_anuncio}`;
+                                anuncio.detalhes_anuncio = `GET ${req.protocol}://${req.get('host')}/anuncios/?getOne=${anuncio.cod_anuncio}`;
+
+                                anuncio.add_avaliacao = `POST ${req.protocol}://${req.get('host')}/anuncios/avaliacoes/${anuncio.cod_anuncio}`;
+                                anuncio.rmv_avaliacao = `DELETE ${req.protocol}://${req.get('host')}/anuncios/avaliacoes/${anuncio.cod_anuncio}`;
+
+                                anuncio.add_favorito = `POST ${req.protocol}://${req.get('host')}/anuncios/favoritos/${anuncio.cod_anuncio}`;
+                                anuncio.rmv_favorito = `DELETE ${req.protocol}://${req.get('host')}/anuncios/favoritos/${anuncio.cod_anuncio}`;
+
+                                anuncio.add_candidatura = `POST ${req.protocol}://${req.get('host')}/anuncios/candidaturas/${anuncio.cod_anuncio}`;
+                                // anuncio.rmv_candidatura = `PATCH ${req.protocol}://${req.get('host')}/anuncios/candidaturas/${anuncio.cod_anuncio}`;
+                            // Fim da adição de atributos essenciais aos Clientes.
+
+                            // Início da remoção atributos que não são mais necessários.
+                                delete anuncio.Animal;
+                                delete anuncio.Usuario;
+                            // Fim da remoção de atributos que não são mais necessários.
 
                             anuncios.push(anuncio);
                         });
                     // Fim da inclusão de atributos extra.
+
+                    
                     
                 // Fim da construção do objeto enviado na resposta.
 
@@ -401,11 +423,17 @@ router.get('/', (req, res, next) => {
             // -----------------
 
             Anuncio.findAndCountAll({
+                include: [{
+                    model: Animal
+                }, {
+                    model: Usuario
+                }],
                 where: {
                     estado_anuncio: 'Aberto'
                 },
                 limit: paginationLimit,
                 offset: paginationOffset,
+                nest: true,
                 raw: true 
             })
             .then((resultArr) => {
@@ -445,17 +473,30 @@ router.get('/', (req, res, next) => {
 
                     // Início da inclusão de atributos extra.
                         resultArr.rows.forEach((anuncio) => {
-                            anuncio.detalhes_anuncio = `GET ${req.protocol}://${req.get('host')}/anuncios/?getOne=${anuncio.cod_anuncio}`;
 
-                            anuncio.download_foto = `GET ${req.protocol}://${req.get('host')}/usuarios/animais/albuns/fotos/${anuncio.uid_foto_animal}`;
+                            // Início da adição de atributos essenciais aos Clientes.
+                                anuncio.download_foto = `GET ${req.protocol}://${req.get('host')}/usuarios/animais/albuns/fotos/${anuncio.uid_foto_animal}`;
 
-                            anuncio.add_avaliacao = `POST ${req.protocol}://${req.get('host')}/anuncios/avaliacoes/${anuncio.cod_anuncio}`;
-                            anuncio.rmv_avaliacao = `DELETE ${req.protocol}://${req.get('host')}/anuncios/avaliacoes/${anuncio.cod_anuncio}`;
+                                anuncio.dados_animal = anuncio.Animal;
 
-                            anuncio.add_favorito = `POST ${req.protocol}://${req.get('host')}/anuncios/favoritos/${anuncio.cod_anuncio}`;
-                            anuncio.rmv_favorito = `DELETE ${req.protocol}://${req.get('host')}/anuncios/favoritos/${anuncio.cod_anuncio}`;
+                                anuncio.dados_anunciante = anuncio.Usuario;
+                                anuncio.dados_anunciante.download_foto = `GET ${req.protocol}://${req.get('host')}/usuarios/avatars/${anuncio.Usuario.foto_usuario}`;
 
-                            anuncio.add_candidatura = `POST ${req.protocol}://${req.get('host')}/anuncios/candidaturas/${anuncio.cod_anuncio}`;
+                                anuncio.detalhes_anuncio = `GET ${req.protocol}://${req.get('host')}/anuncios/?getOne=${anuncio.cod_anuncio}`;
+
+                                anuncio.add_avaliacao = `POST ${req.protocol}://${req.get('host')}/anuncios/avaliacoes/${anuncio.cod_anuncio}`;
+                                anuncio.rmv_avaliacao = `DELETE ${req.protocol}://${req.get('host')}/anuncios/avaliacoes/${anuncio.cod_anuncio}`;
+
+                                anuncio.add_favorito = `POST ${req.protocol}://${req.get('host')}/anuncios/favoritos/${anuncio.cod_anuncio}`;
+                                anuncio.rmv_favorito = `DELETE ${req.protocol}://${req.get('host')}/anuncios/favoritos/${anuncio.cod_anuncio}`;
+
+                                anuncio.add_candidatura = `POST ${req.protocol}://${req.get('host')}/anuncios/candidaturas/${anuncio.cod_anuncio}`;
+                            // Fim da adição de atributos essenciais aos Clientes.
+
+                            // Início da remoção atributos que não são mais necessários.
+                                delete anuncio.Animal;
+                                delete anuncio.Usuario;
+                            // Fim da remoção de atributos que não são mais necessários.
 
                             anuncios.push(anuncio);
                         });
@@ -498,11 +539,17 @@ router.get('/', (req, res, next) => {
             // -----------------
 
             Anuncio.findAndCountAll({
+                include: [{
+                    model: Animal
+                }, {
+                    model: Usuario
+                }],
                 where: {
                     estado_anuncio: 'Concluido'
                 },
                 limit: paginationLimit,
                 offset: paginationOffset,
+                nest: true,
                 raw: true 
             })
             .then((resultArr) => {
@@ -542,17 +589,29 @@ router.get('/', (req, res, next) => {
 
                     // Início da inclusão de atributos extra.
                         resultArr.rows.forEach((anuncio) => {
-                            anuncio.detalhes_anuncio = `GET ${req.protocol}://${req.get('host')}/anuncios/?getOne=${anuncio.cod_anuncio}`;
+                            // Início da adição de atributos essenciais aos Clientes.
+                                anuncio.download_foto = `GET ${req.protocol}://${req.get('host')}/usuarios/animais/albuns/fotos/${anuncio.uid_foto_animal}`;
 
-                            anuncio.download_foto = `GET ${req.protocol}://${req.get('host')}/usuarios/animais/albuns/fotos/${anuncio.uid_foto_animal}`;
+                                anuncio.dados_animal = anuncio.Animal;
 
-                            anuncio.add_avaliacao = `POST ${req.protocol}://${req.get('host')}/anuncios/avaliacoes/${anuncio.cod_anuncio}`;
-                            anuncio.rmv_avaliacao = `DELETE ${req.protocol}://${req.get('host')}/anuncios/avaliacoes/${anuncio.cod_anuncio}`;
+                                anuncio.dados_anunciante = anuncio.Usuario;
+                                anuncio.dados_anunciante.download_foto = `GET ${req.protocol}://${req.get('host')}/usuarios/avatars/${anuncio.Usuario.foto_usuario}`;
 
-                            anuncio.add_favorito = `POST ${req.protocol}://${req.get('host')}/anuncios/favoritos/${anuncio.cod_anuncio}`;
-                            anuncio.rmv_favorito = `DELETE ${req.protocol}://${req.get('host')}/anuncios/favoritos/${anuncio.cod_anuncio}`;
+                                anuncio.detalhes_anuncio = `GET ${req.protocol}://${req.get('host')}/anuncios/?getOne=${anuncio.cod_anuncio}`;
 
-                            anuncio.add_candidatura = `POST ${req.protocol}://${req.get('host')}/anuncios/candidaturas/${anuncio.cod_anuncio}`;
+                                anuncio.add_avaliacao = `POST ${req.protocol}://${req.get('host')}/anuncios/avaliacoes/${anuncio.cod_anuncio}`;
+                                anuncio.rmv_avaliacao = `DELETE ${req.protocol}://${req.get('host')}/anuncios/avaliacoes/${anuncio.cod_anuncio}`;
+
+                                anuncio.add_favorito = `POST ${req.protocol}://${req.get('host')}/anuncios/favoritos/${anuncio.cod_anuncio}`;
+                                anuncio.rmv_favorito = `DELETE ${req.protocol}://${req.get('host')}/anuncios/favoritos/${anuncio.cod_anuncio}`;
+
+                                anuncio.add_candidatura = `POST ${req.protocol}://${req.get('host')}/anuncios/candidaturas/${anuncio.cod_anuncio}`;
+                            // Fim da adição de atributos essenciais aos Clientes.
+
+                            // Início da remoção atributos que não são mais necessários.
+                                delete anuncio.Animal;
+                                delete anuncio.Usuario;
+                            // Fim da remoção de atributos que não são mais necessários.
 
                             anuncios.push(anuncio);
                         });
@@ -595,11 +654,17 @@ router.get('/', (req, res, next) => {
             // -----------------
 
             Anuncio.findAndCountAll({
+                include: [{
+                    model: Animal
+                }, {
+                    model: Usuario
+                }],
                 where: {
                     estado_anuncio: 'Fechado'
                 },
                 limit: paginationLimit,
                 offset: paginationOffset,
+                nest: true,
                 raw: true 
             })
             .then((resultArr) => {
@@ -639,17 +704,29 @@ router.get('/', (req, res, next) => {
 
                     // Início da inclusão de atributos extra.
                         resultArr.rows.forEach((anuncio) => {
-                            anuncio.detalhes_anuncio = `GET ${req.protocol}://${req.get('host')}/anuncios/?getOne=${anuncio.cod_anuncio}`;
+                            // Início da adição de atributos essenciais aos Clientes.
+                                anuncio.download_foto = `GET ${req.protocol}://${req.get('host')}/usuarios/animais/albuns/fotos/${anuncio.uid_foto_animal}`;
 
-                            anuncio.download_foto = `GET ${req.protocol}://${req.get('host')}/usuarios/animais/albuns/fotos/${anuncio.uid_foto_animal}`;
+                                anuncio.dados_animal = anuncio.Animal;
 
-                            anuncio.add_avaliacao = `POST ${req.protocol}://${req.get('host')}/anuncios/avaliacoes/${anuncio.cod_anuncio}`;
-                            anuncio.rmv_avaliacao = `DELETE ${req.protocol}://${req.get('host')}/anuncios/avaliacoes/${anuncio.cod_anuncio}`;
+                                anuncio.dados_anunciante = anuncio.Usuario;
+                                anuncio.dados_anunciante.download_foto = `GET ${req.protocol}://${req.get('host')}/usuarios/avatars/${anuncio.Usuario.foto_usuario}`;
 
-                            anuncio.add_favorito = `POST ${req.protocol}://${req.get('host')}/anuncios/favoritos/${anuncio.cod_anuncio}`;
-                            anuncio.rmv_favorito = `DELETE ${req.protocol}://${req.get('host')}/anuncios/favoritos/${anuncio.cod_anuncio}`;
+                                anuncio.detalhes_anuncio = `GET ${req.protocol}://${req.get('host')}/anuncios/?getOne=${anuncio.cod_anuncio}`;
 
-                            anuncio.add_candidatura = `POST ${req.protocol}://${req.get('host')}/anuncios/candidaturas/${anuncio.cod_anuncio}`;
+                                anuncio.add_avaliacao = `POST ${req.protocol}://${req.get('host')}/anuncios/avaliacoes/${anuncio.cod_anuncio}`;
+                                anuncio.rmv_avaliacao = `DELETE ${req.protocol}://${req.get('host')}/anuncios/avaliacoes/${anuncio.cod_anuncio}`;
+
+                                anuncio.add_favorito = `POST ${req.protocol}://${req.get('host')}/anuncios/favoritos/${anuncio.cod_anuncio}`;
+                                anuncio.rmv_favorito = `DELETE ${req.protocol}://${req.get('host')}/anuncios/favoritos/${anuncio.cod_anuncio}`;
+
+                                anuncio.add_candidatura = `POST ${req.protocol}://${req.get('host')}/anuncios/candidaturas/${anuncio.cod_anuncio}`;
+                            // Fim da adição de atributos essenciais aos Clientes.
+
+                            // Início da remoção atributos que não são mais necessários.
+                                delete anuncio.Animal;
+                                delete anuncio.Usuario;
+                            // Fim da remoção de atributos que não são mais necessários.
 
                             anuncios.push(anuncio);
                         });
@@ -687,6 +764,8 @@ router.get('/', (req, res, next) => {
 
             Anuncio.findAndCountAll({
                 include: [{
+                    model: Animal
+                }, {
                     model: Usuario
                 }],
                 where: {
@@ -757,10 +836,15 @@ router.get('/', (req, res, next) => {
                     // Início da inclusão de atributos adicionais ao objeto que será enviado na resposta.
                         resultArr.rows.forEach((anuncio) => {
 
-                            // Atributos adicionais.
-                                anuncio.detalhes_anuncio = `GET ${req.protocol}://${req.get('host')}/anuncios/?getOne=${anuncio.cod_anuncio}`;
-
+                            // Início da adição de atributos essenciais aos Clientes.
                                 anuncio.download_foto = `GET ${req.protocol}://${req.get('host')}/usuarios/animais/albuns/fotos/${anuncio.uid_foto_animal}`;
+
+                                anuncio.dados_animal = anuncio.Animal;
+
+                                anuncio.dados_anunciante = anuncio.Usuario;
+                                anuncio.dados_anunciante.download_foto = `GET ${req.protocol}://${req.get('host')}/usuarios/avatars/${anuncio.Usuario.foto_usuario}`;
+
+                                anuncio.detalhes_anuncio = `GET ${req.protocol}://${req.get('host')}/anuncios/?getOne=${anuncio.cod_anuncio}`;
 
                                 anuncio.add_avaliacao = `POST ${req.protocol}://${req.get('host')}/anuncios/avaliacoes/${anuncio.cod_anuncio}`;
                                 anuncio.rmv_avaliacao = `DELETE ${req.protocol}://${req.get('host')}/anuncios/avaliacoes/${anuncio.cod_anuncio}`;
@@ -769,30 +853,21 @@ router.get('/', (req, res, next) => {
                                 anuncio.rmv_favorito = `DELETE ${req.protocol}://${req.get('host')}/anuncios/favoritos/${anuncio.cod_anuncio}`;
 
                                 anuncio.add_candidatura = `POST ${req.protocol}://${req.get('host')}/anuncios/candidaturas/${anuncio.cod_anuncio}`;
-                            // --------------------
+                            // Fim da adição de atributos essenciais aos Clientes.
+
+                            // Início da remoção atributos que não são mais necessários.
+                                delete anuncio.Animal;
+                                delete anuncio.Usuario;
+                            // Fim da remoção de atributos que não são mais necessários.
 
                             if (usuario){
-
                                 // Se o requisitante for um usuário...
-
-                                if (!listaBloqueios.includes(anuncio.Usuario.cod_usuario)){
+                                if (!listaBloqueios.includes(anuncio.dados_anunciante.cod_usuario)){
                                     // E o criador do anúncio não estiver na lista de bloqueios do usuário (Bloqueado/Bloqueante)...
-
-                                    // Removendo estruturas que agora são desnecessárias.
-                                        delete anuncio.Usuario;
-                                    // --------------------------------------------------
-
                                     anuncios.push(anuncio);
                                 }
-
                             } else {
-
                                 // Se o requisitante for uma aplicação...
-
-                                // Removendo estruturas que agora são desnecessárias.
-                                    delete anuncio.Usuario;
-                                // --------------------------------------------------
-
                                 anuncios.push(anuncio);
                             }
                             
@@ -834,7 +909,9 @@ router.get('/', (req, res, next) => {
             // Útil para exibição do histórico de anúncios concluídos (Animais anúnciados que efetivamente encontraram um adotante, que foram listados pelo usuário).
 
             Anuncio.findAndCountAll({
-                include: [{
+                include: [{ 
+                    model: Animal
+                }, {
                     model: Usuario
                 }],
                 where: {
@@ -905,10 +982,15 @@ router.get('/', (req, res, next) => {
                     // Início da inclusão de atributos adicionais ao objeto que será enviado na resposta.
                         resultArr.rows.forEach((anuncio) => {
 
-                            // Atributos adicionais.
-                                anuncio.detalhes_anuncio = `GET ${req.protocol}://${req.get('host')}/anuncios/?getOne=${anuncio.cod_anuncio}`;
-
+                            // Início da adição de atributos essenciais aos Clientes.
                                 anuncio.download_foto = `GET ${req.protocol}://${req.get('host')}/usuarios/animais/albuns/fotos/${anuncio.uid_foto_animal}`;
+
+                                anuncio.dados_animal = anuncio.Animal;
+
+                                anuncio.dados_anunciante = anuncio.Usuario;
+                                anuncio.dados_anunciante.download_foto = `GET ${req.protocol}://${req.get('host')}/usuarios/avatars/${anuncio.Usuario.foto_usuario}`;
+
+                                anuncio.detalhes_anuncio = `GET ${req.protocol}://${req.get('host')}/anuncios/?getOne=${anuncio.cod_anuncio}`;
 
                                 anuncio.add_avaliacao = `POST ${req.protocol}://${req.get('host')}/anuncios/avaliacoes/${anuncio.cod_anuncio}`;
                                 anuncio.rmv_avaliacao = `DELETE ${req.protocol}://${req.get('host')}/anuncios/avaliacoes/${anuncio.cod_anuncio}`;
@@ -917,30 +999,21 @@ router.get('/', (req, res, next) => {
                                 anuncio.rmv_favorito = `DELETE ${req.protocol}://${req.get('host')}/anuncios/favoritos/${anuncio.cod_anuncio}`;
 
                                 anuncio.add_candidatura = `POST ${req.protocol}://${req.get('host')}/anuncios/candidaturas/${anuncio.cod_anuncio}`;
-                            // --------------------
+                            // Fim da adição de atributos essenciais aos Clientes.
+
+                            // Início da remoção atributos que não são mais necessários.
+                                delete anuncio.Animal;
+                                delete anuncio.Usuario;
+                            // Fim da remoção de atributos que não são mais necessários.
 
                             if (usuario){
-
                                 // Se o requisitante for um usuário...
-
-                                if (!listaBloqueios.includes(anuncio.Usuario.cod_usuario)){
+                                if (!listaBloqueios.includes(anuncio.dados_anunciante.cod_usuario)){
                                     // E o criador do anúncio não estiver na lista de bloqueios do usuário (Bloqueado/Bloqueante)...
-
-                                    // Removendo estruturas que agora são desnecessárias.
-                                        delete anuncio.Usuario;
-                                    // --------------------------------------------------
-
                                     anuncios.push(anuncio);
                                 }
-
                             } else {
-
                                 // Se o requisitante for uma aplicação...
-
-                                // Removendo estruturas que agora são desnecessárias.
-                                    delete anuncio.Usuario;
-                                // --------------------------------------------------
-
                                 anuncios.push(anuncio);
                             }
                             
@@ -989,6 +1062,8 @@ router.get('/', (req, res, next) => {
 
             Anuncio.findAndCountAll({
                 include: [{
+                    model: Animal
+                }, {
                     model: Usuario
                 }],
                 where: {
@@ -1035,10 +1110,15 @@ router.get('/', (req, res, next) => {
                     // Início da inclusão de atributos adicionais ao objeto que será enviado na resposta.
                         resultArr.rows.forEach((anuncio) => {
 
-                            // Atributos adicionais.
-                                anuncio.detalhes_anuncio = `GET ${req.protocol}://${req.get('host')}/anuncios/?getOne=${anuncio.cod_anuncio}`;
-
+                            // Início da adição de atributos essenciais aos Clientes.
                                 anuncio.download_foto = `GET ${req.protocol}://${req.get('host')}/usuarios/animais/albuns/fotos/${anuncio.uid_foto_animal}`;
+
+                                anuncio.dados_animal = anuncio.Animal;
+
+                                anuncio.dados_anunciante = anuncio.Usuario;
+                                anuncio.dados_anunciante.download_foto = `GET ${req.protocol}://${req.get('host')}/usuarios/avatars/${anuncio.Usuario.foto_usuario}`;
+
+                                anuncio.detalhes_anuncio = `GET ${req.protocol}://${req.get('host')}/anuncios/?getOne=${anuncio.cod_anuncio}`;
 
                                 anuncio.add_avaliacao = `POST ${req.protocol}://${req.get('host')}/anuncios/avaliacoes/${anuncio.cod_anuncio}`;
                                 anuncio.rmv_avaliacao = `DELETE ${req.protocol}://${req.get('host')}/anuncios/avaliacoes/${anuncio.cod_anuncio}`;
@@ -1047,11 +1127,12 @@ router.get('/', (req, res, next) => {
                                 anuncio.rmv_favorito = `DELETE ${req.protocol}://${req.get('host')}/anuncios/favoritos/${anuncio.cod_anuncio}`;
 
                                 anuncio.add_candidatura = `POST ${req.protocol}://${req.get('host')}/anuncios/candidaturas/${anuncio.cod_anuncio}`;
-                            // --------------------
+                            // Fim da adição de atributos essenciais aos Clientes.
 
-                            // Removendo estruturas que agora são desnecessárias.
+                            // Início da remoção atributos que não são mais necessários.
+                                delete anuncio.Animal;
                                 delete anuncio.Usuario;
-                            // --------------------------------------------------
+                            // Fim da remoção de atributos que não são mais necessários.
 
                             anuncios.push(anuncio);
                             
@@ -1100,6 +1181,8 @@ router.get('/', (req, res, next) => {
 
             Anuncio.findAndCountAll({
                 include: [{
+                    model: Animal
+                }, {
                     model: Usuario
                 }],
                 where: {
@@ -1146,10 +1229,15 @@ router.get('/', (req, res, next) => {
                     // Início da inclusão de atributos adicionais ao objeto que será enviado na resposta.
                         resultArr.rows.forEach((anuncio) => {
 
-                            // Atributos adicionais.
-                                anuncio.detalhes_anuncio = `GET ${req.protocol}://${req.get('host')}/anuncios/?getOne=${anuncio.cod_anuncio}`;
-
+                            // Início da adição de atributos essenciais aos Clientes.
                                 anuncio.download_foto = `GET ${req.protocol}://${req.get('host')}/usuarios/animais/albuns/fotos/${anuncio.uid_foto_animal}`;
+
+                                anuncio.dados_animal = anuncio.Animal;
+
+                                anuncio.dados_anunciante = anuncio.Usuario;
+                                anuncio.dados_anunciante.download_foto = `GET ${req.protocol}://${req.get('host')}/usuarios/avatars/${anuncio.Usuario.foto_usuario}`;
+
+                                anuncio.detalhes_anuncio = `GET ${req.protocol}://${req.get('host')}/anuncios/?getOne=${anuncio.cod_anuncio}`;
 
                                 anuncio.add_avaliacao = `POST ${req.protocol}://${req.get('host')}/anuncios/avaliacoes/${anuncio.cod_anuncio}`;
                                 anuncio.rmv_avaliacao = `DELETE ${req.protocol}://${req.get('host')}/anuncios/avaliacoes/${anuncio.cod_anuncio}`;
@@ -1158,11 +1246,12 @@ router.get('/', (req, res, next) => {
                                 anuncio.rmv_favorito = `DELETE ${req.protocol}://${req.get('host')}/anuncios/favoritos/${anuncio.cod_anuncio}`;
 
                                 anuncio.add_candidatura = `POST ${req.protocol}://${req.get('host')}/anuncios/candidaturas/${anuncio.cod_anuncio}`;
-                            // --------------------
+                            // Fim da adição de atributos essenciais aos Clientes.
 
-                            // Removendo estruturas que agora são desnecessárias.
+                            // Início da remoção atributos que não são mais necessários.
+                                delete anuncio.Animal;
                                 delete anuncio.Usuario;
-                            // --------------------------------------------------
+                            // Fim da remoção de atributos que não são mais necessários.
 
                             anuncios.push(anuncio);
                             
@@ -1211,6 +1300,8 @@ router.get('/', (req, res, next) => {
 
             Anuncio.findAndCountAll({
                 include: [{
+                    model: Animal
+                }, {
                     model: Usuario
                 }],
                 where: {
@@ -1230,7 +1321,7 @@ router.get('/', (req, res, next) => {
 
                 // Início da construção do objeto que será enviado na resposta.
 
-                    let total_anuncios = resultArr.count - (qtdAnunciosBloqueados || 0); // Se "qtdAnunciosBloqueados" estiver como NULL ou UNDEFINED, atribua zero à operação.
+                    let total_anuncios = resultArr.count;
 
                     let total_paginas = Math.ceil(total_anuncios / paginationLimit);
 
@@ -1257,10 +1348,15 @@ router.get('/', (req, res, next) => {
                     // Início da inclusão de atributos adicionais ao objeto que será enviado na resposta.
                         resultArr.rows.forEach((anuncio) => {
 
-                            // Atributos adicionais.
-                                anuncio.detalhes_anuncio = `GET ${req.protocol}://${req.get('host')}/anuncios/?getOne=${anuncio.cod_anuncio}`;
-
+                            // Início da adição de atributos essenciais aos Clientes.
                                 anuncio.download_foto = `GET ${req.protocol}://${req.get('host')}/usuarios/animais/albuns/fotos/${anuncio.uid_foto_animal}`;
+
+                                anuncio.dados_animal = anuncio.Animal;
+
+                                anuncio.dados_anunciante = anuncio.Usuario;
+                                anuncio.dados_anunciante.download_foto = `GET ${req.protocol}://${req.get('host')}/usuarios/avatars/${anuncio.Usuario.foto_usuario}`;
+
+                                anuncio.detalhes_anuncio = `GET ${req.protocol}://${req.get('host')}/anuncios/?getOne=${anuncio.cod_anuncio}`;
 
                                 anuncio.add_avaliacao = `POST ${req.protocol}://${req.get('host')}/anuncios/avaliacoes/${anuncio.cod_anuncio}`;
                                 anuncio.rmv_avaliacao = `DELETE ${req.protocol}://${req.get('host')}/anuncios/avaliacoes/${anuncio.cod_anuncio}`;
@@ -1269,11 +1365,12 @@ router.get('/', (req, res, next) => {
                                 anuncio.rmv_favorito = `DELETE ${req.protocol}://${req.get('host')}/anuncios/favoritos/${anuncio.cod_anuncio}`;
 
                                 anuncio.add_candidatura = `POST ${req.protocol}://${req.get('host')}/anuncios/candidaturas/${anuncio.cod_anuncio}`;
-                            // --------------------
+                            // Fim da adição de atributos essenciais aos Clientes.
 
-                            // Removendo estruturas que agora são desnecessárias.
+                            // Início da remoção atributos que não são mais necessários.
+                                delete anuncio.Animal;
                                 delete anuncio.Usuario;
-                            // --------------------------------------------------
+                            // Fim da remoção de atributos que não são mais necessários.
 
                             anuncios.push(anuncio);
                             
@@ -1322,6 +1419,8 @@ router.get('/', (req, res, next) => {
 
             Anuncio.findAndCountAll({
                 include: [{
+                    model: Animal
+                }, {
                     model: Usuario
                 }],
                 where: {
@@ -1368,10 +1467,15 @@ router.get('/', (req, res, next) => {
                     // Início da inclusão de atributos adicionais ao objeto que será enviado na resposta.
                         resultArr.rows.forEach((anuncio) => {
 
-                            // Atributos adicionais.
-                                anuncio.detalhes_anuncio = `GET ${req.protocol}://${req.get('host')}/anuncios/?getOne=${anuncio.cod_anuncio}`;
-
+                            // Início da adição de atributos essenciais aos Clientes.
                                 anuncio.download_foto = `GET ${req.protocol}://${req.get('host')}/usuarios/animais/albuns/fotos/${anuncio.uid_foto_animal}`;
+
+                                anuncio.dados_animal = anuncio.Animal;
+
+                                anuncio.dados_anunciante = anuncio.Usuario;
+                                anuncio.dados_anunciante.download_foto = `GET ${req.protocol}://${req.get('host')}/usuarios/avatars/${anuncio.Usuario.foto_usuario}`;
+
+                                anuncio.detalhes_anuncio = `GET ${req.protocol}://${req.get('host')}/anuncios/?getOne=${anuncio.cod_anuncio}`;
 
                                 anuncio.add_avaliacao = `POST ${req.protocol}://${req.get('host')}/anuncios/avaliacoes/${anuncio.cod_anuncio}`;
                                 anuncio.rmv_avaliacao = `DELETE ${req.protocol}://${req.get('host')}/anuncios/avaliacoes/${anuncio.cod_anuncio}`;
@@ -1380,12 +1484,12 @@ router.get('/', (req, res, next) => {
                                 anuncio.rmv_favorito = `DELETE ${req.protocol}://${req.get('host')}/anuncios/favoritos/${anuncio.cod_anuncio}`;
 
                                 anuncio.add_candidatura = `POST ${req.protocol}://${req.get('host')}/anuncios/candidaturas/${anuncio.cod_anuncio}`;
-                            // --------------------
+                            // Fim da adição de atributos essenciais aos Clientes.
 
-
-                            // Removendo estruturas que agora são desnecessárias.
+                            // Início da remoção atributos que não são mais necessários.
+                                delete anuncio.Animal;
                                 delete anuncio.Usuario;
-                            // --------------------------------------------------
+                            // Fim da remoção de atributos que não são mais necessários.
 
                             anuncios.push(anuncio);
                             
@@ -1428,6 +1532,8 @@ router.get('/', (req, res, next) => {
 
             Anuncio.findAndCountAll({
                 include: [{
+                    model: Animal
+                }, {
                     model: Usuario
                 }],
                 where: {
@@ -1505,10 +1611,15 @@ router.get('/', (req, res, next) => {
                     // Início da inclusão de atributos adicionais ao objeto que será enviado na resposta.
                         resultArr.rows.forEach((anuncio) => {
 
-                            // Atributos adicionais.
-                                anuncio.detalhes_anuncio = `GET ${req.protocol}://${req.get('host')}/anuncios/?getOne=${anuncio.cod_anuncio}`;
-
+                            // Início da adição de atributos essenciais aos Clientes.
                                 anuncio.download_foto = `GET ${req.protocol}://${req.get('host')}/usuarios/animais/albuns/fotos/${anuncio.uid_foto_animal}`;
+
+                                anuncio.dados_animal = anuncio.Animal;
+
+                                anuncio.dados_anunciante = anuncio.Usuario;
+                                anuncio.dados_anunciante.download_foto = `GET ${req.protocol}://${req.get('host')}/usuarios/avatars/${anuncio.Usuario.foto_usuario}`;
+
+                                anuncio.detalhes_anuncio = `GET ${req.protocol}://${req.get('host')}/anuncios/?getOne=${anuncio.cod_anuncio}`;
 
                                 anuncio.add_avaliacao = `POST ${req.protocol}://${req.get('host')}/anuncios/avaliacoes/${anuncio.cod_anuncio}`;
                                 anuncio.rmv_avaliacao = `DELETE ${req.protocol}://${req.get('host')}/anuncios/avaliacoes/${anuncio.cod_anuncio}`;
@@ -1517,11 +1628,12 @@ router.get('/', (req, res, next) => {
                                 anuncio.rmv_favorito = `DELETE ${req.protocol}://${req.get('host')}/anuncios/favoritos/${anuncio.cod_anuncio}`;
 
                                 anuncio.add_candidatura = `POST ${req.protocol}://${req.get('host')}/anuncios/candidaturas/${anuncio.cod_anuncio}`;
-                            // --------------------
+                            // Fim da adição de atributos essenciais aos Clientes.
 
-                            // Removendo estruturas que agora são desnecessárias.
+                            // Início da remoção atributos que não são mais necessários.
+                                delete anuncio.Animal;
                                 delete anuncio.Usuario;
-                            // --------------------------------------------------
+                            // Fim da remoção de atributos que não são mais necessários.
 
                             anuncios.push(anuncio);
                             
@@ -1564,6 +1676,8 @@ router.get('/', (req, res, next) => {
 
             Anuncio.findAndCountAll({
                 include: [{
+                    model: Animal
+                }, {
                     model: Usuario
                 }],
                 where: {
@@ -1641,10 +1755,15 @@ router.get('/', (req, res, next) => {
                     // Início da inclusão de atributos adicionais ao objeto que será enviado na resposta.
                         resultArr.rows.forEach((anuncio) => {
 
-                            // Atributos adicionais.
-                                anuncio.detalhes_anuncio = `GET ${req.protocol}://${req.get('host')}/anuncios/?getOne=${anuncio.cod_anuncio}`;
-
+                            // Início da adição de atributos essenciais aos Clientes.
                                 anuncio.download_foto = `GET ${req.protocol}://${req.get('host')}/usuarios/animais/albuns/fotos/${anuncio.uid_foto_animal}`;
+
+                                anuncio.dados_animal = anuncio.Animal;
+
+                                anuncio.dados_anunciante = anuncio.Usuario;
+                                anuncio.dados_anunciante.download_foto = `GET ${req.protocol}://${req.get('host')}/usuarios/avatars/${anuncio.Usuario.foto_usuario}`;
+
+                                anuncio.detalhes_anuncio = `GET ${req.protocol}://${req.get('host')}/anuncios/?getOne=${anuncio.cod_anuncio}`;
 
                                 anuncio.add_avaliacao = `POST ${req.protocol}://${req.get('host')}/anuncios/avaliacoes/${anuncio.cod_anuncio}`;
                                 anuncio.rmv_avaliacao = `DELETE ${req.protocol}://${req.get('host')}/anuncios/avaliacoes/${anuncio.cod_anuncio}`;
@@ -1653,11 +1772,12 @@ router.get('/', (req, res, next) => {
                                 anuncio.rmv_favorito = `DELETE ${req.protocol}://${req.get('host')}/anuncios/favoritos/${anuncio.cod_anuncio}`;
 
                                 anuncio.add_candidatura = `POST ${req.protocol}://${req.get('host')}/anuncios/candidaturas/${anuncio.cod_anuncio}`;
-                            // --------------------
+                            // Fim da adição de atributos essenciais aos Clientes.
 
-                            // Removendo estruturas que agora são desnecessárias.
+                            // Início da remoção atributos que não são mais necessários.
+                                delete anuncio.Animal;
                                 delete anuncio.Usuario;
-                            // --------------------------------------------------
+                            // Fim da remoção de atributos que não são mais necessários.
 
                             anuncios.push(anuncio);
                             
@@ -1706,6 +1826,8 @@ router.get('/', (req, res, next) => {
 
             Anuncio.findAndCountAll({
                 include: [{
+                    model: Animal
+                }, {
                     model: Usuario
                 }],
                 where: {
@@ -1752,10 +1874,15 @@ router.get('/', (req, res, next) => {
                     // Início da inclusão de atributos adicionais ao objeto que será enviado na resposta.
                         resultArr.rows.forEach((anuncio) => {
 
-                            // Atributos adicionais.
-                                anuncio.detalhes_anuncio = `GET ${req.protocol}://${req.get('host')}/anuncios/?getOne=${anuncio.cod_anuncio}`;
-
+                            // Início da adição de atributos essenciais aos Clientes.
                                 anuncio.download_foto = `GET ${req.protocol}://${req.get('host')}/usuarios/animais/albuns/fotos/${anuncio.uid_foto_animal}`;
+
+                                anuncio.dados_animal = anuncio.Animal;
+
+                                anuncio.dados_anunciante = anuncio.Usuario;
+                                anuncio.dados_anunciante.download_foto = `GET ${req.protocol}://${req.get('host')}/usuarios/avatars/${anuncio.Usuario.foto_usuario}`;
+
+                                anuncio.detalhes_anuncio = `GET ${req.protocol}://${req.get('host')}/anuncios/?getOne=${anuncio.cod_anuncio}`;
 
                                 anuncio.add_avaliacao = `POST ${req.protocol}://${req.get('host')}/anuncios/avaliacoes/${anuncio.cod_anuncio}`;
                                 anuncio.rmv_avaliacao = `DELETE ${req.protocol}://${req.get('host')}/anuncios/avaliacoes/${anuncio.cod_anuncio}`;
@@ -1764,11 +1891,12 @@ router.get('/', (req, res, next) => {
                                 anuncio.rmv_favorito = `DELETE ${req.protocol}://${req.get('host')}/anuncios/favoritos/${anuncio.cod_anuncio}`;
 
                                 anuncio.add_candidatura = `POST ${req.protocol}://${req.get('host')}/anuncios/candidaturas/${anuncio.cod_anuncio}`;
-                            // --------------------
+                            // Fim da adição de atributos essenciais aos Clientes.
 
-                            // Removendo estruturas que agora são desnecessárias.
+                            // Início da remoção atributos que não são mais necessários.
+                                delete anuncio.Animal;
                                 delete anuncio.Usuario;
-                            // --------------------------------------------------
+                            // Fim da remoção de atributos que não são mais necessários.
 
                             anuncios.push(anuncio);
                             
@@ -1833,6 +1961,8 @@ router.get('/', (req, res, next) => {
 
             Anuncio.findAndCountAll({
                 include: [{
+                    model: Animal
+                }, {
                     model: Usuario
                 }],
                 where: {
@@ -1904,10 +2034,15 @@ router.get('/', (req, res, next) => {
                     // Início da inclusão de atributos adicionais ao objeto que será enviado na resposta.
                         resultArr.rows.forEach((anuncio) => {
 
-                            // Atributos adicionais.
-                                anuncio.detalhes_anuncio = `GET ${req.protocol}://${req.get('host')}/anuncios/?getOne=${anuncio.cod_anuncio}`;
-
+                            // Início da adição de atributos essenciais aos Clientes.
                                 anuncio.download_foto = `GET ${req.protocol}://${req.get('host')}/usuarios/animais/albuns/fotos/${anuncio.uid_foto_animal}`;
+
+                                anuncio.dados_animal = anuncio.Animal;
+
+                                anuncio.dados_anunciante = anuncio.Usuario;
+                                anuncio.dados_anunciante.download_foto = `GET ${req.protocol}://${req.get('host')}/usuarios/avatars/${anuncio.Usuario.foto_usuario}`;
+
+                                anuncio.detalhes_anuncio = `GET ${req.protocol}://${req.get('host')}/anuncios/?getOne=${anuncio.cod_anuncio}`;
 
                                 anuncio.add_avaliacao = `POST ${req.protocol}://${req.get('host')}/anuncios/avaliacoes/${anuncio.cod_anuncio}`;
                                 anuncio.rmv_avaliacao = `DELETE ${req.protocol}://${req.get('host')}/anuncios/avaliacoes/${anuncio.cod_anuncio}`;
@@ -1916,30 +2051,21 @@ router.get('/', (req, res, next) => {
                                 anuncio.rmv_favorito = `DELETE ${req.protocol}://${req.get('host')}/anuncios/favoritos/${anuncio.cod_anuncio}`;
 
                                 anuncio.add_candidatura = `POST ${req.protocol}://${req.get('host')}/anuncios/candidaturas/${anuncio.cod_anuncio}`;
-                            // --------------------
+                            // Fim da adição de atributos essenciais aos Clientes.
+
+                            // Início da remoção atributos que não são mais necessários.
+                                delete anuncio.Animal;
+                                delete anuncio.Usuario;
+                            // Fim da remoção de atributos que não são mais necessários.
 
                             if (usuario){
-
                                 // Se o requisitante for um usuário...
-
-                                if (!listaBloqueios.includes(anuncio.Usuario.cod_usuario)){
+                                if (!listaBloqueios.includes(anuncio.dados_anunciante.cod_usuario)){
                                     // E o criador do anúncio não estiver na lista de bloqueios do usuário (Bloqueado/Bloqueante)...
-
-                                    // Removendo estruturas que agora são desnecessárias.
-                                        delete anuncio.Usuario;
-                                    // --------------------------------------------------
-
                                     anuncios.push(anuncio);
                                 }
-
                             } else {
-
                                 // Se o requisitante for uma aplicação...
-
-                                // Removendo estruturas que agora são desnecessárias.
-                                    delete anuncio.Usuario;
-                                // --------------------------------------------------
-
                                 anuncios.push(anuncio);
                             }
                             
@@ -1951,7 +2077,7 @@ router.get('/', (req, res, next) => {
                 // Início do envio da resposta.
 
                     return res.status(200).json({
-                        mensagem: 'Lista de anúncios em aberto de usuários ativos.',
+                        mensagem: `Lista de anúncios em aberto de usuários ativos ordenada por ${req.query.orderBy}.`,
                         total_anuncios,
                         total_paginas,
                         anuncios,
@@ -1980,6 +2106,27 @@ router.get('/', (req, res, next) => {
             // Chamada livre para usuários.
             // Exibirá os dados de um específico.
             // Útil para exibir a página ou card de um anúncio específico.
+
+            // Início da atualização da quantidade de visualizações do anúncio.
+                try {
+
+                    await Anuncio.increment(['qtd_visualizacoes'], {
+                        by: 1,
+                        where: {
+                            cod_anuncio: req.query.getOne
+                        }
+                    });
+
+                } catch (error) {
+                    console.error('Algo inesperado aconteceu ao exibir os dados do anúncio.', error);
+    
+                    let customErr = new Error('Algo inesperado aconteceu ao exibir os dados do anúncio. Entre em contato com o administrador.');
+                    customErr.status = 500;
+                    customErr.code = 'INTERNAL_SERVER_ERROR'
+            
+                    return next( customErr );
+                }
+            // Fim da atualização da quantidade de visualizações do anúncio.
 
             Anuncio.findOne({
                 include: [{
@@ -2234,6 +2381,8 @@ router.post('/:codAnimal', async (req, res, next) => {
 
             let hasUnauthorizedField = false;
 
+            let emptyFields = [];   // Se campos vazios forem detectados, envie (400 - INVALID_REQUEST_FIELDS)
+
             // Lista de campos permitidos.
 
                 let allowedFields = [
@@ -2248,12 +2397,24 @@ router.post('/:codAnimal', async (req, res, next) => {
                     if (!allowedFields.includes(pair[0])){
                         hasUnauthorizedField = true;
                     };
+
+                    if (String(pair[1]).length == 0){
+                        emptyFields.push(String(pair[0]));
+                    }
                 });
 
                 if (hasUnauthorizedField){
                     return res.status(400).json({
                         mensagem: 'Algum dos campos enviados é inválido.',
                         code: 'INVALID_REQUEST_FIELDS'
+                    });
+                }
+
+                if (emptyFields.length > 0){
+                    return res.status(400).json({
+                        mensagem: `Campos vazios foram detectados.`,
+                        code: 'INVALID_REQUEST_FIELDS',
+                        campos_vazios: emptyFields
                     });
                 }
 
@@ -2377,7 +2538,7 @@ router.post('/:codAnimal', async (req, res, next) => {
 
                     // Início da atualização do "estado_adocao" do animal.
                         await Animal.update({
-                            estado_adocao: 'Em anúncio',
+                            estado_adocao: 'Em anuncio',
                             data_modificacao: new Date()
                         }, {
                             where: {
@@ -2427,7 +2588,399 @@ router.post('/:codAnimal', async (req, res, next) => {
 
 });
 
-router.patch('/:codAnuncio', (req, res, next) => {
+router.patch('/:codAnuncio', async (req, res, next) => {
+
+    // Início da verificação do parâmetro de rota.
+
+        if (String(req.params.codAnuncio).match(/[^\d]+/g)){
+            return res.status(400).json({
+                mensagem: "Requisição inválida - O ID de um Anúncio deve conter apenas dígitos.",
+                code: 'BAD_REQUEST'
+            });
+        }
+
+    // Fim da verificação do parâmetro de rota.
+
+    // Início das restrições de acesso à rota.
+
+        // Apenas usuários poderão alterar dados dos anúncios de seus animais.
+        if (!req.dadosAuthToken){   
+
+            // Se em algum caso não identificado, a requisição de uma aplicação chegou aqui e não apresentou suas credenciais JWT, não permita o acesso.
+            return res.status(401).json({
+                mensagem: 'Você não possui o nível de acesso adequado para esse recurso.',
+                code: 'ACCESS_TO_RESOURCE_NOT_ALLOWED'
+            });
+
+        }
+
+        // Se o Cliente não for do tipo Pet Adote, não permita o acesso.
+            if (req.dadosAuthToken.tipo_cliente !== 'Pet Adote'){
+                return res.status(401).json({
+                    mensagem: 'Você não possui o nível de acesso adequado para esse recurso.',
+                    code: 'ACCESS_TO_RESOURCE_NOT_ALLOWED'
+                });
+            }
+        
+        // Capturando os dados do usuário, se o requisitante for o usuário de uma aplicação Pet Adote.
+            const { usuario } = req.dadosAuthToken;
+
+        // Se o requisitante não for um usuário, não permita o acesso.
+        if (!usuario){
+            return res.status(401).json({
+                mensagem: 'Requisição inválida - Você não possui o nível de acesso adequado para esse recurso.',
+                code: 'ACCESS_TO_RESOURCE_NOT_ALLOWED'
+            });
+        };
+        
+    // Fim das restrições de acesso à rota.
+
+    // Capturando o código do anúncio que terá seus dados alterados.
+        const cod_anuncio = req.params.codAnuncio;
+    // -------------------------------------------------------------
+
+    // Início da verificação dos dados do anúncio.
+        let anuncio = undefined;
+
+        try {
+            // Para alterar os dados de um anúncio, o anúncio deve estar em Aberto e o criador do anúncio deve estar ativo.
+            anuncio = await Anuncio.findOne({
+                include: [{
+                    model: Usuario
+                }, {
+                    model: Animal,
+                    include: [{
+                        model: AlbumAnimal
+                    }]
+                }],
+                where: {
+                    cod_anuncio: cod_anuncio,
+                    estado_anuncio: 'Aberto',
+                    '$Usuario.esta_ativo$': 1
+                },
+                nest: true,
+                raw: true
+            })
+
+        } catch(error) {
+            console.error('Algo inesperado aconteceu ao buscar os dados do anúncio.', error);
+
+            let customErr = new Error('Algo inesperado aconteceu ao buscar os dados do anúncio. Entre em contato com o administrador.');
+            customErr.status = 500;
+            customErr.code = 'INTERNAL_SERVER_ERROR'
+
+            return next( customErr );
+        }
+    // Fim da verificação dos dados do anúncio.
+
+    // Início das verificações sobre os dados do anúncio. 
+        
+        if (!anuncio){
+            // Se o anúncio não foi encontrado...
+            return res.status(404).json({
+                mensagem: 'Não foi possível encontrar um anúncio com este ID.',
+                code: 'RESOURCE_NOT_FOUND',
+                lista_anuncios: `GET ${req.protocol}://${req.get('host')}/anuncios/?getAll=open&activeOwner=1`,
+            });
+        }
+
+    // Fim das verificações sobre os dados do anúncio.
+
+    // Início das restrições de uso da rota.
+
+        if (usuario?.e_admin == 0){
+            // Se o requisitante for um usuário comum...
+            if (anuncio.Usuario.cod_usuario != usuario.cod_usuario){
+                // E não for o dono do recurso...
+                return res.status(401).json({
+                    mensagem: 'Você não possui o nível de acesso adequado para esse recurso.',
+                    code: 'ACCESS_TO_RESOURCE_NOT_ALLOWED'
+                });
+            }
+
+        }
+
+    // Fim das restrições de uso da rota.
+
+    // Início das configurações das possíveis operações de alteração.
+        
+        let operacao = undefined;   // Se a operação continuar como undefined, envie BAD_REQUEST (400).
+
+        // let { } = req.query;
+
+        switch (Object.entries(req.query).length){
+            case 0:
+                operacao = 'update';
+
+                break;
+            // case 1:
+            //     if (req.query?.setDefault == 'foto') { operacao = 'setDefault_Foto' };
+
+            //     break;
+            default:
+                break;
+        }
+
+    // Fim das configurações das possíveis operações de alteração.
+
+    // Início da validação das Query Strings.
+        // ... Essas estruturas estão aqui caso futuras expansões sejam necessárias nessa área do sistema.
+    // Fim da validação das Query Strings.
+
+    // Início dos processos de alteração dos dados do anúncio.
+
+        if (!operacao){
+            return res.status(400).json({
+                mensagem: 'Algum parâmetro inválido foi passado na URL da requisição.',
+                code: 'BAD_REQUEST'
+            });
+        }
+
+        if (operacao == 'update'){
+
+            // Início da verificação de conteúdo do pacote de dados da requisição.
+                if (!req.headers['content-type']){
+                    return res.status(400).json({
+                        mensagem: 'Dados não foram encontrados na requisição',
+                        code: 'INVALID_REQUEST_CONTENT'
+                    })
+                }
+            // Fim da verificação de conteúdo do pacote de dados da requisição.
+
+            // Início dos processos de alteração nos campos comuns dos dados do anúncio.
+
+                // Início das restrições de envio de campos.
+
+                    let hasUnauthorizedField = false;
+
+                    let emptyFields = [];   // Se campos vazios forem detectados, envie (400 - INVALID_REQUEST_FIELDS)
+
+                    // Lista de campos permitidos.
+
+                        let allowedFields = [
+                            'uid_foto_animal',
+                            'estado_anuncio'
+                        ];
+
+                    // Fim da lista de campos permitidos.
+
+                    // Início da verificação de campos não permitidos.
+
+                        Object.entries(req.body).forEach((pair) => {
+                            if (!allowedFields.includes(pair[0])){
+                                hasUnauthorizedField = true;
+                            };
+
+                            if (String(pair[1]).length == 0){
+                                emptyFields.push(String(pair[0]));
+                            };
+                        });
+
+                        if (hasUnauthorizedField){
+                            return res.status(400).json({
+                                mensagem: 'Algum dos campos enviados é inválido.',
+                                code: 'INVALID_REQUEST_FIELDS'
+                            });
+                        }
+
+                        if (emptyFields.length > 0){
+                            return res.status(400).json({
+                                mensagem: `Campos vazios foram detectados.`,
+                                code: 'INVALID_REQUEST_FIELDS',
+                                campos_vazios: emptyFields
+                            });
+                        }
+
+                    // Fim da verificação de campos não permitidos.
+
+                // Fim das restrições de envio de campos.
+
+                // Início da Normalização dos campos recebidos.
+
+                    Object.entries(req.body).forEach((pair) => {
+
+                        req.body[pair[0]] = String(pair[1]).trim();     // Remove espaços excessivos no início e no fim do valor.
+
+                        // let partes = undefined;     // Será útil para tratar partes individuais de um valor.
+
+                        switch(pair[0]){
+                            case 'estado_anuncio':
+                                // Garantindo que a primeira letra esteja em caixa alta e as outras em caixa baixa.
+                                pair[1] = pair[1].toLowerCase();
+
+                                req.body[pair[0]] = pair[1][0].toUpperCase() + pair[1].substr(1);
+                                break;
+                            default:
+                                break;
+                        }
+
+                    });
+
+                // Fim da Normalização dos campos recebidos.
+
+                // Início da Validação dos Campos.
+                    
+                    // Validação do "estado_anuncio".
+                        if (req.body.estado_anuncio?.length >= 0){
+
+                            let allowedStates = [
+                                'Fechado'
+                            ];
+
+                            if (!allowedStates.includes(req.body.estado_anuncio)){
+                                return res.status(400).json({
+                                    mensagem: 'O estado declarado para o anúncio é inválido.',
+                                    code: 'INVALID_INPUT_ESTADO_ANUNCIO'
+                                });
+                            }
+
+                        }
+                    // ------------------------------
+
+                    // Validação do "uid_foto_animal".
+                        if (req.body.uid_foto_animal?.length >= 0){
+
+                            if (!String(req.body.uid_foto_animal).match(/^[^?/]+\.jpeg+$/g)){
+                                return res.status(400).json({
+                                    mensagem: "O UID da foto não parece ser válido.",
+                                    code: 'INVALID_INPUT_UID_FOTO_ANIMAL'
+                                });
+                            }
+
+                            let isSelectedPhotoInAlbum = await FotoAnimal.findOne({
+                                where: {
+                                    uid_foto: req.body.uid_foto_animal,
+                                    cod_album: anuncio.Animal.AlbumAnimal.cod_album,
+                                    ativo: 1
+                                },
+                                raw: true
+                            })
+                            .then((result) => {
+                                if (!result){
+                                    return false;
+                                }
+                                return true;
+                            })
+                            .catch((error) => {
+                                console.error(`Algo inesperado aconteceu ao atualizar a foto do anúncio.`, error);
+
+                                let customErr = new Error('Algo inesperado aconteceu ao atualizar a foto do anúncio. Entre em contato com o administrador.');
+                                customErr.status = 500;
+                                customErr.code = 'INTERNAL_SERVER_ERROR';
+
+                                return next( customErr );
+                            });
+
+                            if (!isSelectedPhotoInAlbum){
+                                return res.status(400).json({
+                                    mensagem: 'Só é possível utilizar fotos ativas registradas nos álbuns do animal.',
+                                    code: 'INVALID_SELECTION_FOTO'
+                                });
+                            }
+                            
+                        }
+                    // -------------------------------
+                    
+                // Fim da Validação dos Campos.
+
+                // Início da efetivação das alterações.
+
+                    try {
+
+                        await database.transaction( async (transaction) => {
+
+                            // Atualiza os dados do anúncio.
+                            await Anuncio.update(req.body, {
+                                where: {
+                                    cod_anuncio: cod_anuncio
+                                },
+                                limit: 1,
+                                transaction
+                            })
+                            // ----------------------------
+
+                            // Início das alterações no caso do usuário "deletar" o anúncio.
+                            
+                                // Altere o "estado_adocao" do animal relacionado ao anúncio para "Sob protecao" e desative as candidaturas.
+                                
+                                    if (req.body.estado_anuncio == 'Fechado'){
+
+                                        await Animal.update({
+                                            estado_adocao: 'Sob protecao'
+                                        }, {
+                                            where: {
+                                                cod_animal: anuncio.Animal.cod_animal
+                                            },
+                                            limit: 1,
+                                            transaction
+                                        })
+
+                                        await Candidatura.update({
+                                            ativo: 0
+                                        }, {
+                                            where: {
+                                                cod_anuncio: cod_anuncio
+                                            },
+                                            transaction
+                                        });
+
+                                    }
+
+                                // Fim do retorno do "estado_adocao" do animal para o padrão e desativação das candidaturas do anúncio.
+
+                            // Fim das alterações no caso do usuário "deletar" o anúncio.
+                            
+                            return await Anuncio.findByPk(cod_anuncio, {
+                                raw: true,
+                                transaction
+                            })
+                            .then((resultFind) => {
+                                
+                                if (!resultFind){
+                                    throw new Error('Nenhum anúncio foi encontrado após a atualização dos dados do anúncio.');
+                                }
+            
+                                // Início da adição de atributos ao objeto que será enviado na resposta.
+                                    resultFind.detalhes_anuncio = `GET ${req.protocol}://${req.get('host')}/anuncios/?getOne=${resultFind.cod_anuncio}`;
+                                // Fim da adição de atributos ao objeto que será enviado na resposta.
+            
+                                // Envio da resposta de sucesso.
+                                    return res.status(200).json({
+                                        mensagem: 'Os dados do anúncio foram atualizados com sucesso.',
+                                        anuncio: resultFind
+                                    });
+                                // Fim do envio da resposta de sucesso.
+            
+                            });
+
+                        })
+                        .catch((error) => {
+                            // Se qualquer erro acontecer no bloco acima, cairemos em CATCH do bloco TRY e faremos o rollback;
+                            throw new Error(error);
+                        })
+                        
+                        // Se chegou aqui a ORM dá Auto-commit.
+
+                    } catch (error) {
+                        
+                        // Se algum problema aconteceu, dê Rollback.
+
+                        console.error(`Algo inesperado aconteceu ao atualizar os dados do animal.`, errorUpdate);
+
+                        let customErr = new Error('Algo inesperado aconteceu ao atualizar os dados do animal. Entre em contato com o administrador.');
+                        customErr.status = 500;
+                        customErr.code = 'INTERNAL_SERVER_ERROR';
+
+                        return next( customErr );
+                    }
+                    
+                // Fim da efetivação das alterações.
+
+            // Fim dos processos de alteração nos campos comuns dos dados do anúncio.
+
+        }
+
+    // Fim dos processos de alteração dos dados do anúncio.
 
 });
 
