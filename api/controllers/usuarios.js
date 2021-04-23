@@ -842,6 +842,24 @@
 
                 };
             // Fim das restrições de alterações.
+
+            // Verificação de campos vazios.
+                let emptyFields = [];   // Se campos vazios forem detectados, envie (400 - INVALID_REQUEST_FIELDS)
+
+                Object.entries(req.body).forEach((pair) => {
+                    if (String(pair[1]).length == 0){
+                        emptyFields.push(String(pair[0]));
+                    };
+                });
+
+                if (emptyFields.length > 0){
+                    return res.status(400).json({
+                        mensagem: `Campos vazios foram detectados.`,
+                        code: 'INVALID_REQUEST_FIELDS',
+                        campos_vazios: emptyFields
+                    });
+                }
+            // Fim da verificação de campos vazios.
             
 
             // console.log('body', req.body);

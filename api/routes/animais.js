@@ -292,7 +292,10 @@ router.get('/', async (req, res, next) => {
 
             Animal.findAndCountAll({
                 include: [{
-                    all: true
+                    model: Usuario,
+                    as: 'dono'
+                }, {
+                    model: AlbumAnimal
                 }],
                 where: {
                     '$dono.esta_ativo$': 1
@@ -323,7 +326,10 @@ router.get('/', async (req, res, next) => {
 
                             qtdAnimaisDosBloqueados = await Animal.count({
                                 include: [{
-                                    all: true
+                                    model: Usuario,
+                                    as: 'dono'
+                                }, {
+                                    model: AlbumAnimal
                                 }],
                                 where: {
                                     cod_dono: listaBloqueios,
@@ -441,7 +447,10 @@ router.get('/', async (req, res, next) => {
 
             Animal.findAndCountAll({
                 include: [{
-                    all: true
+                    model: Usuario,
+                    as: 'dono'
+                }, {
+                    model: AlbumAnimal
                 }],
                 where: {
                     '$dono.esta_ativo$': 0
@@ -674,7 +683,7 @@ router.get('/', async (req, res, next) => {
 
             Animal.findOne({
                 include: [{ 
-                    all: true
+                    all: true   // Ao entregar os dados, trate todos os dados provenientes dos relacionamentos.
                 }],
                 where: {
                     cod_animal,
@@ -699,11 +708,16 @@ router.get('/', async (req, res, next) => {
                         delete result.dono_antigo;  // Garante que {dono_antigo} só vai existir se "cod_dono_antigo" existir.
                     };
 
-                    let { dono, dono_antigo } = result;
+                    if (!result.Anuncio.cod_anuncio){
+                        delete result.Anuncio;      // Garanteu que {Anuncio} só vai existir se "Anuncio.cod_anuncio" existir.
+                    }
+
+                    let { dono, dono_antigo, Anuncio } = result;
 
                     delete result.dono;
                     delete result.dono_antigo;
                     delete result.AlbumAnimal;
+                    delete result.Anuncio;
 
                     let animal = result;
 
@@ -740,7 +754,8 @@ router.get('/', async (req, res, next) => {
                         mensagem: 'Exibindo os dados do animal encontrado.',
                         animal,
                         dono,
-                        dono_antigo
+                        dono_antigo,
+                        anuncio: Anuncio
                     });
                 // Fim do envio da resposta.
                 
@@ -811,6 +826,8 @@ router.post('/', async (req, res, next) => {
 
         let hasUnauthorizedField = false;
 
+        let emptyFields = [];   // Se campos vazios forem detectados, envie (400 - INVALID_REQUEST_FIELDS)
+
         // Lista de campos permitidos.
 
             let allowedFields = [
@@ -835,12 +852,24 @@ router.post('/', async (req, res, next) => {
                 if (!allowedFields.includes(pair[0])){
                     hasUnauthorizedField = true;
                 };
+
+                if (String(pair[1]).length == 0){
+                    emptyFields.push(String(pair[0]));
+                };
             });
 
             if (hasUnauthorizedField){
                 return res.status(400).json({
                     mensagem: 'Algum dos campos enviados é inválido.',
                     code: 'INVALID_REQUEST_FIELDS'
+                });
+            }
+
+            if (emptyFields.length > 0){
+                return res.status(400).json({
+                    mensagem: `Campos vazios foram detectados.`,
+                    code: 'INVALID_REQUEST_FIELDS',
+                    campos_vazios: emptyFields
                 });
             }
 
@@ -1051,7 +1080,7 @@ router.post('/', async (req, res, next) => {
             if (req.body.especie?.length >= 0){
 
                 let allowedSpecies = [
-                    'Cão',
+                    'Cao',
                     'Gato',
                     'Outros'
                 ];
@@ -1228,7 +1257,7 @@ router.post('/', async (req, res, next) => {
 
                     defaultAnimalPicture = possibleDefaultImages[rngSelector];
                     break;
-                case 'Cão':
+                case 'Cao':
                     possibleDefaultImages = [
                         'default_dog_01.jpeg',
                         'default_dog_02.jpeg'
@@ -1462,7 +1491,7 @@ router.patch('/:codAnimal', async (req, res, next) => {
                 let defaultPhotoAnimal = undefined;
 
                 switch (animal.especie){
-                    case 'Cão':
+                    case 'Cao':
                         rngSelector = Number.parseInt(Math.random() * 1.9); // 0 ou 1.
                         defaultPhotoAnimal = possibleDefaultPhotoAnimal[rngSelector];
                         break;
@@ -1949,6 +1978,8 @@ router.patch('/:codAnimal', async (req, res, next) => {
 
                     let hasUnauthorizedField = false;
 
+                    let emptyFields = [];
+
                     // Lista de campos permitidos.
 
                         let allowedFields = [
@@ -1974,12 +2005,24 @@ router.patch('/:codAnimal', async (req, res, next) => {
                             if (!allowedFields.includes(pair[0])){
                                 hasUnauthorizedField = true;
                             };
+
+                            if (String(pair[1]).length == 0){
+                                emptyFields.push(String(pair[0]));
+                            }
                         });
 
                         if (hasUnauthorizedField){
                             return res.status(400).json({
                                 mensagem: 'Algum dos campos enviados é inválido.',
                                 code: 'INVALID_REQUEST_FIELDS'
+                            });
+                        }
+
+                        if (emptyFields.length > 0){
+                            return res.status(400).json({
+                                mensagem: `Campos vazios foram detectados.`,
+                                code: 'INVALID_REQUEST_FIELDS',
+                                campos_vazios: emptyFields
                             });
                         }
 
@@ -2197,7 +2240,7 @@ router.patch('/:codAnimal', async (req, res, next) => {
                         if (req.body.especie?.length >= 0){
 
                             let allowedSpecies = [
-                                'Cão',
+                                'Cao',
                                 'Gato',
                                 'Outros'
                             ];

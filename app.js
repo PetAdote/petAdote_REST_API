@@ -36,6 +36,8 @@
                 const rotaAlbuns = require('./api/routes/albuns_animais');
                     const rotaFotos = require('./api/routes/fotos_animais');
 
+        const rotaAnuncios = require('./api/routes/anuncios');
+
 // Instânciamentos.
 
     // Conexão com o Banco de Dados MySQL.
@@ -84,6 +86,8 @@
     app.use('/usuarios/animais', rotaAnimais);
     app.use('/usuarios/enderecos', rotaEnderecos);
     app.use('/usuarios', rotaUsuarios);
+
+    app.use('/anuncios', rotaAnuncios);
 
     /* Observações sobre Conflito de Rotas
 

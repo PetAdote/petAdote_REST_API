@@ -49,7 +49,7 @@ router.get('/', async (req, res, next) => {
      10. Exibe os dados de uma foto específica.  (Apps/Admins/Usuarios - Restrições de uso mais específicas)
     */
 
-     // Início da Verificação dos Parâmetros da Rota.
+    // Início da Verificação dos Parâmetros da Rota.
         // As verificações dos parâmetros desta rota acontecem nas configurações das opções de busca.
     // Fim da verificação dos parâmetros da Rota.
 
@@ -82,7 +82,7 @@ router.get('/', async (req, res, next) => {
 
             // * Substitua isso por uma lista de queries permitidas.
 
-            if (usuario && !( (req.query.getAllActive == 1 & req.query.activeOwner == 1) || req.query.getAllFromAlbum || req.query.getOne)){
+            if (usuario && !( (req.query.getAllActive == 1 & req.query.activeOwner == 1) || req.query.getAllActiveFromAlbum || req.query.getOne)){
                 return res.status(401).json({
                     mensagem: 'Requisição inválida - Você não possui o nível de acesso adequado para esse recurso.',
                     code: 'ACCESS_TO_RESOURCE_NOT_ALLOWED'
@@ -506,10 +506,6 @@ router.get('/', async (req, res, next) => {
                         mensagem: 'Nenhum álbum de animais dos usuários ativos possui fotos ativas.'
                     });
                 }
-
-                // return res.status(200).json({
-                //     resultArr
-                // });
 
                 // Início da construção do objeto enviado na resposta.
 
@@ -1241,13 +1237,23 @@ router.get('/', async (req, res, next) => {
                 }
 
                 // Início da verificação do estado de ativação do dono do recurso.
-                    if (usuario?.e_admin == 0 && result.AlbumAnimal.Animal.dono.esta_ativo == 0){
-                        // Se o dono do recurso estiver inativo, dados relativos à ele não podem ser encontrados por outros usuários.
-                        return res.status(404).json({
-                            mensagem: 'Nenhuma foto com este UID foi encontrada.',
-                            code: 'RESOURCE_NOT_FOUND',
-                            lista_fotos: `${req.protocol}://${req.get('host')}/usuarios/animais/albuns/fotos/?getAllActive=1&activeOwner=1`
-                        });
+
+                    let dono_recurso = result.AlbumAnimal.Animal.dono.cod_usuario;
+                    let dono_ativo = result.AlbumAnimal.Animal.dono.esta_ativo;
+
+                    if (usuario?.e_admin == 0 && usuario?.cod_usuario != dono_recurso){
+
+                        if (dono_ativo == 0){
+
+                            // Se o dono do recurso estiver inativo, dados relativos à ele não podem ser encontrados por outros usuários além do dono do recurso.
+                            return res.status(404).json({
+                                mensagem: 'Nenhuma foto com este UID foi encontrada.',
+                                code: 'RESOURCE_NOT_FOUND',
+                                lista_fotos: `${req.protocol}://${req.get('host')}/usuarios/animais/albuns/fotos/?getAllActive=1&activeOwner=1`
+                            });
+
+                        }
+
                     }
                 // Fim da verificação do estado de ativação do dono do recurso.
 
@@ -1741,16 +1747,16 @@ router.patch('/:uidFoto', async (req, res, next) => {
 
     // Fim das Restrições de acesso à rota.
 
-    // Capturando o código do álbum onde a foto será adicionada.
+    // Capturando o código da foto que terá seus dados alterados.
         const uid_foto = req.params.uidFoto;
-    // ---------------------------------------------------------
+    // ----------------------------------------------------------
 
-    // Início da verificação dos dados do álbum.
+    // Início da verificação dos dados da foto.
 
         let foto = undefined;
 
         try {
-            // Para alterar os dados de uma foto, ela deve estar ativa e o dono do animal que possui a foto deve estar ativo.
+            // Para alterar os dados de uma foto, ela deve estar ativa e o dono do animal que possui a foto deve estar ativo. Isso é tratado mais adiante no código...
             foto = await FotoAnimal.findOne({
                 include: [{
                     model: AlbumAnimal,
@@ -1763,9 +1769,7 @@ router.patch('/:uidFoto', async (req, res, next) => {
                     }]
                 }],
                 where: {
-                    uid_foto: uid_foto,
-                    // ativo: 1,
-                    // '$AlbumAnimal.Animal.dono.esta_ativo$': 1
+                    uid_foto: uid_foto
                 },
                 nest: true,
                 raw: true
@@ -1838,6 +1842,8 @@ router.patch('/:uidFoto', async (req, res, next) => {
 
             let hasUnauthorizedField = false;
 
+            let emptyFields = [];   // Se campos vazios forem detectados, envie (400 - INVALID_REQUEST_FIELDS)
+
             // Lista de campos permitidos.
 
                 let allowedFields = [
@@ -1854,12 +1860,24 @@ router.patch('/:uidFoto', async (req, res, next) => {
                     if (!allowedFields.includes(pair[0])){
                         hasUnauthorizedField = true;
                     };
+
+                    if (String(pair[1]).length == 0){
+                        emptyFields.push(String(pair[0]));
+                    };
                 });
 
                 if (hasUnauthorizedField){
                     return res.status(400).json({
                         mensagem: 'Algum dos campos enviados é inválido.',
                         code: 'INVALID_REQUEST_FIELDS'
+                    });
+                }
+
+                if (emptyFields.length > 0){
+                    return res.status(400).json({
+                        mensagem: `Campos vazios foram detectados.`,
+                        code: 'INVALID_REQUEST_FIELDS',
+                        campos_vazios: emptyFields
                     });
                 }
 

@@ -43,8 +43,8 @@ CREATE TABLE tbl_usuario (
     telefone VARCHAR(17) NOT NULL,
     data_nascimento DATE NOT NULL,
     descricao VARCHAR(255),
-	foto_usuario VARCHAR(200) NOT NULL DEFAULT 'avatar_default.jpeg',
-    banner_usuario VARCHAR(200) NOT NULL DEFAULT 'banner_default.jpeg',
+	foto_usuario VARCHAR(200) NOT NULL DEFAULT 'default_avatar_01.jpeg',
+    banner_usuario VARCHAR(200) NOT NULL DEFAULT 'default_banner.jpeg',
     esta_ativo TINYINT UNSIGNED NOT NULL DEFAULT 0,
     ong_ativo TINYINT UNSIGNED NOT NULL DEFAULT 0,
     e_admin TINYINT UNSIGNED NOT NULL DEFAULT 0,
@@ -64,8 +64,6 @@ CREATE TABLE tbl_conta_local (
     PRIMARY KEY (email),
     FOREIGN KEY (cod_usuario) REFERENCES tbl_usuario(cod_usuario)
 );
-
-DROP TABLE tbl_conta_local;
 
 CREATE TABLE tbl_conta_facebook (
 	cod_facebook VARCHAR(255) NOT NULL UNIQUE,
@@ -104,11 +102,11 @@ CREATE TABLE tbl_animal (
 	cod_animal INT UNSIGNED NOT NULL UNIQUE AUTO_INCREMENT,
     cod_dono INT UNSIGNED NOT NULL,
     cod_dono_antigo INT UNSIGNED,
-    estado_adocao ENUM('Sob proteção', 'Em anúncio', 'Em processo adotivo', 'Adotado') NOT NULL DEFAULT 'Sob proteção',
+    estado_adocao ENUM('Sob protecao', 'Em anuncio', 'Em processo adotivo', 'Adotado') NOT NULL DEFAULT 'Sob protecao',
     nome VARCHAR(100) NOT NULL,
     foto VARCHAR(255) NOT NULL DEFAULT 'default_unknown_pet.jpeg',
     data_nascimento DATE NOT NULL,
-    especie ENUM('Cão', 'Gato', 'Outros') NOT NULL,
+    especie ENUM('Cao', 'Gato', 'Outros') NOT NULL,
     raca VARCHAR(20) NOT NULL,
     genero ENUM('M', 'F') NOT NULL,
     porte ENUM('P', 'M', 'G') NOT NULL,
@@ -153,18 +151,24 @@ CREATE TABLE tbl_foto_animal (
 
 CREATE TABLE tbl_anuncio (
 	cod_anuncio INT UNSIGNED NOT NULL UNIQUE AUTO_INCREMENT,
-    cod_animal INT UNSIGNED NOT NULL UNIQUE,	# Unique pois o animal poderá ser anúnciado uma única vez até ser adotado para evitar SPAM.
-    cod_usuario INT UNSIGNED NOT NULL,			# Não é UNIQUE pois o usuário poderá anúnciar mais de 1 animal.
-    uid_foto_animal VARCHAR(255) NOT NULL UNIQUE,		# Unique para restringir o uso em múltiplos anúncios.
-    qtd_visualizacao INT UNSIGNED NOT NULL DEFAULT 0,
+    cod_animal INT UNSIGNED NOT NULL UNIQUE,	# Unique pois o animal poderá ser anúnciado uma única vez até ser adotado para evitar SPAM. Se o anúncio foi inativado alguma vez e o usuário tentar cadastrá-lo novamente, simplesmente realizamos a re-ativação dele com novos dados.
+    cod_anunciante INT UNSIGNED NOT NULL,			# Não é UNIQUE pois o usuário poderá anúnciar mais de 1 animal.
+    uid_foto_animal VARCHAR(255) NOT NULL,
+    qtd_visualizacoes INT UNSIGNED NOT NULL DEFAULT 0,
     qtd_avaliacoes INT UNSIGNED NOT NULL DEFAULT 0,
-    estado_adocao ENUM('Me adote!', 'Fui adotado!') NOT NULL DEFAULT 'Me adote!',
+    estado_anuncio ENUM('Aberto', 'Concluido', 'Fechado') NOT NULL DEFAULT 'Aberto',
     data_criacao DATETIME NOT NULL DEFAULT NOW(),
+    data_modificacao DATETIME NOT NULL DEFAULT NOW(),
     PRIMARY KEY (cod_anuncio),
     FOREIGN KEY (cod_animal) REFERENCES tbl_animal(cod_animal),
-    FOREIGN KEY (cod_usuario) REFERENCES tbl_usuario(cod_usuario),
+    FOREIGN KEY (cod_anunciante) REFERENCES tbl_usuario(cod_usuario),
     FOREIGN KEY (uid_foto_animal) REFERENCES tbl_foto_animal(uid_foto)
 );
+
+DESCRIBE tbl_anuncio;
+
+SET FOREIGN_KEY_CHECKS = 1;
+DROP TABLE tbl_anuncio;
 
 CREATE TABLE tbl_momento (
 	cod_momento INT UNSIGNED NOT NULL UNIQUE AUTO_INCREMENT,
@@ -236,9 +240,11 @@ CREATE TABLE tbl_anuncio_favorito (
 CREATE TABLE tbl_candidatura (
 	cod_candidatura INT UNSIGNED NOT NULL UNIQUE AUTO_INCREMENT,
     cod_anuncio INT UNSIGNED NOT NULL,
-    cod_usuario INT UNSIGNED NOT NULL,
-    data_candidatura DATETIME NOT NULL DEFAULT NOW(),
-    estado_candidatura ENUM('Em avaliação', 'Candidatura aceita', 'Candidatura rejeitada') NOT NULL DEFAULT 'Em avaliação',
+    cod_candidato INT UNSIGNED NOT NULL,
+    estado_candidatura ENUM('Em avaliacao', 'Candidatura aceita', 'Candidatura rejeitada') NOT NULL DEFAULT 'Em avaliacao',
+    ativo TINYINT UNSIGNED NOT NULL DEFAULT 1,
+    data_criacao DATETIME NOT NULL DEFAULT NOW(),
+    data_modificacao DATETIME NOT NULL DEFAULT NOW(),
     PRIMARY KEY (cod_candidatura),
     FOREIGN KEY (cod_anuncio) REFERENCES tbl_anuncio(cod_anuncio),
     FOREIGN KEY (cod_usuario) REFERENCES tbl_usuario(cod_usuario)
@@ -373,8 +379,6 @@ commit;
 
 rollback;
 
-# 24607764-3b61-4411-84b5-918791ecb327-1618257907.jpeg
-	
 
 SET FOREIGN_KEY_CHECKS = 0;
 TRUNCATE tbl_usuario;
@@ -384,6 +388,7 @@ TRUNCATE tbl_conta_google;
 TRUNCATE tbl_end_usuario;
 TRUNCATE tbl_bloqueio;
 SET FOREIGN_KEY_CHECKS = 1;
+
 
 SELECT 	pu.*,
 		al.*,
@@ -406,9 +411,9 @@ LIMIT 1;
 INSERT INTO tbl_cliente
 	(nome, senha, tipo_cliente)
 VALUES	
-	('Pet Adote Web','123', 'Pet Adote'),
+	('Pet Adote Web', '123', 'Pet Adote'),
     ('Pet Adote Mobile', '123', 'Pet Adote'),
-    ('Pet Shop 01', '123', 'Comum');
+    ('Pet Adote Rest', '123', 'Pet Adote');
 
 
 SELECT * FROM tbl_cliente;
@@ -487,7 +492,7 @@ INSERT INTO tbl_animal
     detalhes_saude,
     historia)
 VALUES
-	(1, 'Lucky', '2021-01-05', 'Cão', 'comum',
+	(1, 'Lucky', '2021-01-05', 'Cao', 'Comum',
     'M', 'P', '0', '0',
     'Comportamento calmo',
     'Não apresentou nenhum problema de saúde',
@@ -500,7 +505,7 @@ INSERT INTO tbl_animal
     detalhes_saude,
     historia)
 VALUES
-	(1, 'Lila', '2021-03-04', 'Gato', 'comum',
+	(1, 'Lila', '2021-03-04', 'Gato', 'Comum',
     'F', 'P', '0', '0',
     'Ela é super calminha',
     'Não tem problemas de saúde',
@@ -513,7 +518,7 @@ INSERT INTO tbl_animal
     detalhes_saude,
     historia)
 VALUES
-	(1, 2, 'Xiquinho', '2020-04-04', 'Cão', 'comum',
+	(1, 2, 'Xiquinho', '2020-04-04', 'Cao', 'Comum',
     'M', 'M', '1', '1',
     'Xiquinha é um companheiro e tanto!',
     'Nenhum problema de saúde até hoje.',
@@ -526,43 +531,45 @@ INSERT INTO tbl_animal
     detalhes_saude,
     historia)
 VALUES
-	(3, 'Cinzento', '2020-11-04', 'Gato', 'comum',
+	(3, 'Cinzento', '2020-11-04', 'Gato', 'Comum',
     'M', 'P', '0', '0',
     'O cinzento é bem quieto',
     'Não tem problemas de saúde',
     'Chegou aqui do nada, ficou por uns dias, e no fim tá aqui já faz 5 meses. Mas preciso de alguém pra cuidar dele de verdade.');
 
-# SELECT * FROM tbl_animal;
+SELECT * FROM tbl_animal;
     
 #---------------------------------------------------------------------------------------------#
 # Álbum dos Pets dos usuários #
 
 DESCRIBE tbl_album_animal;
+SELECT * FROM tbl_album_animal;
 
 INSERT INTO tbl_album_animal
 	(cod_animal, titulo)
 VALUES
-	(1, 'Álbum do Lucky');
+	(1, 'Álbum Lucky');
     
 INSERT INTO tbl_album_animal
 	(cod_animal, titulo)
 VALUES
-	(2, 'Álbum da Lila');
+	(2, 'Álbum Lila');
     
 INSERT INTO tbl_album_animal
 	(cod_animal, titulo)
 VALUES
-	(3, 'Álbum do Xiquinho');
+	(3, 'Álbum Xiquinho');
     
 INSERT INTO tbl_album_animal
 	(cod_animal, titulo)
 VALUES
-	(4, 'Álbum do Cinzento');
+	(4, 'Álbum Cinzento');
     
 #---------------------------------------------------------------------------------------------#
 # Fotos dos Pets dos usuários #
 
 DESCRIBE tbl_foto_animal;
+SELECT * FROM tbl_foto_animal;
 
 INSERT INTO tbl_foto_animal
 	(uid_foto, cod_album, nome, descricao)
@@ -577,7 +584,7 @@ VALUES
 INSERT INTO tbl_foto_animal
 	(uid_foto, cod_album, nome, descricao)
 VALUES
-	('lilabricando.jpeg', 2, 'Foto Lila 01', 'Foto da Lila correndo em circulos tentando pegar a própria calda.');
+	('lilabrincando.jpeg', 2, 'Foto Lila 01', 'Foto da Lila correndo em circulos tentando pegar a própria calda.');
     
 INSERT INTO tbl_foto_animal
 	(uid_foto, cod_album, nome, descricao)
@@ -604,6 +611,9 @@ VALUES
 #---------------------------------------------------------------------------------------------#
 # Bloqueio entre usuários #
 
+DESCRIBE tbl_bloqueio;
+SELECT * FROM tbl_bloqueio;
+
 INSERT INTO tbl_bloqueio
 	(bloqueante, bloqueado)
 VALUES
@@ -621,4 +631,48 @@ VALUES
 	(1, 4);
 
 # TRUNCATE TABLE tbl_bloqueio;
+
+#---------------------------------------------------------------------------------------------#
+# Cadastro de Anúncios #
+
+DESCRIBE tbl_anuncio;
+
+SELECT * FROM tbl_anuncio;
+
+SELECT * FROM tbl_animal;
+SELECT * FROM tbl_foto_animal;
+
+SELECT * 
+	FROM tbl_album_animal taa
+INNER JOIN tbl_foto_animal tfa
+	ON taa.cod_album = tfa.cod_album
+WHERE taa.cod_animal = 2;
+
+INSERT INTO tbl_anuncio
+	(cod_animal, cod_anunciante, uid_foto_animal)
+VALUES
+	(1, 1, 'luckyfeliz.jpeg');
+    
+INSERT INTO tbl_anuncio
+	(cod_animal, cod_anunciante, uid_foto_animal)
+VALUES
+	(2, 1, 'lilabrincando.jpeg');
+        
+INSERT INTO tbl_anuncio
+	(cod_animal, cod_anunciante, uid_foto_animal)
+VALUES
+	(4, 3, 'o_grande_cinzento.jpeg');
+    
+#---------------------------------------------------------------------------------------------#
+# Cadastro de Candidaturas #
+
+DESCRIBE tbl_candidatura;
+SELECT * FROM tbl_candidatura;
+SELECT * FROM tbl_anuncio;
+SELECT * FROM tbl_usuario;
+
+INSERT INTO tbl_candidatura
+	(cod_anuncio, cod_candidato)
+VALUES
+	(1, 4);
 
