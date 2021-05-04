@@ -26,6 +26,7 @@ const {DataTypes, Model, Sequelize} = require('sequelize');
         },
         qtd_visualizacoes: { type: DataTypes.INTEGER.UNSIGNED, allowNull: false, defaultValue: 0 },
         qtd_avaliacoes: { type: DataTypes.INTEGER.UNSIGNED, allowNull: false, defaultValue: 0 },
+        qtd_candidaturas: { type: DataTypes.INTEGER.UNSIGNED, allowNull: false, defaultValue: 0 },
         estado_anuncio: { type: DataTypes.ENUM('Aberto', 'Concluido', 'Fechado'), allowNull: false, defaultValue: 'Aberto' },
         data_criacao: { type: DataTypes.DATE, allowNull: false, defaultValue: Sequelize.NOW },
         data_modificacao: { type: DataTypes.DATE, allowNull: false, defaultValue: Sequelize.NOW }

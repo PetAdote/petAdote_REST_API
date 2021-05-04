@@ -537,7 +537,9 @@
                     'logradouro',
                     'bairro',
                     'cidade',
-                    'estado'
+                    'uf',
+                    'numero',
+                    'complemento'
                 ];
             // Fim da lista de campos obrigatórios.
     
@@ -598,6 +600,11 @@
                         case 'senha': break;
                         case 'confirma_senha': break;
                         case 'descricao': break;
+                        case 'numero': break;
+                        case 'complemento':
+                            // Deixa a primeira letra da string como maiúscula.
+                            req.body[pair[0]] = pair[1][0].toUpperCase() + pair[1].substr(1);
+                            break;
                         default:
                             partes = pair[1].trim().split(' ');     // Remove os espaços excessivos no início/fim da String antes de dividí-la em substrings.
             
@@ -1048,9 +1055,9 @@
                         // console.log('Início da verificação do objeto javascript contendo os DDDs do Brasil.');
                 
                         let isDDDValid;
-                        for (estado in brDDD){
+                        for (uf in brDDD){
                 
-                            brDDD[estado].forEach((ddd, index) => {
+                            brDDD[uf].forEach((ddd, index) => {
                                 if (ddd == telDDD){
                                     isDDDValid = true;
                                 }
@@ -1063,9 +1070,9 @@
                         }
                 
                         if (!isDDDValid){
-                            // console.log('Erro: O DDD não pertence a nenhum estado brasileiro.');
+                            // console.log('Erro: O DDD não pertence a nenhuma uf brasileira.');
                             return res.status(400).json({
-                                mensagem: 'TELEFONE - O DDD não pertence a nenhum estado brasileiro.',
+                                mensagem: 'TELEFONE - O DDD não pertence a nenhuma UF brasileira.',
                                 code: 'INVALID_TELEFONE_DDD'
                             })
                         }
@@ -1176,21 +1183,47 @@
                         })
                     }
                 
-                    // Validação do estado
-                    if (req.body.estado.length === 0 || req.body.estado.length > 100){
+                    // Validação da uf
+                    if (req.body.uf.length === 0 || req.body.uf.length > 100){
                         return res.status(400).json({
-                            mensagem: 'ESTADO - Está vazio ou possui mais do que 100 caracteres.',
-                            code: 'INVALID_ESTADO_LENGTH',
+                            mensagem: 'UF - Está vazio ou possui mais do que 100 caracteres.',
+                            code: 'INVALID_UF_LENGTH',
                             exemplo: 'SP'
                         })
                     }
                 
-                    if (!infoCEP.uf.toLowerCase().includes(req.body.estado.toLowerCase())){
+                    if (!infoCEP.uf.toLowerCase().includes(req.body.uf.toLowerCase())){
                         return res.status(400).json({
-                            mensagem: 'ESTADO - O estado informado não está de acordo com o CEP.',
-                            code: 'ESTADO_DONT_BELONG_TO_CEP'
+                            mensagem: 'UF - A UF informada não está de acordo com o CEP.',
+                            code: 'UF_DONT_BELONG_TO_CEP'
                         })
                     }
+
+                    // Validação do 'numero'.
+                    if (req.body.numero.match(/[^\d]+/g)){
+                        return res.status(400).json({
+                            mensagem: 'NUMERO - Deve possuir apenas dígitos.',
+                            code: 'INVALID_INPUT_NUMERO',
+                        });
+                    }
+
+                    if (req.body.numero.length === 0 || req.body.numero.length > 100){
+                        return res.status(400).json({
+                            mensagem: 'NUMERO - Está vazio ou possui mais do que 100 dígitos.',
+                            code: 'INVALID_NUMERO_LENGTH',
+                        });
+                    }
+                    // Fim da validação do 'numero'.
+
+                    // Validação do 'complemento'.
+                    if (req.body.complemento.length === 0 || req.body.numero.length > 255){
+                        return res.status(400).json({
+                            mensagem: 'COMPLEMENTO - Está vazio ou possui mais do que 255 caracteres.',
+                            code: 'INVALID_COMPLEMENTO_LENGTH',
+                        });
+                    }
+                    // Fim da validação do 'complemento'
+                    
                 // Fim das validações relacionadas ao ENDEREÇO DO USUÁRIO.
         
             // Fim da validação dos campos obrigatórios.
@@ -1278,7 +1311,9 @@
                             logradouro: req.body.logradouro,
                             bairro: req.body.bairro,
                             cidade: req.body.cidade,
-                            estado: req.body.estado
+                            uf: req.body.uf,
+                            numero: req.body.numero,
+                            complemento: req.body.complemento || null,
                         }, { 
                             transaction
                         });

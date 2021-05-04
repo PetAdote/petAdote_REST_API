@@ -20,7 +20,9 @@ const {DataTypes, Model} = require('sequelize');
         logradouro: { type: DataTypes.STRING(100), allowNull: false },
         bairro: { type: DataTypes.STRING(100), allowNull: false },
         cidade: { type: DataTypes.STRING(100), allowNull: false },
-        estado: { type: DataTypes.STRING(100), allowNull: false },
+        uf: { type: DataTypes.STRING(100), allowNull: false },
+        numero: { type: DataTypes.STRING(100), allowNull: false },
+        complemento: { type: DataTypes.STRING(255) },
         latitude: { type: DataTypes.STRING(100) },
         longitude: { type: DataTypes.STRING(100) }
 
@@ -30,6 +32,13 @@ const {DataTypes, Model} = require('sequelize');
 
     // Associações.
     EnderecoUsuario.belongsTo(Usuario, {
+        foreignKey: {
+            name: 'cod_usuario',
+            allowNull: false
+        }
+    });
+
+    Usuario.hasOne(EnderecoUsuario, {
         foreignKey: {
             name: 'cod_usuario',
             allowNull: false

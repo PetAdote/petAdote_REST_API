@@ -436,7 +436,9 @@
                 'logradouro',
                 'bairro',
                 'cidade',
-                'estado'
+                'uf',
+                'numero',
+                'complemento'
             ];
     
         // Fim da lista de campos de modificação permitidos.
@@ -473,13 +475,20 @@
     
                     switch(pair[0]){
                         //case 'descricao': break;  // Se algum campo não precisar da normalização abaixo, separe-o em 'cases' com break.
-                        case 'estado':
+                        case 'uf':
                             operacoes[pair[0]] = String(pair[1]).toUpperCase();
+
+                            break;
+                        case 'numero': break;
+                        case 'complemento':
+                            // Deixa a primeira letra da string como maiúscula.
+                            req.body[pair[0]] = pair[1][0].toUpperCase() + pair[1].substr(1);
+
                             break;
                         default:
                             partes = pair[1].trim().split(' ');     // Caso ainda existirem, removerá os espaços excessívos do Início/Fim em substrings.
     
-                            partes.forEach((parte, index) => {      // Como todo campo nessa rota trata de nomes, todo primeiro caractere das substrings ficarão em caixa alta.
+                            partes.forEach((parte, index) => {      // Como todo campo restante nessa rota trata de nomes, todo primeiro caractere das substrings ficarão em caixa alta.
                                 if (parte){
                                     partes[index] = parte[0].toUpperCase() + parte.substr(1);
                                 }
@@ -506,8 +515,8 @@
             .catch((error) => {
                 return { 
                     api_error: {
-                        errCode: err.code,
-                        errMessage: err.message
+                        errCode: error.code,
+                        errMessage: error.message
                     }
                 };
             });
@@ -532,7 +541,7 @@
                     return next( customErr );
                 }
     
-                let customErr = new Error('CEP - Algo inesperado aconteceu ao buscar informações sobre o CEP.');
+                let customErr = new Error('CEP - Algo inesperado aconteceu ao buscar informações sobre o CEP. O CEP deve ser informado para alterar os dados de endereço.');
                 customErr.status = 500;
                 customErr.code = 'INTERNAL_SERVER_ERROR';
     
@@ -557,6 +566,7 @@
                         operacoes.cep = operacoes.cep.replace('-', '')
                     }
                 }
+            // Fim da Validação simples do CEP.
     
             // Validação de logradouro
                 if (operacoes.logradouro){
@@ -567,6 +577,7 @@
                         });
                     }
                 }
+            // Fim da Validação do logradouro.
     
             // Validação do bairro
                 if (operacoes.bairro){
@@ -584,8 +595,10 @@
                 //         code: 'BAIRRO_DONT_BELONG_TO_CEP'
                 //     });
                 // }
+
+            // Fim da validação do Bairro.
     
-            // Validação da cidade
+            // Validação da cidade.
     
                 if (operacoes.cidade){
                     if (operacoes.cidade.length === 0 || operacoes.cidade.length > 100){
@@ -605,24 +618,59 @@
                         });
                     }
                 }
+            // Fim da validação da cidade.
     
-            // Validação do estado
-            if (operacoes.estado){
-                if (operacoes.estado.length === 0 || operacoes.estado.length > 100){
-                    return res.status(400).json({
-                        mensagem: 'ESTADO - Está vazio ou possui mais do que 100 caracteres.',
-                        code: 'INVALID_ESTADO_LENGTH',
-                        exemplo: 'SP'
-                    });
+            // Validação da uf
+                if (operacoes.uf){
+                    if (operacoes.uf.length === 0 || operacoes.uf.length > 100){
+                        return res.status(400).json({
+                            mensagem: 'UF - Está vazio ou possui mais do que 100 caracteres.',
+                            code: 'INVALID_UF_LENGTH',
+                            exemplo: 'SP'
+                        });
+                    }
+        
+                    if (!infoCEP.uf.toLowerCase().includes(operacoes.uf.toLowerCase())){
+                        return res.status(400).json({
+                            mensagem: 'UF - O UF informado não está de acordo com o CEP.',
+                            code: 'UF_DONT_BELONG_TO_CEP'
+                        });
+                    }
                 }
-    
-                if (!infoCEP.uf.toLowerCase().includes(operacoes.estado.toLowerCase())){
-                    return res.status(400).json({
-                        mensagem: 'ESTADO - O estado informado não está de acordo com o CEP.',
-                        code: 'ESTADO_DONT_BELONG_TO_CEP'
-                    });
+            // Fim da validação da uf.
+
+            // Validação do 'numero'.
+                if (operacoes.numero){
+
+                    if (operacoes.numero.match(/[^\d]+/g)){
+                        return res.status(400).json({
+                            mensagem: 'NUMERO - Deve possuir apenas dígitos.',
+                            code: 'INVALID_INPUT_NUMERO',
+                        });
+                    }
+
+                    if (operacoes.numero.length === 0 || operacoes.numero.length > 100){
+                        return res.status(400).json({
+                            mensagem: 'NUMERO - Está vazio ou possui mais do que 100 dígitos.',
+                            code: 'INVALID_NUMERO_LENGTH',
+                        });
+                    }
+
                 }
-            }
+            // Fim da validação do 'numero'.
+
+            // Validação do 'complemento'.
+                if (operacoes.complemento){
+
+                    if (operacoes.complemento.length === 0 || operacoes.numero.length > 255){
+                        return res.status(400).json({
+                            mensagem: 'COMPLEMENTO - Está vazio ou possui mais do que 255 caracteres.',
+                            code: 'INVALID_COMPLEMENTO_LENGTH',
+                        });
+                    }
+
+                }
+            // Fim da validação do 'complemento'.
     
         // Fim da validação dos campos da operação.
     

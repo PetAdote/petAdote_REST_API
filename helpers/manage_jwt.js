@@ -249,6 +249,14 @@
                 return next();
             }
 
+            if (req.url.match(/^\/styles.css$/)){
+                return next();
+            }
+
+            if (req.url.match(/^\/styles.js$/)){
+                return next();
+            }
+
         }
 
         if (!req.headers['authorization']){

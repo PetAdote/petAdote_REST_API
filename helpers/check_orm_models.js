@@ -25,6 +25,8 @@
     const Denuncia = require('../api/models/Denuncia');
     const Bloqueio = require('../api/models/Bloqueio');
     const Cliente = require('../api/models/Cliente');
+    
+    const Notificacao = require('../api/models/Notificacao');
 
 // Exportação da função de verificação de cada um dos Models.
 module.exports = () => {
@@ -161,8 +163,15 @@ module.exports = () => {
     });
 
     Cliente.findAll({ raw: true, limit: 1 }).then((result) => {
-        console.log('[ORM/Bloqueio] Resultado: ', result);
+        console.log('[ORM/Cliente] Resultado: ', result);
     }).catch((error) => {
-        console.log('[ORM/Bloqueio] Erro: ', error);
+        console.log('[ORM/Cliente] Erro: ', error);
     });
+
+    Notificacao.findAll({ raw: true, limit: 1 }).then((result) => {
+        console.log('[ORM/Notificacao] Resultado: ', result);
+    }).catch((error) => {
+        console.log('[ORM/Notificacao] Erro: ', error);
+    });
+    
 }

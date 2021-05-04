@@ -1,0 +1,467 @@
+<% const { anunciante, candidato, anuncio, animal, foto_animal_anuncio, ponto_encontro, qrcode_validacao, tipo_doc } = dataObj[0]; %>
+<% const { styles } = dataObj[1] %>
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TERMO DE RESPONSABILIDADES</title>
+
+    <link type="text/css" rel="stylesheet" href="<%= styles.css_url %>">
+    <style>
+        html {
+            width: 100%;
+            height: 200%;
+            padding: 10mm 10mm 10mm 10mm;
+        }
+
+        body {
+            width: 100%;
+            height: 100%;
+        } 
+
+        .page-one-border {
+            border: solid black 1px;
+            margin: 0 0 20mm 0;
+            page-break-after: always;
+        }
+
+        .page-two-border {
+            border: solid black 1px;
+            margin: 10mm 0 0 0;
+        }
+
+        .fix-height-100 {
+            max-height: 100%;
+        }
+
+        .simple-text-sz {
+            font-size: 8pt;
+        } 
+    </style>
+</head>
+<body>
+
+    <div class="container-fluid px-2 pb-2 page-one-border">
+
+        <div class="row m-0">
+            <h1 class="col-12 text-center lead font-weight-bold p-0 my-1 ">ADOÇÃO DE ANIMAL</h1>
+            <% if (tipo_doc == 'anunciante') { %>
+            <h2 class="col-12 text-center lead font-weight-bold p-0 m-0">TERMO DE RESPONSABILIDADES DO TUTOR</h1>
+            <% }; %>
+            <% if (tipo_doc == 'candidato') { %>
+            <h2 class="col-12 text-center lead font-weight-bold p-0 m-0">TERMO DE RESPONSABILIDADES DO ADOTANTE</h1>
+            <% }; %>
+        </div>
+        <hr class="my-1">
+        <div class="row m-0" style="height: 9.8cm;">
+            <div class="col-6 p-1 fix-height-100 border border-dark border-right-0 overflow-auto">
+    
+                <div class="row m-0 border-bottom border-dark" style="height: 3.5cm;">
+                    <div class="col-12">
+                        <div class="row">
+                            <% if (tipo_doc == 'anunciante') { %>
+                            <p class="col-12 p-0 m-0 mb-2 font-weight-bold text-center">INFORMAÇÕES DO TUTOR</p>
+                            <p class="col-12 p-0 m-0 mb-1 simple-text-sz"><b>Nome:</b> <%= anunciante.primeiro_nome + ' ' + anunciante.sobrenome %> </p>
+                            <p class="col-6 p-0 m-0 mb-1 simple-text-sz"><b>CPF:</b> <%= anunciante.cpf %> </p>
+                            <p class="col-6 p-0 m-0 mb-1 simple-text-sz"><b>Telefone:</b> <%= anunciante.telefone %> </p>
+                            <% }; %>
+                            <% if (tipo_doc == 'candidato') { %>
+                            <p class="col-12 p-0 m-0 mb-2 font-weight-bold text-center">INFORMAÇÕES DO ADOTANTE</p>
+                            <p class="col-12 p-0 m-0 mb-1 simple-text-sz"><b>Nome:</b> <%= candidato.primeiro_nome + ' ' + candidato.sobrenome %> </p>
+                            <p class="col-6 p-0 m-0 mb-1 simple-text-sz"><b>CPF:</b> <%= candidato.cpf %> </p>
+                            <p class="col-6 p-0 m-0 mb-1 simple-text-sz"><b>Telefone:</b> <%= candidato.telefone %> </p>
+                            <% }; %>
+                        </div>
+                    </div>
+                </div>
+    
+                <div class="row m-0" style="height: 6.0cm;">
+                    <div class="col-12">
+                        <div class="row">
+                            <% if (tipo_doc == 'anunciante') { %>
+                            <p class="col-12 p-0 m-0 mb-2 font-weight-bold text-center">ENDEREÇO</p>
+                            <p class="col-4 p-0 m-0 mb-1 simple-text-sz"><b>CEP:</b> <%= String(anunciante.EnderecoUsuario.cep).substring(0, 5) + '-' + String(anunciante.EnderecoUsuario.cep).substring(5, 9) %> </p>
+                            <p class="col-2 p-0 m-0 mb-1 simple-text-sz"><b>UF:</b> <%= anunciante.EnderecoUsuario.uf %> </p>
+                            <p class="col-6 p-0 m-0 mb-1 simple-text-sz"><b>Numero:</b> <%= anunciante.EnderecoUsuario.numero %> </p>
+                            <p class="col-12 p-0 m-0 mb-1 simple-text-sz"><b>Cidade:</b> <%= anunciante.EnderecoUsuario.cidade %> </p>
+                            <p class="col-12 p-0 m-0 mb-1 simple-text-sz"><b>Bairro:</b> <%= anunciante.EnderecoUsuario.bairro %> </p>
+                            <p class="col-12 p-0 m-0 mb-1 simple-text-sz"><b>Logradouro:</b> <%= anunciante.EnderecoUsuario.logradouro %> </p>
+                            <p class="col-12 p-0 m-0 mb-1 simple-text-sz"><b>Complemento:</b> <%= anunciante.EnderecoUsuario.complemento || 'Sem complemento.' %> </p>
+                            <% }; %>
+                            <% if (tipo_doc == 'candidato') { %>
+                            <p class="col-12 p-0 m-0 mb-2 font-weight-bold text-center">ENDEREÇO</p>
+                            <p class="col-4 p-0 m-0 mb-1 simple-text-sz"><b>CEP:</b> <%= String(candidato.EnderecoUsuario.cep).substring(0, 5) + '-' + String(candidato.EnderecoUsuario.cep).substring(5, 9) %> </p>
+                            <p class="col-2 p-0 m-0 mb-1 simple-text-sz"><b>UF:</b> <%= candidato.EnderecoUsuario.uf %> </p>
+                            <p class="col-6 p-0 m-0 mb-1 simple-text-sz"><b>Numero:</b> <%= candidato.EnderecoUsuario.numero %> </p>
+                            <p class="col-12 p-0 m-0 mb-1 simple-text-sz"><b>Cidade:</b> <%= candidato.EnderecoUsuario.cidade %> </p>
+                            <p class="col-12 p-0 m-0 mb-1 simple-text-sz"><b>Bairro:</b> <%= candidato.EnderecoUsuario.bairro %> </p>
+                            <p class="col-12 p-0 m-0 mb-1 simple-text-sz"><b>Logradouro:</b> <%= candidato.EnderecoUsuario.logradouro %> </p>
+                            <p class="col-12 p-0 m-0 mb-1 simple-text-sz"><b>Complemento:</b> <%= candidato.EnderecoUsuario.complemento || 'Sem complemento.' %> </p>
+                            <% }; %>
+                        </div>
+                    </div>
+                </div>
+    
+            </div>
+            <div class="col-6 p-1 fix-height-100 border border-dark overflow-auto">
+    
+                <div class="row m-0 border-bottom border-dark" style="height: 3.5cm;">
+                    <div class="col-12">
+                        <div class="row">
+                            <% if (tipo_doc == 'anunciante') { %>
+                            <p class="col-12 p-0 m-0 mb-2 font-weight-bold text-center">INFORMAÇÕES DO ADOTANTE</p>
+                            <p class="col-12 p-0 m-0 mb-1 simple-text-sz"><b>Nome:</b> <%= candidato.primeiro_nome + ' ' + candidato.sobrenome %> </p>
+                            <p class="col-6 p-0 m-0 mb-1 simple-text-sz"><b>CPF:</b> <span style="text-decoration: underline; white-space: pre;">                                            </span> </p>
+                            <p class="col-6 p-0 m-0 mb-1 simple-text-sz"><b>Telefone:</b> <%= candidato.telefone %> </p>
+                            <% }; %>
+                            <% if (tipo_doc == 'candidato') { %>
+                            <p class="col-12 p-0 m-0 mb-2 font-weight-bold text-center">INFORMAÇÕES DO TUTOR</p>
+                            <p class="col-12 p-0 m-0 mb-1 simple-text-sz"><b>Nome:</b> <%= anunciante.primeiro_nome + ' ' + anunciante.sobrenome %> </p>
+                            <p class="col-6 p-0 m-0 mb-1 simple-text-sz"><b>CPF:</b> <span style="text-decoration: underline; white-space: pre;">                                            </span> </p>
+                            <p class="col-6 p-0 m-0 mb-1 simple-text-sz"><b>Telefone:</b> <%= anunciante.telefone %> </p>
+                            <% }; %> 
+                        </div>
+                    </div>
+                </div>
+    
+                <div class="row m-0" style="height: 6.0cm;">
+                    <div class="col-12">
+                        <div class="row">
+                            <p class="col-12 p-0 m-0 mb-2 font-weight-bold text-center">ENDEREÇO</p>
+                            <p class="col-4 p-0 m-0 mb-1 simple-text-sz"><b>CEP:</b> <span style="text-decoration: underline; white-space: pre;">                           </span> </p>
+                            <p class="col-2 p-0 m-0 mb-1 simple-text-sz"><b>UF:</b> <span style="text-decoration: underline; white-space: pre;">           </span> </p>
+                            <p class="col-6 p-0 m-0 mb-1 simple-text-sz"><b>Numero:</b> <span style="text-decoration: underline; white-space: pre;">                                         </span> </p>
+                            <p class="col-12 p-0 m-0 mb-1 simple-text-sz"><b>Cidade:</b> <span style="text-decoration: underline; white-space: pre;">                                                                                                     </span> </p>
+                            <p class="col-12 p-0 m-0 mb-1 simple-text-sz"><span style="text-decoration: underline; white-space: pre;">                                                                                                                   </span> </p>
+                            <p class="col-12 p-0 m-0 mb-1 simple-text-sz"><b>Bairro:</b> <span style="text-decoration: underline; white-space: pre;">                                                                                                       </span> </p>
+                            <p class="col-12 p-0 m-0 mb-1 simple-text-sz"><span style="text-decoration: underline; white-space: pre;">                                                                                                                   </span> </p>
+                            <p class="col-12 p-0 m-0 mb-1 simple-text-sz"><b>Logradouro:</b> <span style="text-decoration: underline; white-space: pre;">                                                                                             </span> </p>
+                            <p class="col-12 p-0 m-0 mb-1 simple-text-sz"><span style="text-decoration: underline; white-space: pre;">                                                                                                                   </span> </p>
+                            <p class="col-12 p-0 m-0 mb-1 simple-text-sz"><b>Complemento:</b> <span style="text-decoration: underline; white-space: pre;">                                                                                         </span> </p>
+                            <p class="col-12 p-0 m-0 mb-1 simple-text-sz"><span style="text-decoration: underline; white-space: pre;">                                                                                                                   </span> </p>
+                        </div>
+                    </div>
+                </div>
+    
+            </div>
+        </div>
+    
+        <!-- <hr class="my-1"> -->
+    
+        <div class="row m-0">
+            <div class="col-12 p-1 fix-height-100 border border-dark border-top-0 border-bottom-0 overflow-auto">
+    
+                <div class="row m-0" style="height: 7.5cm;">
+                    <div class="col-3 m-auto">
+                        <img src="<%= foto_animal_anuncio %>" width="125"/>
+                    </div>
+                    <div class="col-9 border-left border-secondary">
+                        <div class="row p-1">
+                            <p class="col-12 p-0 m-0 mb-2 font-weight-bold text-center">INFORMAÇÕES DO ANIMAL</p>
+                            <p class="col-3 p-0 m-0 mb-1 simple-text-sz"><b>Espécie:</b> <%= animal.especie == 'Cao' ? 'Cão' : animal.especie; %> </p>
+                            <p class="col-5 p-0 m-0 mb-1 simple-text-sz"><b>Raça:</b> <%= animal.raca %> </p>
+                            <% if (animal.genero == 'M') { %>
+                            <p class="col-4 p-0 m-0 mb-1 simple-text-sz"><b>Genero:</b> Macho </p>
+                            <% } %>
+                            <% if (animal.genero == 'F') { %>
+                            <p class="col-4 p-0 m-0 mb-1 simple-text-sz"><b>Genero:</b> Fêmea </p>
+                            <% } %>
+                            <% if (animal.porte == 'P') { %>
+                            <p class="col-3 p-0 m-0 mb-1 simple-text-sz"><b>Porte:</b> Pequeno </p>
+                            <% } %>
+                            <% if (animal.porte == 'M') { %>
+                            <p class="col-3 p-0 m-0 mb-1 simple-text-sz"><b>Porte:</b> Médio </p>
+                            <% } %>
+                            <% if (animal.porte == 'G') { %>
+                            <p class="col-3 p-0 m-0 mb-1 simple-text-sz"><b>Porte:</b> Grande </p>
+                            <% } %>
+                            <p class="col-5 p-0 m-0 mb-1 simple-text-sz"><b>Castrado?</b> <%= animal.esta_castrado == 1 ? 'Sim' : 'Não'; %> </p>
+                            <p class="col-4 p-0 m-0 mb-1 simple-text-sz"><b>Vacinado?</b> <%= animal.esta_vacinado == 1 ? 'Sim' : 'Não'; %> </p>
+                            <p class="col-12 p-0 m-0 mb-1 simple-text-sz"></p>
+                            <div class="col-6 mt-1 p-0 pr-4">
+                                <p class="p-0 m-0 mb-2 simple-text-sz text-center"><b>Detalhes de Saúde</b></p>
+                                <p class="p-0 m-0 simple-text-sz text-justify"> <%= animal.detalhes_saude %> </p>
+                            </div>
+                            <div class="col-6 mt-1 p-0 pr-1">
+                                <p class="p-0 m-0 mb-2 simple-text-sz text-center"><b>Detalhes de Comportamento</b></p>
+                                <p class="p-0 m-0 simple-text-sz text-justify"> <%= animal.detalhes_comportamento %> </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+    
+            </div>
+        </div>
+    
+        <!-- <hr class="my-1"> -->
+    
+        <div class="row m-0">
+            <div class="col-8 p-1 fix-height-100 border border-dark border-right-0 overflow-auto">
+    
+                <div class="row m-0" style="height: 5.5cm;">
+                    <div class="col-12">
+                        <div class="row">
+                            <p class="col-12 p-0 m-0 mb-2 font-weight-bold text-center">PONTO DE ENCONTRO</p>
+                            <p class="col-4 p-0 m-0 mb-1 simple-text-sz"><b>CEP:</b> <%= ponto_encontro.cep %> </p>
+                            <p class="col-2 p-0 m-0 mb-1 simple-text-sz"><b>UF:</b> <%= ponto_encontro.uf %> </p>
+                            <p class="col-6 p-0 m-0 mb-1 simple-text-sz"><b>Numero:</b> <%= ponto_encontro.numero %> </p>
+                            <p class="col-12 p-0 m-0 mb-1 simple-text-sz"><b>Cidade:</b> <%= ponto_encontro.cidade %> </p>
+                            <p class="col-12 p-0 m-0 mb-1 simple-text-sz"><b>Bairro:</b> <%= ponto_encontro.bairro %> </p>
+                            <p class="col-12 p-0 m-0 mb-1 simple-text-sz"><b>Logradouro:</b> <%= ponto_encontro.logradouro %> </p>
+                            <p class="col-12 p-0 m-0 mb-1 simple-text-sz"><b>Complemento:</b> <%= ponto_encontro.complemento || 'Sem complemento.' %> </p>
+                        </div>
+                    </div>
+                </div>
+    
+            </div>
+            <div class="col-4 p-1 fix-height-100 border border-dark overflow-auto">
+    
+                <div class="row m-0" style="height: 5.5cm;">
+                    <div class="col-12">
+                        <div class="row">
+                            <% if (tipo_doc == 'anunciante') { %>
+                            <p class="col-12 p-0 m-0 mb-2 font-weight-bold text-center">ADOTANTE</p>
+                            <div class="col-12 p-0 m-0 text-center">
+                                <p class="simple-text-sz m-0 p-0 font-weight-bold text-justify">Escaneie o QR Code para validar a recepção do animal.</p>
+                                <img src="<%= qrcode_validacao %>" width="125"/>
+                            </div>
+                            <% } %>
+                            <% if (tipo_doc == 'candidato') { %>
+                                <p class="col-12 p-0 m-0 mb-2 font-weight-bold text-center">TUTOR</p>
+                                <div class="col-12 p-0 m-0 text-center">
+                                    <p class="simple-text-sz m-0 p-0 font-weight-bold text-justify">Escaneie o QR Code para validar a entrega do animal.</p>
+                                    <img src="<%= qrcode_validacao %>" width="125"/>
+                                </div>
+                            <% } %>
+                        </div>
+                    </div>
+                </div>
+    
+            </div>
+        </div>
+    
+        <!-- <hr class="my-1"> -->
+    
+        <div class="row m-0">
+    
+            <div class="col-8 p-1 fix-height-100 border border-dark border-right-0 border-top-0 overflow-auto">
+    
+                <div class="row m-0" style="height: 2.0cm;">
+                    <div class="col-12">
+                        <div class="row">
+                            <p class="col-12 p-0 m-0 font-weight-bold text-center">ASSINATURAS</p>
+                            <p class="col-12 p-0 m-0 mb-2 simple-text-sz"><span style="text-decoration: underline; white-space: pre;"><b>TUTOR:</b>                                                                                                                                              </span> </p>
+                            <p class="col-12 p-0 m-0 mb-1 simple-text-sz"><span style="text-decoration: underline; white-space: pre;"><b>ADOTANTE:</b>                                                                                                                                       </span> </p>
+                        </div>
+                    </div>
+                </div>
+    
+            </div>
+            <div class="col-4 p-1 fix-height-100 border border-dark border-top-0 overflow-auto">
+    
+                <div class="row m-0" style="height: 2.0cm;">
+                    <div class="col-12">
+                        <div class="row">
+                            <p class="col-12 p-0 m-0 font-weight-bold">PAÍS, CIDADE, UF:</p>
+                            <p class="col-12 p-0 m-0 mb-2 simple-text-sz"><span style="text-decoration: underline; white-space: pre;">                                                                           </span></p>
+                            <p class="col-12 p-0 m-0 mb-2 simple-text-sz"><b><span style="text-decoration: underline; white-space: pre;">DATA:                     /                     /                   </span></b></p>
+                            
+                            
+                        </div>
+                    </div>
+                </div>
+    
+            </div>
+    
+        </div>
+
+    </div>
+
+    <div class="container-fluid px-2 pb-2 page-two-border">
+
+        <div class="row m-0">
+            <h1 class="col-12 text-center lead font-weight-bold p-0 my-1 ">ADOÇÃO DE ANIMAL</h1>
+            <h2 class="col-12 text-center lead font-weight-bold p-0 m-0">TERMO DE RESPONSABILIDADES DO TUTOR</h1>
+        </div>
+        <hr class="my-1">
+        <div class="row m-0" style="height: 9.8cm;">
+            <div class="col-6 p-1 fix-height-100 border border-dark border-right-0 overflow-auto">
+    
+                <div class="row m-0 border-bottom border-dark" style="height: 3.5cm;">
+                    <div class="col-12">
+                        <div class="row">
+                            <p class="col-12 p-0 m-0 mb-2 font-weight-bold text-center">INFORMAÇÕES DO TUTOR</p>
+                            <p class="col-12 p-0 m-0 mb-1 simple-text-sz"><b>Nome:</b> Alfino Testeiro Bugêncio </p>
+                            <p class="col-6 p-0 m-0 mb-1 simple-text-sz"><b>CPF:</b> 123.123.123-12 </p>
+                            <p class="col-6 p-0 m-0 mb-1 simple-text-sz"><b>Telefone:</b> (11) 91234-1234</p>    
+                        </div>
+                    </div>
+                </div>
+    
+                <div class="row m-0" style="height: 6.0cm;">
+                    <div class="col-12">
+                        <div class="row">
+                            <p class="col-12 p-0 m-0 mb-2 font-weight-bold text-center">ENDEREÇO</p>
+                            <p class="col-4 p-0 m-0 mb-1 simple-text-sz"><b>CEP:</b> 12345-123 </p>
+                            <p class="col-2 p-0 m-0 mb-1 simple-text-sz"><b>UF:</b> SP </p>
+                            <p class="col-6 p-0 m-0 mb-1 simple-text-sz"><b>Numero:</b> 13 </p>
+                            <p class="col-12 p-0 m-0 mb-1 simple-text-sz"><b>Cidade:</b> São Paulo </p>
+                            <p class="col-12 p-0 m-0 mb-1 simple-text-sz"><b>Bairro:</b> Bairro dos Testes </p>
+                            <p class="col-12 p-0 m-0 mb-1 simple-text-sz"><b>Logradouro:</b> Rua Testada Testamos </p>
+                            <p class="col-12 p-0 m-0 mb-1 simple-text-sz"><b>Complemento:</b> Casa dos Fundos </p>
+                        </div>
+                    </div>
+                </div>
+    
+            </div>
+            <div class="col-6 p-1 fix-height-100 border border-dark overflow-auto">
+    
+                <div class="row m-0 border-bottom border-dark" style="height: 3.5cm;">
+                    <div class="col-12">
+                        <div class="row">
+                            <p class="col-12 p-0 m-0 mb-2 font-weight-bold text-center">INFORMAÇÕES DO ADOTANTE</p>
+                            <p class="col-12 p-0 m-0 mb-1 simple-text-sz"><b>Nome:</b> Bugancia Crasheira  </p>
+                            <p class="col-6 p-0 m-0 mb-1 simple-text-sz"><b>CPF:</b> <span style="text-decoration: underline; white-space: pre;">                                            </span> </p>
+                            <p class="col-6 p-0 m-0 mb-1 simple-text-sz"><b>Telefone:</b> (11) 91234-1234</p>    
+                        </div>
+                    </div>
+                </div>
+    
+                <div class="row m-0" style="height: 6.0cm;">
+                    <div class="col-12">
+                        <div class="row">
+                            <p class="col-12 p-0 m-0 mb-2 font-weight-bold text-center">ENDEREÇO</p>
+                            <p class="col-4 p-0 m-0 mb-1 simple-text-sz"><b>CEP:</b> <span style="text-decoration: underline; white-space: pre;">                           </span> </p>
+                            <p class="col-2 p-0 m-0 mb-1 simple-text-sz"><b>UF:</b> <span style="text-decoration: underline; white-space: pre;">           </span> </p>
+                            <p class="col-6 p-0 m-0 mb-1 simple-text-sz"><b>Numero:</b> <span style="text-decoration: underline; white-space: pre;">                                         </span> </p>
+                            <p class="col-12 p-0 m-0 mb-1 simple-text-sz"><b>Cidade:</b> <span style="text-decoration: underline; white-space: pre;">                                                                                                     </span> </p>
+                            <p class="col-12 p-0 m-0 mb-1 simple-text-sz"><span style="text-decoration: underline; white-space: pre;">                                                                                                                   </span> </p>
+                            <p class="col-12 p-0 m-0 mb-1 simple-text-sz"><b>Bairro:</b> <span style="text-decoration: underline; white-space: pre;">                                                                                                       </span> </p>
+                            <p class="col-12 p-0 m-0 mb-1 simple-text-sz"><span style="text-decoration: underline; white-space: pre;">                                                                                                                   </span> </p>
+                            <p class="col-12 p-0 m-0 mb-1 simple-text-sz"><b>Logradouro:</b> <span style="text-decoration: underline; white-space: pre;">                                                                                             </span> </p>
+                            <p class="col-12 p-0 m-0 mb-1 simple-text-sz"><span style="text-decoration: underline; white-space: pre;">                                                                                                                   </span> </p>
+                            <p class="col-12 p-0 m-0 mb-1 simple-text-sz"><b>Complemento:</b> <span style="text-decoration: underline; white-space: pre;">                                                                                         </span> </p>
+                            <p class="col-12 p-0 m-0 mb-1 simple-text-sz"><span style="text-decoration: underline; white-space: pre;">                                                                                                                   </span> </p>
+                        </div>
+                    </div>
+                </div>
+    
+            </div>
+        </div>
+    
+        <!-- <hr class="my-1"> -->
+    
+        <div class="row m-0">
+            <div class="col-12 p-1 fix-height-100 border border-dark border-top-0 border-bottom-0 overflow-auto">
+    
+                <div class="row m-0" style="height: 7.5cm;">
+                    <div class="col-3 m-auto">
+                        <img src="<%= foto_animal_anuncio %>" width="125"/>
+                    </div>
+                    <div class="col-9 border-left border-secondary">
+                        <div class="row p-1">
+                            <p class="col-12 p-0 m-0 mb-2 font-weight-bold text-center">INFORMAÇÕES DO ANIMAL</p>
+                            <p class="col-4 p-0 m-0 mb-1 simple-text-sz"><b>Espécie:</b> Gato </p>
+                            <p class="col-4 p-0 m-0 mb-1 simple-text-sz"><b>Raça:</b> Comum </p>
+                            <p class="col-4 p-0 m-0 mb-1 simple-text-sz"><b>Genero:</b> Macho </p>
+                            <p class="col-4 p-0 m-0 mb-1 simple-text-sz"><b>Porte:</b> Pequeno </p>
+                            <p class="col-4 p-0 m-0 mb-1 simple-text-sz"><b>Castrado?:</b> Sim </p>
+                            <p class="col-4 p-0 m-0 mb-1 simple-text-sz"><b>Vacinado?:</b> Sim </p>
+                            <p class="col-12 p-0 m-0 mb-1 simple-text-sz"></p>
+                            <div class="col-6 mt-1 p-0 pr-4">
+                                <p class="p-0 m-0 mb-2 simple-text-sz text-center"><b>Detalhes de Saúde</b></p>
+                                <p class="p-0 m-0 simple-text-sz text-justify"> Bichinho saudável pra caramba, tomou as vacinas X, Y, Z e tá firme e forte! </p>
+                            </div>
+                            <div class="col-6 mt-1 p-0 pr-1">
+                                <p class="p-0 m-0 mb-2 simple-text-sz text-center"><b>Detalhes de Comportamento</b></p>
+                                <p class="p-0 m-0 simple-text-sz text-justify"> É um gato formidável, brinca só quando a gente tá brincando com ele, dorme quando a gente vai dormir, come pouco e mia só quando quer alguma coisa específica. Com o tempo você aprende a lidar com ele. </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+    
+            </div>
+        </div>
+    
+        <!-- <hr class="my-1"> -->
+    
+        <div class="row m-0">
+            <div class="col-8 p-1 fix-height-100 border border-dark border-right-0 overflow-auto">
+    
+                <div class="row m-0" style="height: 5.5cm;">
+                    <div class="col-12">
+                        <div class="row">
+                            <p class="col-12 p-0 m-0 mb-2 font-weight-bold text-center">PONTO DE ENCONTRO</p>
+                            <p class="col-4 p-0 m-0 mb-1 simple-text-sz"><b>CEP:</b> 12345-123 </p>
+                            <p class="col-2 p-0 m-0 mb-1 simple-text-sz"><b>UF:</b> SP </p>
+                            <p class="col-6 p-0 m-0 mb-1 simple-text-sz"><b>Numero:</b> 10 </p>
+                            <p class="col-12 p-0 m-0 mb-1 simple-text-sz"><b>Cidade:</b> São Paulo </p>
+                            <p class="col-12 p-0 m-0 mb-1 simple-text-sz"><b>Bairro:</b> Vila das adoções felinas </p>
+                            <p class="col-12 p-0 m-0 mb-1 simple-text-sz"><b>Logradouro:</b> Rua Miau </p>
+                            <p class="col-12 p-0 m-0 mb-1 simple-text-sz"><b>Complemento:</b> Sem complemento </p>
+                        </div>
+                    </div>
+                </div>
+    
+            </div>
+            <div class="col-4 p-1 fix-height-100 border border-dark overflow-auto">
+    
+                <div class="row m-0" style="height: 5.5cm;">
+                    <div class="col-12">
+                        <div class="row">
+                            <p class="col-12 p-0 m-0 mb-2 font-weight-bold text-center">ADOTANTE</p>
+                            <div class="col-12 p-0 m-0 text-center">
+                                <p class="simple-text-sz m-0 p-0 font-weight-bold text-justify">Escaneie o QR Code para validar a recepção do animal.</p>
+                                <img src="<%= qrcode_validacao %>" width="125"/>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+    
+            </div>
+        </div>
+    
+        <!-- <hr class="my-1"> -->
+    
+        <div class="row m-0">
+    
+            <div class="col-8 p-1 fix-height-100 border border-dark border-right-0 border-top-0 overflow-auto">
+    
+                <div class="row m-0" style="height: 2.0cm;">
+                    <div class="col-12">
+                        <div class="row">
+                            <p class="col-12 p-0 m-0 font-weight-bold text-center">ASSINATURAS</p>
+                            <p class="col-12 p-0 m-0 mb-2 simple-text-sz"><span style="text-decoration: underline; white-space: pre;"><b>TUTOR:</b>                                                                                                                                              </span> </p>
+                            <p class="col-12 p-0 m-0 mb-1 simple-text-sz"><span style="text-decoration: underline; white-space: pre;"><b>ADOTANTE:</b>                                                                                                                                       </span> </p>
+                        </div>
+                    </div>
+                </div>
+    
+            </div>
+            <div class="col-4 p-1 fix-height-100 border border-dark border-top-0 overflow-auto">
+    
+                <div class="row m-0" style="height: 2.0cm;">
+                    <div class="col-12">
+                        <div class="row">
+                            <p class="col-12 p-0 m-0 font-weight-bold">PAÍS, CIDADE, UF:</p>
+                            <p class="col-12 p-0 m-0 mb-2 simple-text-sz"><span style="text-decoration: underline; white-space: pre;">                                                                           </span></p>
+                            <p class="col-12 p-0 m-0 mb-2 simple-text-sz"><b><span style="text-decoration: underline; white-space: pre;">DATA:                     /                     /                   </span></b></p>
+                            
+                            
+                        </div>
+                    </div>
+                </div>
+    
+            </div>
+    
+        </div>
+
+    </div>
+    
+
+    <script src="<%= styles.js_url %>"></script>
+</body>
+</html>
