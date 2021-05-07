@@ -839,6 +839,7 @@ router.post('/', async (req, res, next) => {
                 'porte',
                 'esta_castrado',
                 'esta_vacinado',
+                'possui_rga',
                 'detalhes_comportamento',
                 'detalhes_saude',
                 'historia'
@@ -892,6 +893,7 @@ router.post('/', async (req, res, next) => {
                 'porte',
                 'esta_castrado',
                 'esta_vacinado',
+                'possui_rga',
                 'detalhes_comportamento',
                 'detalhes_saude',
             ];
@@ -979,9 +981,9 @@ router.post('/', async (req, res, next) => {
                     });
                 }
 
-                if (req.body.nome.length === 0 || req.body.nome.length > 100){
+                if (req.body.nome.length === 0 || req.body.nome.length > 50){
                     return res.status(400).json({
-                        mensagem: 'O nome do animal está vazio ou possui mais do que 100 caracteres.',
+                        mensagem: 'O nome do animal está vazio ou possui mais do que 50 caracteres.',
                         code: 'INVALID_LENGTH_NOME'
                     });
                 }
@@ -1195,6 +1197,28 @@ router.post('/', async (req, res, next) => {
                 
             }
         // ------------------------
+
+        // Validação Possui RGA?
+            if (req.body.possui_rga?.length >= 0){
+
+                let allowedValues = [
+                    '0',
+                    '1'
+                ];
+
+                if (!allowedValues.includes(req.body.possui_rga)){
+                    return res.status(400).json({
+                        mensagem: 'O estado de posse de RGA é inválido',
+                        code: 'INVALID_INPUT_ESTA_VACINADO'
+                    });
+                }
+
+                // Se chegou aqui, o valor é válido. Converta para Number.
+                    req.body.possui_rga = Number(req.body.possui_rga);
+                // Fim da conversão do estado de vacinação para Number.
+                
+            }
+        // ------------------------
         
         // Validação Detalhes comportamento.
             if (req.body.detalhes_comportamento?.length >= 0){
@@ -1283,6 +1307,7 @@ router.post('/', async (req, res, next) => {
                     porte: req.body.porte,
                     esta_castrado: req.body.esta_castrado,
                     esta_vacinado: req.body.esta_vacinado,
+                    possui_rga: req.body.possui_rga,
                     detalhes_comportamento: req.body.detalhes_comportamento,
                     detalhes_saude: req.body.detalhes_saude,
                     historia: req.body.historia
@@ -1992,6 +2017,7 @@ router.patch('/:codAnimal', async (req, res, next) => {
                             'porte',
                             'esta_castrado',
                             'esta_vacinado',
+                            'possui_rga',
                             'detalhes_comportamento',
                             'detalhes_saude',
                             'historia'
@@ -2085,9 +2111,9 @@ router.patch('/:codAnimal', async (req, res, next) => {
                                 });
                             }
 
-                            if (req.body.nome.length === 0 || req.body.nome.length > 100){
+                            if (req.body.nome.length === 0 || req.body.nome.length > 50){
                                 return res.status(400).json({
-                                    mensagem: 'O nome do animal está vazio ou possui mais do que 100 caracteres.',
+                                    mensagem: 'O nome do animal está vazio ou possui mais do que 50 caracteres.',
                                     code: 'INVALID_LENGTH_NOME'
                                 });
                             }
@@ -2351,6 +2377,28 @@ router.patch('/:codAnimal', async (req, res, next) => {
 
                             // Se chegou aqui, o valor é válido. Converta para Number.
                                 req.body.esta_vacinado = Number(req.body.esta_vacinado);
+                            // Fim da conversão do estado de vacinação para Number.
+                            
+                        }
+                    // ------------------------
+
+                    // Validação Possui RGA?
+                        if (req.body.possui_rga?.length >= 0){
+
+                            let allowedValues = [
+                                '0',
+                                '1'
+                            ];
+
+                            if (!allowedValues.includes(req.body.possui_rga)){
+                                return res.status(400).json({
+                                    mensagem: 'O estado de posse de RGA é inválido',
+                                    code: 'INVALID_INPUT_ESTA_VACINADO'
+                                });
+                            }
+
+                            // Se chegou aqui, o valor é válido. Converta para Number.
+                                req.body.possui_rga = Number(req.body.possui_rga);
                             // Fim da conversão do estado de vacinação para Number.
                             
                         }

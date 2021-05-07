@@ -76,7 +76,7 @@ const {DataTypes, Model, Sequelize} = require('sequelize');
         });
 
             DocResponsabilidade.hasOne(Candidatura, {
-                as: 'DocAnunciante',
+                as: 'Candidatura_DocAnunciante',
                 foreignKey: {
                     name: 'cod_doc_anunciante',
                     allowNull: true
@@ -92,7 +92,7 @@ const {DataTypes, Model, Sequelize} = require('sequelize');
         });
 
             DocResponsabilidade.hasOne(Candidatura, {
-                as: 'DocCandidato',
+                as: 'Candidatura_DocCandidato',
                 foreignKey: {
                     name: 'cod_doc_candidato',
                     allowNull: true

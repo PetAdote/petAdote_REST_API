@@ -482,7 +482,7 @@
                         case 'numero': break;
                         case 'complemento':
                             // Deixa a primeira letra da string como maiúscula.
-                            req.body[pair[0]] = pair[1][0].toUpperCase() + pair[1].substr(1);
+                            operacoes[pair[0]] = pair[1][0].toUpperCase() + pair[1].substr(1);
 
                             break;
                         default:
@@ -513,6 +513,13 @@
                 return result.data;
             })
             .catch((error) => {
+
+                console.error('Algo inesperado aconteceu na API VIA CEP ao atualizar o endereço do usuário...');
+                if (error.response) { console.error('responseError:', error.response); }
+                else if (error.request) { console.error('requestError:', error.request); }
+                else { console.error('unexpectedError:', error); }
+                console.error('errorConfig', error.message);
+
                 return { 
                     api_error: {
                         errCode: error.code,

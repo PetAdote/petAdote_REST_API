@@ -32,6 +32,7 @@
 
         const rotaContas = require('./api/routes/contas');
         const rotaUsuarios = require('./api/routes/usuarios');
+            const rotaNotificacoes = require('./api/routes/notificacoes');
             const rotaEnderecos = require('./api/routes/enderecos');
             const rotaAnimais = require('./api/routes/animais');
                 const rotaAlbuns = require('./api/routes/animais_albuns');
@@ -39,6 +40,8 @@
 
         const rotaAnuncios = require('./api/routes/anuncios');
             const rotaCandidaturas = require('./api/routes/anuncios_candidaturas');
+                const rotaDocumentos = require('./api/routes/candidaturas_documentos');
+                const rotaPontosEncontro = require('./api/routes/candidaturas_pontos_encontro');
 
 // Instânciamentos.
 
@@ -69,220 +72,6 @@
         // Rota livre para testes simples durante a fase de desenvolvimento.
 
         console.log('Oi, eu sou uma rota de testes!');
-
-        const generate_QRCode = require('./helpers/generate_QRCode');
-        const generate_Template = require('./helpers/generate_HTMLTemplate');
-        const generate_PDF = require('./helpers/generate_PDF');
-
-        try {
-
-            const path_template = path.resolve(__dirname, './api/docs/templates', 'TemplateTest.ejs');
-            const path_newPdf = path.resolve(__dirname, './api/docs/tmp', 'secondPdf.pdf');
-
-            const qrc = await generate_QRCode('http://www.google.com/');
-
-            const path_catImg = path.resolve(__dirname, './api/uploads/images/usersAnimalPhotos/', 'default_cat_01.jpeg');
-
-            let dataObj = [
-                {
-                    qrcode: qrc,
-                    catImg: 'http://localhost:3000/usuarios/animais/albuns/fotos/default_cat_01.jpeg'
-                },
-                {
-                    styles: {
-                        css_url:`${req.protocol}://${req.get('host')}/styles.css`, 
-                        js_url: `${req.protocol}://${req.get('host')}/styles.js`
-                    }
-                }
-            ]
-
-            const template = await generate_Template(dataObj, path_template);
-
-            await generate_PDF(template, path_newPdf);
-
-        } catch (error) {
-            
-            console.error('Criação de PDF falhou', error);
-
-            return res.status(500).json({
-                mensagem: 'Algo deu errado'
-            })
-        }
-        
-
-        return res.status(200).json({
-            mensagem: 'PDF criado com sucesso'
-        });
-
-        // ---------------------------------------------------------------------------------
-
-        // const a = require('randomatic')('0', 5) + require('moment')().unix();
-        // console.log(a);
-
-        // const Candidatura = require('./api/models/Candidatura');
-        // const Anuncio = require('./api/models/Anuncio');
-        // const Usuario = require('./api/models/Usuario');
-        // const Animal = require('./api/models/Animal');
-        // const DocResponsabilidade = require('./api/models/DocResponsabilidade');
-        // const PontoEncontro = require('./api/models/PontoEncontro');
-
-        // let candidatura = await Candidatura.findOne({
-        //     include: [{
-        //         model: Anuncio,
-        //         include: [{
-        //             model: Usuario
-        //         }, {
-        //             model: Animal
-        //         }]
-        //     }, {
-        //         model: Usuario
-        //     }, {
-        //         model: DocResponsabilidade,
-        //         as: 'DocAnunciante'
-        //     }, {
-        //         model: DocResponsabilidade,
-        //         as: 'DocCandidato'
-        //     }, {
-        //         model: PontoEncontro,
-        //         required: false,
-        //         where: {
-        //             ativo: 1
-        //         }
-        //     }],
-        //     where: { 
-        //         cod_candidatura: 1
-        //     }
-        // });
-
-        // candidatura = candidatura.get({ plain: true });
-
-        // return res.status(200).json({
-        //     candidatura
-        // })
-
-        // ---------------------------------------------------------------------------------
-        
-        // next();
-
-        // Criação do QR CODE.
-
-        // let QRCode = require('qrcode');
-        
-        // QRCode.toDataURL('http://localhost:3000/' , (error, url) => {
-        //     console.log(url);
-        // });
-
-        // return res.status(200).json({
-        //     mensagem: "QR CODE Feito!"
-        // });
-
-        // Fim da Criação do QR Code.
-
-        // Criação do arquivo PDF utilizando HTML personalizado.
-
-        // const fs = require('fs');
-        // const path = require('path');
-
-        // const generateQRCode = async (data) => {
-
-        //     return new Promise((resolve, reject) => {
-
-        //         const QRCode = require('qrcode');
-
-        //         QRCode.toDataURL(data, (error, url) => {
-        //             if (error) { return reject(new Error(error)); };
-        //             return resolve(url);
-        //         });
-
-        //     });
-
-        // }
-
-        // const generateTemplate = async (dataObj, pathToTemplate) => {
-
-        //     const ejs = require('ejs');
-
-        //     return new Promise ((resolve, reject) => {
-
-        //         ejs.renderFile(pathToTemplate, { dataObj }, async (error, html) => {
-        //             if (error) { return reject(new Error(error)); };
-        //             return resolve(html);                    
-        //         });
-
-        //     });
-
-        // };
-
-        // const generatePDF = async (htmlTemplate, newPDFPath) => {
-
-        //     try {
-        //         const puppeteer = require('puppeteer');
-
-        //         const browser = await puppeteer.launch();
-        //         const page = await browser.newPage();
-
-        //         await page.setContent(htmlTemplate);
-        //         await page.emulateMediaType('screen');
-        //         await page.pdf({ 
-        //             path: newPDFPath,
-        //             format: 'A4',
-        //             printBackground: true
-        //         });
-
-        //         console.log('PDF Gerado!');
-        //         await browser.close();
-
-        //     } catch (error) {
-        //         console.error('PDF Generator error:', error);
-        //     }
-
-        // }
-
-        // return (async () => { 
-
-        //     try {
-
-        //         const generateQRCode = require('./helpers/generate_QRCode');
-        //         const generateTemplate = require('./helpers/generate_HTMLTemplate');
-        //         const generatePDF = require('./helpers/generate_PDF');
-
-        //         const theQRCode = await generateQRCode('https://www.youtube.com/watch?v=dQw4w9WgXcQ');
-
-        //         let dataObj = [
-        //             {
-        //                 usuario: {
-        //                     nome: 'Testencio',
-        //                     idade: '18',
-        //                     qrc: theQRCode
-        //                 }
-        //             },
-        //             {
-        //                 styles: {
-        //                     css_url:`${req.protocol}://${req.get('host')}/styles.css`, 
-        //                     js_url: `${req.protocol}://${req.get('host')}/styles.js`
-        //                 }
-        //             }
-        //         ];
-
-        //         const pathToTemplate = path.resolve(__dirname, './api/docs/templates', 'firstTemplate.ejs');
-        //         const theHtmlTemplate = await generateTemplate(dataObj, pathToTemplate);
-
-        //         const pdfPath = path.resolve(__dirname, './api/docs/tmp', 'firstPdf.pdf');
-        //         await generatePDF(theHtmlTemplate, pdfPath);
-
-        //         return res.status(200).json({
-        //             mensagem: "PDF Feito!"
-        //         });
-
-        //     } catch (error) {
-        //         console.error('PDF Generator error:', error);
-        //     }
-
-        // })();
-
-        // Fim da criação do arquivo PDF utilizando HTML personalizado.
-
-        // ---------------------------------------------------------------------------------
         
     });
 
@@ -292,18 +81,21 @@
 
     app.use('/contas', rotaContas);
 
-    // Entrega dos arquivos de imagem.
+    // Entrega dos arquivos em diretórios estáticos.
     app.use('/usuarios/animais/albuns/fotos', express.static( path.resolve(__dirname, "./api/uploads/images/usersAnimalPhotos") ) );
     app.use('/usuarios/avatars', express.static( path.resolve(__dirname, "./api/uploads/images/usersAvatar") ) );
     app.use('/usuarios/banners', express.static( path.resolve(__dirname, "./api/uploads/images/usersbanner") ) );
-    // -------------------------------------------------------
+    // ---------------------
 
     app.use('/usuarios/animais/albuns/fotos', rotaFotos);
     app.use('/usuarios/animais/albuns', rotaAlbuns);
+    app.use('/usuarios/notificacoes', rotaNotificacoes);
     app.use('/usuarios/animais', rotaAnimais);
     app.use('/usuarios/enderecos', rotaEnderecos);
     app.use('/usuarios', rotaUsuarios);
 
+    app.use('/anuncios/candidaturas/pontosencontro', rotaPontosEncontro);
+    app.use('/anuncios/candidaturas/documentos', rotaDocumentos);
     app.use('/anuncios/candidaturas', rotaCandidaturas);
     app.use('/anuncios', rotaAnuncios);
 

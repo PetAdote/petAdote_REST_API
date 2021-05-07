@@ -1,5 +1,14 @@
-<% const { anunciante, candidato, anuncio, animal, foto_animal_anuncio, ponto_encontro, qrcode_validacao, tipo_doc } = dataObj[0]; %>
+<% let { anunciante, candidato, anuncio, animal, foto_animal_anuncio, ponto_encontro, qrcode_validacao, tipo_doc } = dataObj[0]; %>
 <% const { styles } = dataObj[1] %>
+<%
+    const dashPos_cepAnun = anunciante.EnderecoUsuario.cep.length - 3; // Os CEPS DEVEM chegar como STRING!
+    const dashPos_cepCand = candidato.EnderecoUsuario.cep.length - 3;
+    const dashPos_cepPE = ponto_encontro.cep.length - 3;
+
+    let cepAnunciante = anunciante.EnderecoUsuario.cep.substring(0, dashPos_cepAnun) + '-' + anunciante.EnderecoUsuario.cep.substring(dashPos_cepAnun);
+    let cepCandidato = candidato.EnderecoUsuario.cep.substring(0, dashPos_cepCand) + '-' + candidato.EnderecoUsuario.cep.substring(dashPos_cepCand);
+    let cepPE = ponto_encontro.cep.substring(0, dashPos_cepPE) + '-' + ponto_encontro.cep.substring(dashPos_cepPE);
+%>
 
 <!DOCTYPE html>
 <html lang="en">
@@ -83,7 +92,7 @@
                         <div class="row">
                             <% if (tipo_doc == 'anunciante') { %>
                             <p class="col-12 p-0 m-0 mb-2 font-weight-bold text-center">ENDEREÇO</p>
-                            <p class="col-4 p-0 m-0 mb-1 simple-text-sz"><b>CEP:</b> <%= String(anunciante.EnderecoUsuario.cep).substring(0, 5) + '-' + String(anunciante.EnderecoUsuario.cep).substring(5, 9) %> </p>
+                            <p class="col-4 p-0 m-0 mb-1 simple-text-sz"><b>CEP:</b> <%= cepAnunciante %> </p>
                             <p class="col-2 p-0 m-0 mb-1 simple-text-sz"><b>UF:</b> <%= anunciante.EnderecoUsuario.uf %> </p>
                             <p class="col-6 p-0 m-0 mb-1 simple-text-sz"><b>Numero:</b> <%= anunciante.EnderecoUsuario.numero %> </p>
                             <p class="col-12 p-0 m-0 mb-1 simple-text-sz"><b>Cidade:</b> <%= anunciante.EnderecoUsuario.cidade %> </p>
@@ -93,7 +102,7 @@
                             <% }; %>
                             <% if (tipo_doc == 'candidato') { %>
                             <p class="col-12 p-0 m-0 mb-2 font-weight-bold text-center">ENDEREÇO</p>
-                            <p class="col-4 p-0 m-0 mb-1 simple-text-sz"><b>CEP:</b> <%= String(candidato.EnderecoUsuario.cep).substring(0, 5) + '-' + String(candidato.EnderecoUsuario.cep).substring(5, 9) %> </p>
+                            <p class="col-4 p-0 m-0 mb-1 simple-text-sz"><b>CEP:</b> <%= cepCandidato %> </p>
                             <p class="col-2 p-0 m-0 mb-1 simple-text-sz"><b>UF:</b> <%= candidato.EnderecoUsuario.uf %> </p>
                             <p class="col-6 p-0 m-0 mb-1 simple-text-sz"><b>Numero:</b> <%= candidato.EnderecoUsuario.numero %> </p>
                             <p class="col-12 p-0 m-0 mb-1 simple-text-sz"><b>Cidade:</b> <%= candidato.EnderecoUsuario.cidade %> </p>
@@ -161,14 +170,16 @@
                     <div class="col-9 border-left border-secondary">
                         <div class="row p-1">
                             <p class="col-12 p-0 m-0 mb-2 font-weight-bold text-center">INFORMAÇÕES DO ANIMAL</p>
+
                             <p class="col-3 p-0 m-0 mb-1 simple-text-sz"><b>Espécie:</b> <%= animal.especie == 'Cao' ? 'Cão' : animal.especie; %> </p>
-                            <p class="col-5 p-0 m-0 mb-1 simple-text-sz"><b>Raça:</b> <%= animal.raca %> </p>
+                            <p class="col-6 p-0 m-0 mb-1 simple-text-sz"><b>Raça:</b> <%= animal.raca %> </p>
                             <% if (animal.genero == 'M') { %>
-                            <p class="col-4 p-0 m-0 mb-1 simple-text-sz"><b>Genero:</b> Macho </p>
+                            <p class="col-3 p-0 m-0 mb-1 simple-text-sz"><b>Genero:</b> Macho </p>
                             <% } %>
                             <% if (animal.genero == 'F') { %>
-                            <p class="col-4 p-0 m-0 mb-1 simple-text-sz"><b>Genero:</b> Fêmea </p>
+                            <p class="col-3 p-0 m-0 mb-1 simple-text-sz"><b>Genero:</b> Fêmea </p>
                             <% } %>
+
                             <% if (animal.porte == 'P') { %>
                             <p class="col-3 p-0 m-0 mb-1 simple-text-sz"><b>Porte:</b> Pequeno </p>
                             <% } %>
@@ -178,8 +189,9 @@
                             <% if (animal.porte == 'G') { %>
                             <p class="col-3 p-0 m-0 mb-1 simple-text-sz"><b>Porte:</b> Grande </p>
                             <% } %>
-                            <p class="col-5 p-0 m-0 mb-1 simple-text-sz"><b>Castrado?</b> <%= animal.esta_castrado == 1 ? 'Sim' : 'Não'; %> </p>
-                            <p class="col-4 p-0 m-0 mb-1 simple-text-sz"><b>Vacinado?</b> <%= animal.esta_vacinado == 1 ? 'Sim' : 'Não'; %> </p>
+                            <p class="col-3 p-0 m-0 mb-1 simple-text-sz"><b>Castrado?</b> <%= animal.esta_castrado == 1 ? 'Sim' : 'Não'; %> </p>
+                            <p class="col-3 p-0 m-0 mb-1 simple-text-sz"><b>Vacinado?</b> <%= animal.esta_vacinado == 1 ? 'Sim' : 'Não'; %> </p>
+                            <p class="col-3 p-0 m-0 mb-1 simple-text-sz"><b>Possui RGA?</b> <%= animal.possui_rga == 1 ? 'Sim' : 'Não'; %> </p>
                             <p class="col-12 p-0 m-0 mb-1 simple-text-sz"></p>
                             <div class="col-6 mt-1 p-0 pr-4">
                                 <p class="p-0 m-0 mb-2 simple-text-sz text-center"><b>Detalhes de Saúde</b></p>
@@ -205,7 +217,7 @@
                     <div class="col-12">
                         <div class="row">
                             <p class="col-12 p-0 m-0 mb-2 font-weight-bold text-center">PONTO DE ENCONTRO</p>
-                            <p class="col-4 p-0 m-0 mb-1 simple-text-sz"><b>CEP:</b> <%= ponto_encontro.cep %> </p>
+                            <p class="col-4 p-0 m-0 mb-1 simple-text-sz"><b>CEP:</b> <%= cepPE %> </p>
                             <p class="col-2 p-0 m-0 mb-1 simple-text-sz"><b>UF:</b> <%= ponto_encontro.uf %> </p>
                             <p class="col-6 p-0 m-0 mb-1 simple-text-sz"><b>Numero:</b> <%= ponto_encontro.numero %> </p>
                             <p class="col-12 p-0 m-0 mb-1 simple-text-sz"><b>Cidade:</b> <%= ponto_encontro.cidade %> </p>
@@ -280,151 +292,110 @@
 
     </div>
 
-    <div class="container-fluid px-2 pb-2 page-two-border">
-
+    <div class="container-fluid px-2 pb-2 page-two-border overflow-auto" style="height: 27.7cm;">
+        
         <div class="row m-0">
             <h1 class="col-12 text-center lead font-weight-bold p-0 my-1 ">ADOÇÃO DE ANIMAL</h1>
+            <% if (tipo_doc == 'anunciante') { %>
             <h2 class="col-12 text-center lead font-weight-bold p-0 m-0">TERMO DE RESPONSABILIDADES DO TUTOR</h1>
+            <% }; %>
+            <% if (tipo_doc == 'candidato') { %>
+            <h2 class="col-12 text-center lead font-weight-bold p-0 m-0">TERMO DE RESPONSABILIDADES DO ADOTANTE</h1>
+            <% }; %>
         </div>
         <hr class="my-1">
-        <div class="row m-0" style="height: 9.8cm;">
-            <div class="col-6 p-1 fix-height-100 border border-dark border-right-0 overflow-auto">
+        <div class="row m-0" style="height: 23.45cm;">
+            <div class="col-12 px-3 py-2 fix-height-100 border border-dark overflow-auto">
     
-                <div class="row m-0 border-bottom border-dark" style="height: 3.5cm;">
-                    <div class="col-12">
+                <div class="row m-0" style="height: 100%;">
+                    <div class="col-12 d-flex flex-column">
                         <div class="row">
-                            <p class="col-12 p-0 m-0 mb-2 font-weight-bold text-center">INFORMAÇÕES DO TUTOR</p>
-                            <p class="col-12 p-0 m-0 mb-1 simple-text-sz"><b>Nome:</b> Alfino Testeiro Bugêncio </p>
-                            <p class="col-6 p-0 m-0 mb-1 simple-text-sz"><b>CPF:</b> 123.123.123-12 </p>
-                            <p class="col-6 p-0 m-0 mb-1 simple-text-sz"><b>Telefone:</b> (11) 91234-1234</p>    
+
+                            <p class="col-12 p-0 m-0 mb-2 font-weight-bold text-center">RESPONSABILIDADES LEGAIS</p>
+
+                            <p class="col-12 p-0 m-0 mb-2 font-weight-bold">&emsp; DECLARAÇÕES DO(A) TUTOR(A)</p>
+
+                            <p class="col-12 p-0 m-0 mb-1 simple-text-sz text-justify"> &emsp;&emsp;Declaro que as informações presentes na primeira página deste documento são verídicas e se referem ao animal que esteve sob minha tutela até o atual momento, além disso, estimo que o animal que denominei como <%= animal.nome %> nasceu em <%= new Date(animal.data_nascimento).toLocaleString('default', { day: 'numeric', month: 'long', year: 'numeric' }); %>.</p>
+                            <p class="col-12 p-0 m-0 mb-1 simple-text-sz text-justify"> &emsp;&emsp;Afirmo que todas as dúvidas do adotante referentes às características e peculiaridades do animal foram devidamente respondidas.</p>
+                            <p class="col-12 p-0 m-0 mb-1 simple-text-sz text-justify"> &emsp;&emsp;Ao assinar o presente Termo de Responsabilidade, permito que a posse do animal <%= animal.possui_rga == 1 ? '(e do RGA do animal) ': '';%>seja transferida para o adotante declarado neste documento, concedendo a ele(a) total responsabilidade sobre o animal.</p>
+
+                            <p class="col-12 p-0 m-0 my-2 font-weight-bold">&emsp; RESPONSABILIDADES DO(A) ADOTANTE</p>
+                            <div class="col-12 pl-3 m-0">
+
+                                <table>
+                                    <tbody class="simple-text-sz text-justify">
+                                        <tr>
+                                            <th class="align-top">1.</th>
+                                            <td><b>Garantir o bem-estar</b> deste animal, respeitando suas características e zelando pelas suas necessidades psicológicas e físicas;</td>
+                                        </tr>
+                                        <tr>
+                                            <th class="align-top">2.</th>
+                                            <td><b>Garantir sua saúde física</b> fornecendo abrigo, alimento adequado, higiene, vacinas e levando-o regularmente ao veterinário;</td>
+                                        </tr>
+                                        <tr>
+                                            <th class="align-top">3.</th>
+                                            <td><b>Garantir sua saúde psicológica</b> respeitando suas características e fornecendo atenção, carinho e a possibilidade de interagir com outras pessoas ou animais;</td>
+                                        </tr>
+                                        <tr>
+                                            <th class="align-top">4.</th>
+                                            <td><b>Garantir sua segurança</b>, mantendo-o sempre dentro de casa e fazendo passeios com coleira e guia (nos casos viáveis);</td>
+                                        </tr>
+                                        <tr>
+                                            <th class="align-top">5.</th>
+                                            <td><b>Mantê-lo em ambiente limpo, arejado e espaçoso</b>, com possibilidade de abrigo do sol ou chuva;</td>
+                                        </tr>
+                                        <tr>
+                                            <th class="align-top">6.</th>
+                                            <td><b>Não mantê-lo preso</b> em espaços pequenos ou em correntes;</td>
+                                        </tr>
+                                        <tr>
+                                            <th class="align-top">7.</th>
+                                            <td><b>Identificá-lo</b> com plaquinha ou microchip, tornando mais fácil recuperá-lo caso ele se perca;</td>
+                                        </tr>
+                                        <tr>
+                                            <th class="align-top">8.</th>
+                                            <td><b>Garantir sua esterilização</b>, por meio de um processo sem contra-indicações, garantindo a redução de animais abandonados nas ruas;</td>
+                                        </tr>
+                                        <tr>
+                                            <th class="align-top">9.</th>
+                                            <td><b>NUNCA e em nenhuma circunstância abandoná-lo</b> na rua ou entregá-lo a um desconhecido, além disso <b>o animal não deve ser vendido ou trocado</b> por bens de qualquer tipo;</td>
+                                        </tr>
+                                        <tr>
+                                            <th class="align-top">10.</th>
+                                            <td><b>Se houver desistência</b>, devolvê-lo ao tutor responsável pela adoção se possível, caso não haja essa possiblidade, deverá responsabilizar-se por encontrar um novo adotante responsável;</td>
+                                        </tr>
+                                        <tr>
+                                            <th class="align-top">11.</th>
+                                            <td><b>Comunicar eventualidades que ocorram com o animal</b>, tais como desaparecimento ou morte;</td>
+                                        </tr>
+                                        <tr>
+                                            <th class="align-top">12.</th>
+                                            <td><b>Permitir que o tutor responsável pela adoção visite o animal</b>, até a completa adaptação do animal (6 meses);</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+
+                            </div>
+
+                            <p class="col-12 p-0 m-0 my-2 font-weight-bold">&emsp; DECLARAÇÕES DO(A) ADOTANTE</p>
+                            <p class="col-12 p-0 m-0 mb-1 simple-text-sz text-justify"> &emsp;&emsp;Estou plenamente ciente das responsabilidades que me foram atribuídas ao adotar o animal e estou de acordo com as declarações do tutor, responsável pela adoção.</p>
+                            <p class="col-12 p-0 m-0 mb-1 simple-text-sz text-justify"> &emsp;&emsp;Possuo conhecimento de todos os cuidados que este animal exige, no que se refere à sua guarda e manutenção, além de conhecer todos os riscos inerentes à espécie no convívio com humanos.</p>
+                            <p class="col-12 p-0 m-0 mb-1 simple-text-sz text-justify"> &emsp;&emsp;Compreendo que o não cumprimento dos itens acima poderá ser interpretado como maus-tratos, o que causará a retirada do animal pelo tutor, responsável pela adoção a qualquer tempo.</p>
+                            <p class="col-12 p-0 m-0 mb-1 simple-text-sz text-justify"> &emsp;&emsp;Ao adotar o animal descrito na primeira página deste documento declaro-me apto à assumir a guarda e responsabilidade sobre o animal, comprometendo-me a proporcionar boas condições de alojamento e alimentação, assim como, espaço físico que possibilite o animal a se exercitar, eximindo assim o tutor, responsável pela adoção, de toda e qualquer responsabilidade por quaisquer atos praticados pelo animal a partir desta data.</p>
+                            <p class="col-12 p-0 m-0 mb-1 simple-text-sz text-justify"> &emsp;&emsp;Comprometo-me a cumprir toda a legislação vigente, municipal, estadual e federal, relativa à posse de animais.</p>
+                            <p class="col-12 p-0 m-0 mb-1 simple-text-sz text-justify"> &emsp;&emsp;Reconheço que maus-tratos é crime e estarei sujeito às penas previstas pela Lei Federal de Proteção aos Animais Nº 9605 art. 32 de 13 de fevereiro de 1998, no caso de infração.</p>
+                            <p class="col-12 p-0 m-0 mb-1 simple-text-sz text-justify"> &emsp;&emsp;Declaro que estou ciente das normas acima, as quais aceito, assinando o presente Termo de Responsabilidade, assumindo plenamente os deveres que dele constam, bem como outros relacionados à posse responsável e que não estejam incluídos neste Termo.</p>
+                            
+                            
                         </div>
-                    </div>
-                </div>
-    
-                <div class="row m-0" style="height: 6.0cm;">
-                    <div class="col-12">
-                        <div class="row">
-                            <p class="col-12 p-0 m-0 mb-2 font-weight-bold text-center">ENDEREÇO</p>
-                            <p class="col-4 p-0 m-0 mb-1 simple-text-sz"><b>CEP:</b> 12345-123 </p>
-                            <p class="col-2 p-0 m-0 mb-1 simple-text-sz"><b>UF:</b> SP </p>
-                            <p class="col-6 p-0 m-0 mb-1 simple-text-sz"><b>Numero:</b> 13 </p>
-                            <p class="col-12 p-0 m-0 mb-1 simple-text-sz"><b>Cidade:</b> São Paulo </p>
-                            <p class="col-12 p-0 m-0 mb-1 simple-text-sz"><b>Bairro:</b> Bairro dos Testes </p>
-                            <p class="col-12 p-0 m-0 mb-1 simple-text-sz"><b>Logradouro:</b> Rua Testada Testamos </p>
-                            <p class="col-12 p-0 m-0 mb-1 simple-text-sz"><b>Complemento:</b> Casa dos Fundos </p>
-                        </div>
-                    </div>
-                </div>
-    
-            </div>
-            <div class="col-6 p-1 fix-height-100 border border-dark overflow-auto">
-    
-                <div class="row m-0 border-bottom border-dark" style="height: 3.5cm;">
-                    <div class="col-12">
-                        <div class="row">
-                            <p class="col-12 p-0 m-0 mb-2 font-weight-bold text-center">INFORMAÇÕES DO ADOTANTE</p>
-                            <p class="col-12 p-0 m-0 mb-1 simple-text-sz"><b>Nome:</b> Bugancia Crasheira  </p>
-                            <p class="col-6 p-0 m-0 mb-1 simple-text-sz"><b>CPF:</b> <span style="text-decoration: underline; white-space: pre;">                                            </span> </p>
-                            <p class="col-6 p-0 m-0 mb-1 simple-text-sz"><b>Telefone:</b> (11) 91234-1234</p>    
-                        </div>
-                    </div>
-                </div>
-    
-                <div class="row m-0" style="height: 6.0cm;">
-                    <div class="col-12">
-                        <div class="row">
-                            <p class="col-12 p-0 m-0 mb-2 font-weight-bold text-center">ENDEREÇO</p>
-                            <p class="col-4 p-0 m-0 mb-1 simple-text-sz"><b>CEP:</b> <span style="text-decoration: underline; white-space: pre;">                           </span> </p>
-                            <p class="col-2 p-0 m-0 mb-1 simple-text-sz"><b>UF:</b> <span style="text-decoration: underline; white-space: pre;">           </span> </p>
-                            <p class="col-6 p-0 m-0 mb-1 simple-text-sz"><b>Numero:</b> <span style="text-decoration: underline; white-space: pre;">                                         </span> </p>
-                            <p class="col-12 p-0 m-0 mb-1 simple-text-sz"><b>Cidade:</b> <span style="text-decoration: underline; white-space: pre;">                                                                                                     </span> </p>
-                            <p class="col-12 p-0 m-0 mb-1 simple-text-sz"><span style="text-decoration: underline; white-space: pre;">                                                                                                                   </span> </p>
-                            <p class="col-12 p-0 m-0 mb-1 simple-text-sz"><b>Bairro:</b> <span style="text-decoration: underline; white-space: pre;">                                                                                                       </span> </p>
-                            <p class="col-12 p-0 m-0 mb-1 simple-text-sz"><span style="text-decoration: underline; white-space: pre;">                                                                                                                   </span> </p>
-                            <p class="col-12 p-0 m-0 mb-1 simple-text-sz"><b>Logradouro:</b> <span style="text-decoration: underline; white-space: pre;">                                                                                             </span> </p>
-                            <p class="col-12 p-0 m-0 mb-1 simple-text-sz"><span style="text-decoration: underline; white-space: pre;">                                                                                                                   </span> </p>
-                            <p class="col-12 p-0 m-0 mb-1 simple-text-sz"><b>Complemento:</b> <span style="text-decoration: underline; white-space: pre;">                                                                                         </span> </p>
-                            <p class="col-12 p-0 m-0 mb-1 simple-text-sz"><span style="text-decoration: underline; white-space: pre;">                                                                                                                   </span> </p>
+                        <div class="row h-100 align-content-end">
+                            <p class="p-0 m-0 simple-text-sz text-justify"><b>ATENÇÃO:</b> Sob nenhuma circunstância os envolvidos na adoção devem encontrar-se fora do Ponto de Encontro definido neste documento. Além disso, será necessário a utilização de um leitor de QR Codes em um aparelho que possua conexão com a internet para concluir o processo adotivo.</p>
                         </div>
                     </div>
                 </div>
     
             </div>
         </div>
-    
-        <!-- <hr class="my-1"> -->
-    
-        <div class="row m-0">
-            <div class="col-12 p-1 fix-height-100 border border-dark border-top-0 border-bottom-0 overflow-auto">
-    
-                <div class="row m-0" style="height: 7.5cm;">
-                    <div class="col-3 m-auto">
-                        <img src="<%= foto_animal_anuncio %>" width="125"/>
-                    </div>
-                    <div class="col-9 border-left border-secondary">
-                        <div class="row p-1">
-                            <p class="col-12 p-0 m-0 mb-2 font-weight-bold text-center">INFORMAÇÕES DO ANIMAL</p>
-                            <p class="col-4 p-0 m-0 mb-1 simple-text-sz"><b>Espécie:</b> Gato </p>
-                            <p class="col-4 p-0 m-0 mb-1 simple-text-sz"><b>Raça:</b> Comum </p>
-                            <p class="col-4 p-0 m-0 mb-1 simple-text-sz"><b>Genero:</b> Macho </p>
-                            <p class="col-4 p-0 m-0 mb-1 simple-text-sz"><b>Porte:</b> Pequeno </p>
-                            <p class="col-4 p-0 m-0 mb-1 simple-text-sz"><b>Castrado?:</b> Sim </p>
-                            <p class="col-4 p-0 m-0 mb-1 simple-text-sz"><b>Vacinado?:</b> Sim </p>
-                            <p class="col-12 p-0 m-0 mb-1 simple-text-sz"></p>
-                            <div class="col-6 mt-1 p-0 pr-4">
-                                <p class="p-0 m-0 mb-2 simple-text-sz text-center"><b>Detalhes de Saúde</b></p>
-                                <p class="p-0 m-0 simple-text-sz text-justify"> Bichinho saudável pra caramba, tomou as vacinas X, Y, Z e tá firme e forte! </p>
-                            </div>
-                            <div class="col-6 mt-1 p-0 pr-1">
-                                <p class="p-0 m-0 mb-2 simple-text-sz text-center"><b>Detalhes de Comportamento</b></p>
-                                <p class="p-0 m-0 simple-text-sz text-justify"> É um gato formidável, brinca só quando a gente tá brincando com ele, dorme quando a gente vai dormir, come pouco e mia só quando quer alguma coisa específica. Com o tempo você aprende a lidar com ele. </p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-    
-            </div>
-        </div>
-    
-        <!-- <hr class="my-1"> -->
-    
-        <div class="row m-0">
-            <div class="col-8 p-1 fix-height-100 border border-dark border-right-0 overflow-auto">
-    
-                <div class="row m-0" style="height: 5.5cm;">
-                    <div class="col-12">
-                        <div class="row">
-                            <p class="col-12 p-0 m-0 mb-2 font-weight-bold text-center">PONTO DE ENCONTRO</p>
-                            <p class="col-4 p-0 m-0 mb-1 simple-text-sz"><b>CEP:</b> 12345-123 </p>
-                            <p class="col-2 p-0 m-0 mb-1 simple-text-sz"><b>UF:</b> SP </p>
-                            <p class="col-6 p-0 m-0 mb-1 simple-text-sz"><b>Numero:</b> 10 </p>
-                            <p class="col-12 p-0 m-0 mb-1 simple-text-sz"><b>Cidade:</b> São Paulo </p>
-                            <p class="col-12 p-0 m-0 mb-1 simple-text-sz"><b>Bairro:</b> Vila das adoções felinas </p>
-                            <p class="col-12 p-0 m-0 mb-1 simple-text-sz"><b>Logradouro:</b> Rua Miau </p>
-                            <p class="col-12 p-0 m-0 mb-1 simple-text-sz"><b>Complemento:</b> Sem complemento </p>
-                        </div>
-                    </div>
-                </div>
-    
-            </div>
-            <div class="col-4 p-1 fix-height-100 border border-dark overflow-auto">
-    
-                <div class="row m-0" style="height: 5.5cm;">
-                    <div class="col-12">
-                        <div class="row">
-                            <p class="col-12 p-0 m-0 mb-2 font-weight-bold text-center">ADOTANTE</p>
-                            <div class="col-12 p-0 m-0 text-center">
-                                <p class="simple-text-sz m-0 p-0 font-weight-bold text-justify">Escaneie o QR Code para validar a recepção do animal.</p>
-                                <img src="<%= qrcode_validacao %>" width="125"/>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-    
-            </div>
-        </div>
-    
-        <!-- <hr class="my-1"> -->
     
         <div class="row m-0">
     

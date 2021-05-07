@@ -37,8 +37,8 @@ CREATE TABLE tbl_cliente (
 
 CREATE TABLE tbl_usuario (
 	cod_usuario INT UNSIGNED NOT NULL UNIQUE AUTO_INCREMENT,
-    primeiro_nome VARCHAR(100) NOT NULL,
-    sobrenome VARCHAR(100) NOT NULL,
+    primeiro_nome VARCHAR(50) NOT NULL,
+    sobrenome VARCHAR(50) NOT NULL,
     cpf VARCHAR(14) NOT NULL UNIQUE,
     telefone VARCHAR(17) NOT NULL,
     data_nascimento DATE NOT NULL,
@@ -55,6 +55,16 @@ CREATE TABLE tbl_usuario (
     data_modificacao DATETIME NOT NULL DEFAULT NOW(),
     PRIMARY KEY (cod_usuario)
 );
+
+ALTER TABLE tbl_usuario
+MODIFY COLUMN primeiro_nome VARCHAR(50) NOT NULL;
+
+ALTER TABLE tbl_usuario
+MODIFY COLUMN sobrenome VARCHAR(50) NOT NULL;
+
+SELECT * FROM tbl_usuario;
+
+DESCRIBE tbl_usuario;
 
 CREATE TABLE tbl_conta_local (
 	email VARCHAR(255) NOT NULL UNIQUE,
@@ -105,7 +115,7 @@ CREATE TABLE tbl_animal (
     cod_dono INT UNSIGNED NOT NULL,
     cod_dono_antigo INT UNSIGNED,
     estado_adocao ENUM('Sob protecao', 'Em anuncio', 'Em processo adotivo', 'Adotado') NOT NULL DEFAULT 'Sob protecao',
-    nome VARCHAR(100) NOT NULL,
+    nome VARCHAR(50) NOT NULL,
     foto VARCHAR(255) NOT NULL DEFAULT 'default_unknown_pet.jpeg',
     data_nascimento DATE NOT NULL,
     especie ENUM('Cao', 'Gato', 'Outros') NOT NULL,
@@ -114,6 +124,7 @@ CREATE TABLE tbl_animal (
     porte ENUM('P', 'M', 'G') NOT NULL,
     esta_castrado TINYINT UNSIGNED NOT NULL,
     esta_vacinado TINYINT UNSIGNED NOT NULL,
+    possui_rga TINYINT UNSIGNED NOT NULL,
     detalhes_comportamento VARCHAR(255) NOT NULL,
     detalhes_saude VARCHAR(255) NOT NULL,
     historia TEXT,
@@ -123,6 +134,11 @@ CREATE TABLE tbl_animal (
     FOREIGN KEY (cod_dono) REFERENCES tbl_usuario(cod_usuario),
     FOREIGN KEY (cod_dono_antigo) REFERENCES tbl_usuario(cod_usuario)
 );
+
+ALTER TABLE tbl_animal
+MODIFY COLUMN nome VARCHAR(50) NOT NULL;
+
+SELECT * FROM tbl_animal;
 
 CREATE TABLE tbl_album_animal (
 	cod_album INT UNSIGNED NOT NULL UNIQUE AUTO_INCREMENT,
@@ -784,7 +800,13 @@ SELECT * FROM tbl_conta_local;
 SELECT * FROM tbl_end_usuario;
 
 SELECT * FROM tbl_notificacao;
+
+DESCRIBE tbl_ponto_encontro;
 SELECT * FROM tbl_ponto_encontro;
+
+#SELECT * FROM tbl_notificacao
+SELECT * FROM tbl_ponto_encontro
+ORDER BY ativo DESC, data_criacao DESC;
 
 INSERT INTO tbl_ponto_encontro
 	(cod_candidatura, cod_anunciante, cod_candidato,

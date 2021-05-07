@@ -900,14 +900,23 @@
                         return res.status(400).json({
                             mensagem: 'PRIMEIRO NOME - Está vazio.',
                             code: 'INVALID_PRIMEIRO_NOME_LENGTH'
-                        })
+                        });
                     } else {
+
+                        if (operacoes.primeiro_nome.length > 50){
+                            return res.status(400).json({
+                                mensagem: 'PRIMEIRO NOME - A quantidade de caracteres ultrapassa 50.',
+                                code: 'INVALID_PRIMEIRO_NOME_LENGTH'
+                            });
+                        }
+
                         if (operacoes.primeiro_nome.match(/\s{2}|[^A-Za-zÀ-ÖØ-öø-ÿ ,.'-]+/g)){
                             return res.status(400).json({
                                 mensagem: 'PRIMEIRO NOME - Espaços excessivos ou caracteres inválidos detectados.',
                                 code: 'INVALID_PRIMEIRO_NOME_INPUT'
-                            })
+                            });
                         }
+
                     }
                 }
 
@@ -917,14 +926,23 @@
                         return res.status(400).json({
                             mensagem: 'SOBRENOME - Está vazio.',
                             code: 'INVALID_SOBRENOME_LENGTH'
-                        })
+                        });
                     } else {
+
+                        if (operacoes.sobrenome.length > 50){
+                            return res.status(400).json({
+                                mensagem: 'SOBRENOME - A quantidade de caracteres ultrapassa 50.',
+                                code: 'INVALID_SOBRENOME_LENGTH'
+                            });
+                        }
+
                         if (operacoes.sobrenome.match(/\s|[^A-Za-zÀ-ÖØ-öø-ÿ ,.'-]+/g)){
                             return res.status(400).json({
                                 mensagem: 'SOBRENOME - Espaços excessivos ou caracteres inválidos detectados.',
                                 code: 'INVALID_SOBRENOME_INPUT'
-                            })
+                            });
                         }
+
                     }
                 }
 

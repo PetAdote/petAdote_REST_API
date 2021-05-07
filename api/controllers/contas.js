@@ -736,6 +736,13 @@
                     } else {
                         // console.log('Nome: [' + req.body.primeiro_nome + ']');
             
+                        if (req.body.primeiro_nome.length > 50){
+                            return res.status(400).json({
+                                mensagem: 'PRIMEIRO NOME - A quantidade de caracteres ultrapassa 50.',
+                                code: 'INVALID_PRIMEIRO_NOME_LENGTH'
+                            });
+                        }
+
                         if (req.body.primeiro_nome.match(/\s{2}|[^A-Za-zÀ-ÖØ-öø-ÿ ,.'-]+/g)){  // Anterior: /\s{2}|[^a-zà-ü ,.'-]+/gi
                             // console.log('Erro: Espaços excessivos ou caracteres inválidos detectados!');
                             return res.status(400).json({
@@ -756,6 +763,13 @@
                     } else {
                         // console.log('Sobrenome: [' + req.body.sobrenome + ']');
                         
+                        if (req.body.sobrenome.length > 50){
+                            return res.status(400).json({
+                                mensagem: 'SOBRENOME - A quantidade de caracteres ultrapassa 50.',
+                                code: 'INVALID_SOBRENOME_LENGTH'
+                            });
+                        }
+
                         if (req.body.sobrenome.match(/\s|[^A-Za-zÀ-ÖØ-öø-ÿ ,.'-]+/g)){  // Anterior: /\s{2}|[^a-zà-ü ,.'-]+/gi
                             // console.log('Erro: Espaços excessivos ou caracteres inválidos detectados!');
                             return res.status(400).json({

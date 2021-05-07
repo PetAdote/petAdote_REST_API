@@ -97,7 +97,7 @@ router.get('/', async (req, res, next) => {
 
         let operacao = undefined;   // Se a operação continuar como undefined, envie BAD_REQUEST (400).
 
-        let { getOne, getAll, fromUser, fromAnnouncement, page, limit } = req.query;
+        let { getOne, getAll, fromUser, fromAnnouncement, validate, code, page, limit } = req.query;
 
         switch (Object.entries(req.query).length){
             case 0:
@@ -116,6 +116,8 @@ router.get('/', async (req, res, next) => {
                 break;
             case 2:
                 if (page && limit) { operacao = 'getAny' };
+
+                if (validate && code) { operacao = 'validateCandidature' };
 
                 if (getAll == 'under_evaluation' && page) { operacao = 'getAll' };
                 if (getAll == 'approved' && page) { operacao = 'getAll' };
@@ -207,6 +209,28 @@ router.get('/', async (req, res, next) => {
 
         }
 
+        if (validate){
+
+            if (String(validate).match(/[^\d]+/g)){     // Se "validate" conter algo diferente do esperado. (cod_candidatura).
+                return res.status(400).json({
+                    mensagem: 'Requisição inválida - O ID de uma Candidatura deve conter apenas dígitos.',
+                    code: 'INVALID_REQUEST_QUERY'
+                });
+            }
+
+        }
+
+        if (code){
+
+            if (String(code).match(/[^\d]+/g)){     // Se "code" conter algo diferente do esperado. (doc_responsabilidade -> segredo_qrcode).
+                return res.status(400).json({
+                    mensagem: 'Requisição inválida - O Código de um QR Code deve conter apenas dígitos.',
+                    code: 'INVALID_REQUEST_QUERY'
+                });
+            }
+
+        }
+
     // Fim da validação dos parâmetros.
 
     // Início da normalização dos parâmetros.
@@ -217,6 +241,9 @@ router.get('/', async (req, res, next) => {
         req.query.getOne = String(req.query.getOne);
         req.query.fromUser = String(req.query.fromUser);
         req.query.fromAnnouncement = String(req.query.fromAnnouncement);
+
+        req.query.validate = String(req.query.validate);
+        req.query.code = String(req.query.code);
 
     // Fim da normalização dos parâmetros.
 
@@ -905,12 +932,504 @@ router.get('/', async (req, res, next) => {
 
     // Fim dos processos de listagem das candidaturas.
 
+    // Início do processo de conclusão de uma candidatura / adoção.
+
+        if (operacao == 'validateCandidature'){
+            // Chamada exclusiva para Usuários.
+            // Realizará as verificações necessárias para concluir o processo de adoção de um animal e efetivará a conclusão.
+            // Essa chamada será alcançada quando os usuários realizarem a leitura dos QR Codes nos Documentos de Termos de Responsabilidades da Adoção.
+
+            // Capturando o código da candidatura a ser validada e o segredo do QR Code.
+            const cod_candidatura = req.query.validate;
+            const qrc_secret = req.query.code;
+            // Fim da captura do código da candidatura a ser validada e o segredo do QR Code.
+
+            // Início da verificação dos dados da Candidatura.
+                let candidatura = undefined;
+
+                try {
+                    // Somente candidaturas ativas poderão receber alterações.
+                    candidatura = await Candidatura.findOne({
+                        include: [{
+                            model: Anuncio,
+                            include: [{
+                                model: Usuario,
+                                include: [{
+                                    model: EnderecoUsuario
+                                }]
+                            }, {
+                                model: Animal
+                            }]
+                        }, {
+                            model: Usuario,
+                            include: [{
+                                model: EnderecoUsuario
+                            }]
+                        }, {
+                            model: DocResponsabilidade,
+                            as: 'DocAnunciante'
+                        }, {
+                            model: DocResponsabilidade,
+                            as: 'DocCandidato'
+                        }, {
+                            model: PontoEncontro,
+                            required: false,
+                            where: {
+                                ativo: 1
+                            }
+                        }],
+                        where: {
+                            cod_candidatura: cod_candidatura,
+                            ativo: 1,   // A candidatura deve estar ativa.
+                            estado_candidatura: 'Aprovada',
+                            '$Anuncio.estado_anuncio$': 'Aberto',
+                            '$Anuncio.Animal.estado_adocao$': 'Em processo adotivo',
+                            '$Usuario.esta_ativo$': 1,  // O candidato deve estar ativo.
+                            '$Anuncio.Usuario.esta_ativo$': 1   // O anunciante deve estar ativo.
+                        }
+                    })
+                    .then((result) => {
+                        if (!result){
+                            return null;
+                        }
+                        return result.get({ plain: true });
+                    })
+                    .catch((error) => {
+                        throw new Error(error);
+                    });
+
+                } catch (error) {
+                    console.error('Algo inesperado aconteceu ao buscar os dados da candidatura.', error);
+
+                    let customErr = new Error('Algo inesperado aconteceu ao buscar os dados da candidatura. Entre em contato com o administrador.');
+                    customErr.status = 500;
+                    customErr.code = 'INTERNAL_SERVER_ERROR'
+
+                    return next( customErr );
+                }
+
+                if (!candidatura){
+                    return res.status(200).json({
+                        mensagem: `Nenhum recurso apto a ser validado foi encontrado com o ID informado.`
+                    });
+                }
+            // Fim da verificação dos dados da Candidatura.
+
+            // Início das Restrições de uso da chamada.
+                let requesterType = undefined;
+
+                let anunciante = candidatura.Anuncio.Usuario;
+                let candidato = candidatura.Usuario;
+                let animalAnunciado = candidatura.Anuncio.Animal;
+                let anuncio = candidatura.Anuncio;
+                let docAnunciante = candidatura.DocAnunciante;
+                let docCandidato = candidatura.DocCandidato;
+
+                if (usuario){
+                    // Se o requisitante for um usuário - Só podera manipular os dados da candidatura se for o anunciante ou o candidato.
+
+                    let allowedRequester = [
+                        anunciante.cod_usuario,
+                        candidato.cod_usuario
+                    ];
+
+                    if (!allowedRequester.includes(usuario.cod_usuario)){
+                        return res.status(401).json({
+                            mensagem: 'Você não possui o nível de acesso adequado para esse recurso.',
+                            code: 'ACCESS_TO_RESOURCE_NOT_ALLOWED'
+                        });
+                    }
+
+                    // "requesterType" definirá se o requisitante é o Anunciante ou o Candidato.
+                    if (usuario.cod_usuario == anunciante.cod_usuario){
+                        requesterType = 'announcer';
+                    }
+
+                    if (usuario.cod_usuario == candidato.cod_usuario){
+                        requesterType = 'applicant';
+                    }
+
+                }
+            // Fim das Restrições de uso da chamada.
+
+            // Início das configurações dos tipos de validação possíveis.
+
+                let validationType = undefined;   // Se a operação continuar como undefined, envie BAD_REQUEST (400).
+
+                switch (requesterType){
+                    case 'announcer':
+                        validationType = 'validateAsAnnouncer';
+                        break;
+                    case 'applicant':
+                        validationType = 'validateAsApplicant';
+                        break;
+                    default:
+                        break;
+                }
+
+            // Fim das configurações dos tipos de validação possíveis.
+
+            // Início dos possíveis processos de validação/conclusão da candidatura/adoção.
+            if (!validationType){
+                console.error('Algo inesperado aconteceu ao definir a operação de validação que será realizada.');
+
+                let customErr = new Error('Algo inesperado aconteceu ao definir a operação de validação que será realizada. Entre em contato com o administrador.');
+                customErr.status = 500;
+                customErr.code = 'INTERNAL_SERVER_ERROR'
+
+                return next( customErr );
+            }
+
+            if (validationType == 'validateAsAnnouncer'){
+
+                if (qrc_secret != docCandidato.segredo_qrcode){
+                    return res.status(401).json({
+                        mensagem: 'Você não possui o nível de acesso adequado para validar este recurso.',
+                        code: 'ACCESS_TO_RESOURCE_NOT_ALLOWED'
+                    });
+                }
+
+                let newAnimal = undefined;  // Receberá os dados da instância do Animal gerado para o Candidato, que agora se tornou tutor do animal.
+
+                try {
+
+                    // Início da atribuição do horário atual à data de modificação dos recursos.
+                        const dataAtual = new Date();
+                    // Fim da atribuição do horário atual à data de modificação dos recursos.
+
+                    await database.transaction( async (transaction) => {
+
+                        let candidaturaUpdateDataObj = {
+                            anunciante_entregou: 1,
+                            data_modificacao: dataAtual
+                        };
+
+                        if (candidatura.candidato_recebeu == 1){
+                            // Se o candidato validou a recepção do animal, então conclua a adoção.
+
+                            await Animal.update({
+                                estado_adocao: 'Adotado',
+                                data_modificacao: dataAtual
+                            }, {
+                                where: {
+                                    cod_animal: animalAnunciado.cod_animal
+                                },
+                                limit: 1,
+                                transaction
+                            });
+
+                            let defaultAnimalPicture = undefined;
+                            let possibleDefaultImages = undefined;
+                            let rngSelector = Number.parseInt((Math.random() * (1.9 - 0)));  // 0 ou 1.
+
+                            switch(animalAnunciado.especie){
+                                case 'Gato':
+                                    possibleDefaultImages = [
+                                        'default_cat_01.jpeg',
+                                        'default_cat_02.jpeg'
+                                    ];
+
+                                    defaultAnimalPicture = possibleDefaultImages[rngSelector];
+                                    break;
+                                case 'Cao':
+                                    possibleDefaultImages = [
+                                        'default_dog_01.jpeg',
+                                        'default_dog_02.jpeg'
+                                    ];
+
+                                    defaultAnimalPicture = possibleDefaultImages[rngSelector];
+                                    break;
+                                default:
+                                    defaultAnimalPicture = 'default_unknown_pet.jpeg';
+                                    break;
+                            }
+
+                            newAnimal = await Animal.create({
+                                cod_dono: candidato.cod_usuario,
+                                cod_dono_antigo: anunciante.cod_usuario,
+                                nome: animalAnunciado.nome,
+                                foto: defaultAnimalPicture,
+                                data_nascimento: animalAnunciado.data_nascimento,
+                                especie: animalAnunciado.especie,
+                                raca: animalAnunciado.raca,
+                                genero: animalAnunciado.genero,
+                                porte: animalAnunciado.porte,
+                                esta_castrado: animalAnunciado.esta_castrado,
+                                esta_vacinado: animalAnunciado.esta_vacinado,
+                                possui_rga: animalAnunciado.possui_rga,
+                                detalhes_comportamento: animalAnunciado.detalhes_comportamento,
+                                detalhes_saude: animalAnunciado.detalhes_saude,
+                                historia: animalAnunciado.historia
+                            }, {
+                                transaction
+                            });
+
+                            newAnimal = await newAnimal.get({ plain: true });
+
+                            let albumPrefix = undefined;
+
+                            switch(newAnimal.genero){
+                                // case 'M': 
+                                //     albumPrefix = 'Álbum do';
+                                //     break;
+                                // case 'F':
+                                //     albumPrefix = 'Álbum da';
+                                //     break;
+                                default: 
+                                    albumPrefix = 'Álbum';
+                                    break;
+                            }
+
+                            await AlbumAnimal.create({
+                                cod_animal: newAnimal.cod_animal,
+                                titulo: `${albumPrefix} ${newAnimal.nome}`,
+                            }, {
+                                transaction
+                            });
+
+                            await Anuncio.update({
+                                estado_anuncio: 'Concluido',
+                                data_modificacao: dataAtual
+                            }, {
+                                where: {
+                                    cod_anuncio: anuncio.cod_anuncio
+                                },
+                                transaction
+                            });
+
+                            candidaturaUpdateDataObj.estado_candidatura = 'Concluida';
+
+                        }
+
+                        await Candidatura.update(candidaturaUpdateDataObj, {
+                            where: {
+                                cod_candidatura: cod_candidatura
+                            },
+                            limit: 1,
+                            transaction
+                        });
+
+                    })
+                    .catch((error) => {
+                        throw new Error(error);
+                    })
+
+                    // Auto-commit.
+
+                } catch (error) {
+                    // Rollback.
+                    console.error('Algo inesperado aconteceu ao concluir uma adoção.', error);
+        
+                    let customErr = new Error('Algo inesperado aconteceu ao concluir uma adoção. Entre em contato com o administrador.');
+                    customErr.status = 500;
+                    customErr.code = 'INTERNAL_SERVER_ERROR';
+            
+                    return next(customErr);
+                }
+
+                if (candidatura.candidato_recebeu == 1){
+                    // Entregando a resposta de sucesso caso a candidatura tenha sido concluída.
+                        return res.status(200).json({
+                            mensagem: 'A candidatura está concluída, o animal foi efetivamente adotado, parabéns!',
+                            detalhes_animal_recebido: `${req.protocol}://${req.get('host')}/usuarios/animais/?getOne=${newAnimal.cod_animal}`
+                        });
+                    // Fim da entrega da resposta de sucesso caso a candidatura tenha sido concluída.
+                }
+
+                // Entregando a resposta de sucesso caso o anunciante tenha declarado a entrega do animal, sem que o candidato tenha validado a recepção.
+                    return res.status(200).json({
+                        mensagem: 'A entrega do animal foi validada, se o candidato do animal validar a recepção, o animal será indexado em seu histórico de animais.',
+                        detalhes_animal_anunciado: `${req.protocol}://${req.get('host')}/usuarios/animais/?getOne=${animalAnunciado.cod_animal}`
+                    });
+                // Fim da entrega da resposta de sucesso caso o anunciante tenha declarado a entrega do animal, sem que o candidato tenha validado a recepção
+
+            }
+
+            if (validationType == 'validateAsApplicant'){
+
+                if (qrc_secret != docAnunciante.segredo_qrcode){
+                    return res.status(401).json({
+                        mensagem: 'Você não possui o nível de acesso adequado para validar este recurso.',
+                        code: 'ACCESS_TO_RESOURCE_NOT_ALLOWED'
+                    });
+                }
+
+                let newAnimal = undefined;  // Receberá os dados da instância do Animal gerado para o Candidato, que agora se tornou tutor do animal.
+
+                try {
+
+                    // Início da atribuição do horário atual à data de modificação dos recursos.
+                        const dataAtual = new Date();
+                    // Fim da atribuição do horário atual à data de modificação dos recursos.
+
+                    await database.transaction( async (transaction) => {
+
+                        let candidaturaUpdateDataObj = {
+                            candidato_recebeu: 1,
+                            data_modificacao: dataAtual
+                        };
+
+                        if (candidatura.anunciante_entregou == 1){
+                            // Se o anunciante validou a entrega do animal, então conclua a adoção.
+
+                            await Animal.update({
+                                estado_adocao: 'Adotado',
+                                data_modificacao: dataAtual
+                            }, {
+                                where: {
+                                    cod_animal: animalAnunciado.cod_animal
+                                },
+                                limit: 1,
+                                transaction
+                            });
+
+                            let defaultAnimalPicture = undefined;
+                            let possibleDefaultImages = undefined;
+                            let rngSelector = Number.parseInt((Math.random() * (1.9 - 0)));  // 0 ou 1.
+
+                            switch(animalAnunciado.especie){
+                                case 'Gato':
+                                    possibleDefaultImages = [
+                                        'default_cat_01.jpeg',
+                                        'default_cat_02.jpeg'
+                                    ];
+
+                                    defaultAnimalPicture = possibleDefaultImages[rngSelector];
+                                    break;
+                                case 'Cao':
+                                    possibleDefaultImages = [
+                                        'default_dog_01.jpeg',
+                                        'default_dog_02.jpeg'
+                                    ];
+
+                                    defaultAnimalPicture = possibleDefaultImages[rngSelector];
+                                    break;
+                                default:
+                                    defaultAnimalPicture = 'default_unknown_pet.jpeg';
+                                    break;
+                            }
+
+                            newAnimal = await Animal.create({
+                                cod_dono: candidato.cod_usuario,
+                                cod_dono_antigo: anunciante.cod_usuario,
+                                nome: animalAnunciado.nome,
+                                foto: defaultAnimalPicture,
+                                data_nascimento: animalAnunciado.data_nascimento,
+                                especie: animalAnunciado.especie,
+                                raca: animalAnunciado.raca,
+                                genero: animalAnunciado.genero,
+                                porte: animalAnunciado.porte,
+                                esta_castrado: animalAnunciado.esta_castrado,
+                                esta_vacinado: animalAnunciado.esta_vacinado,
+                                possui_rga: animalAnunciado.possui_rga,
+                                detalhes_comportamento: animalAnunciado.detalhes_comportamento,
+                                detalhes_saude: animalAnunciado.detalhes_saude,
+                                historia: animalAnunciado.historia
+                            }, {
+                                transaction
+                            });
+
+                            newAnimal = await newAnimal.get({ plain: true });
+
+                            let albumPrefix = undefined;
+
+                            switch(newAnimal.genero){
+                                // case 'M': 
+                                //     albumPrefix = 'Álbum do';
+                                //     break;
+                                // case 'F':
+                                //     albumPrefix = 'Álbum da';
+                                //     break;
+                                default: 
+                                    albumPrefix = 'Álbum';
+                                    break;
+                            }
+
+                            await AlbumAnimal.create({
+                                cod_animal: newAnimal.cod_animal,
+                                titulo: `${albumPrefix} ${newAnimal.nome}`,
+                            }, {
+                                transaction
+                            });
+
+                            await Anuncio.update({
+                                estado_anuncio: 'Concluido',
+                                data_modificacao: dataAtual
+                            }, {
+                                where: {
+                                    cod_anuncio: anuncio.cod_anuncio
+                                },
+                                transaction
+                            });
+
+                            candidaturaUpdateDataObj.estado_candidatura = 'Concluida';
+
+                        }
+
+                        await Candidatura.update(candidaturaUpdateDataObj, {
+                            where: {
+                                cod_candidatura: cod_candidatura
+                            },
+                            limit: 1,
+                            transaction
+                        });
+
+                    })
+                    .catch((error) => {
+                        throw new Error(error);
+                    })
+
+                    // Auto-commit.
+
+                } catch (error) {
+                    // Rollback.
+                    console.error('Algo inesperado aconteceu ao concluir uma adoção.', error);
+        
+                    let customErr = new Error('Algo inesperado aconteceu ao concluir uma adoção. Entre em contato com o administrador.');
+                    customErr.status = 500;
+                    customErr.code = 'INTERNAL_SERVER_ERROR';
+            
+                    return next(customErr);
+                }
+
+                if (candidatura.anunciante_entregou == 1){
+                    // Entregando a resposta de sucesso caso a candidatura tenha sido concluída.
+                        return res.status(200).json({
+                            mensagem: 'A candidatura está concluída, o animal foi efetivamente adotado, parabéns!',
+                            detalhes_animal_recebido: `${req.protocol}://${req.get('host')}/usuarios/animais/?getOne=${newAnimal.cod_animal}`
+                        });
+                    // Fim da entrega da resposta de sucesso caso a candidatura tenha sido concluída.
+                }
+
+                // Entregando a resposta de sucesso caso o candidato tenha declarado a recepção do animal, sem que o anunciante tenha validado a entrega.
+                    return res.status(200).json({
+                        mensagem: 'A recepção do animal foi validada, se o tutor do animal validar a entrega, você verá o animal em sua lista de animais.',
+                        detalhes_animal_anunciado: `${req.protocol}://${req.get('host')}/usuarios/animais/?getOne=${animalAnunciado.cod_animal}`
+                    });
+                // Fim da entrega da resposta de sucesso caso o candidato tenha declarado a recepção do animal, sem que o anunciante tenha validado a entrega.
+
+            }
+            // Fim dos possíveis processos de validação/conclusão da candidatura/adoção.
+
+        }
+    // Fim do processo de conclusão de uma candidatura / adoção.
+
 });
 
 router.post('/:codAnuncio', async (req, res, next) => {
 
     // Início da verificação do parâmetro de rota.
         if (String(req.params.codAnuncio).match(/[^\d]+/g)){
+
+            let candidaturaPostSubrouters = [
+                'pontosencontro'
+            ];
+
+            if ( candidaturaPostSubrouters.includes(String(req.params.codAnuncio)) ){
+                // Se os subrouters que precisarem de parâmetros forem chamados sem parâmetros e cairem aqui, passe a requisição adiante, respondendo (404 - Not Found).
+                return next();
+            }
+
             return res.status(400).json({
                 mensagem: "Requisição inválida - O ID de um Anúncio deve conter apenas dígitos.",
                 code: 'BAD_REQUEST'
@@ -994,9 +1513,9 @@ router.post('/:codAnuncio', async (req, res, next) => {
             });
 
         } catch (error) {
-            console.error('Algo inesperado aconteceu ao buscar os do anúncio que receberá a candidatura.', error);
+            console.error('Algo inesperado aconteceu ao buscar os dados do anúncio que receberá a candidatura.', error);
 
-            let customErr = new Error('Algo inesperado aconteceu ao buscar os do anúncio que receberá a candidatura. Entre em contato com o administrador.');
+            let customErr = new Error('Algo inesperado aconteceu ao buscar os dados do anúncio que receberá a candidatura. Entre em contato com o administrador.');
             customErr.status = 500;
             customErr.code = 'INTERNAL_SERVER_ERROR'
     
@@ -1259,6 +1778,7 @@ router.patch('/:codCandidatura', async (req, res, next) => {
                 where: {
                     cod_candidatura: cod_candidatura,
                     ativo: 1,   // A candidatura deve estar ativa.
+                    '$Anuncio.estado_anuncio$': 'Aberto',   // O anúncio deve estar em Aberto.
                     '$Usuario.esta_ativo$': 1,  // O candidato deve estar ativo.
                     '$Anuncio.Usuario.esta_ativo$': 1   // O anunciante deve estar ativo.
                 }
@@ -1502,6 +2022,15 @@ router.patch('/:codCandidatura', async (req, res, next) => {
                                     });
                                 }
                                 break
+                            case 'Concluida':
+                                // Se a Candidatura estiver "Concluida", o anunciante não poderá alterar seus dados.
+                                if (req.body.estado_candidatura){
+                                    return res.status(409).json({
+                                        mensagem: 'A candidatura está [ Concluida ], não é possível alterar seus estados.',
+                                        code: 'STATE_ALREADY_IN_USE'
+                                    });
+                                }
+                                break;
                             default: break;
                         }
                         // Fim da verificação das restrições de alteração para o estado da candidatura.
@@ -1842,17 +2371,21 @@ router.patch('/:codCandidatura', async (req, res, next) => {
                             candidaturaPosAlteracao = await candidaturaPosAlteracao.get({ plain: true });
                         // Fim da captura dos dados após as alterações do Anunciante.
 
-                        // Início da fixação do novo Documento de Responsabilidade no sistema -- Caso a operação alterou o "estado_candidatura" para "Aprovada".
-                            if (req.body.estado_candidatura == 'Aprovada'){
+                        // Início da fixação do novo Documento de Responsabilidade no sistema -- Caso a operação alterou o "estado_candidatura" de "Em avaliacao" para "Aprovada".
+                            if (candidatura.estado_candidatura == 'Em avaliacao' && req.body.estado_candidatura == 'Aprovada'){
 
                                 // Fixando o documento do Anunciante.
                                     const anunciante_updatedPdf_name = candidaturaPosAlteracao.DocAnunciante.uid_doc;
                                     const anunciante_updatedPdf_path = path.resolve(__dirname, '../docs/tmp', `${anunciante_updatedPdf_name}`);
                                     const anunciante_updatedPdf_finalPath = path.resolve(__dirname, '../docs/candidaturas_aprovadas', `${anunciante_updatedPdf_name}`);
 
-                                    mv(anunciante_updatedPdf_path, anunciante_updatedPdf_finalPath, (error) => {
-                                        if (error) { throw new Error(error) };
-                                    });
+                                    if (fs.existsSync(anunciante_updatedPdf_path)){
+                                        mv(anunciante_updatedPdf_path, anunciante_updatedPdf_finalPath, (error) => {
+                                            if (error) { throw new Error(error) };  // <-- Crasha o sistema @_@'
+                                        });
+                                    } else {
+                                        throw new Error('Não foi possível encontrar o arquivo de PDF atualizado no diretório temporário.');
+                                    }
                                 // Fim da fixação do documento do Anunciante.
 
                                 // Fixando o documento do Candidato.
@@ -1860,9 +2393,13 @@ router.patch('/:codCandidatura', async (req, res, next) => {
                                     const candidato_updatedPdf_path = path.resolve(__dirname, '../docs/tmp', `${candidato_updatedPdf_name}`);
                                     const candidato_updatedPdf_finalPath = path.resolve(__dirname, '../docs/candidaturas_aprovadas', `${candidato_updatedPdf_name}`);
 
-                                    mv(candidato_updatedPdf_path, candidato_updatedPdf_finalPath, (error) => {
-                                        if (error) { throw new Error(error) };
-                                    });
+                                    if (fs.existsSync(candidato_updatedPdf_path)){
+                                        mv(candidato_updatedPdf_path, candidato_updatedPdf_finalPath, (error) => {
+                                            if (error) { throw new Error(error) };
+                                        });
+                                    } else {
+                                        throw new Error('Não foi possível encontrar o arquivo de PDF atualizado no diretório temporário.');
+                                    }
                                 // Fim da fixação do documento do Candidato.
                                 
                             }
@@ -1898,8 +2435,8 @@ router.patch('/:codCandidatura', async (req, res, next) => {
             // Fim da efetivação das alterações na candidatura por parte do anunciante.
 
             // Verificando se a candidatura possuia Documentos de Responsabilidade vínculados a ela.
-            // Essa verificação só deve ocorrer caso a operação alterou o "estado_candidatura" para "Aprovada", pois a operação gera um novo Documento de Responsabilidade.
-                if (req.body.estado_candidatura == 'Aprovada'){
+            // Essa verificação só deve ocorrer caso a operação alterou o "estado_candidatura" de "Em avaliacao" para "Aprovada", pois a operação gera um novo Documento de Responsabilidade.
+                if (candidatura.estado_candidatura == 'Em avaliacao' && req.body.estado_candidatura == 'Aprovada'){
 
                     if (candidatura.cod_doc_anunciante){
                         const anunciante_oldPdf_name = candidatura.DocAnunciante.uid_doc;
