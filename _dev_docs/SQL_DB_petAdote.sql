@@ -114,6 +114,7 @@ CREATE TABLE tbl_animal (
 	cod_animal INT UNSIGNED NOT NULL UNIQUE AUTO_INCREMENT,
     cod_dono INT UNSIGNED NOT NULL,
     cod_dono_antigo INT UNSIGNED,
+    ativo TINYINT UNSIGNED NOT NULL DEFAULT 1,
     estado_adocao ENUM('Sob protecao', 'Em anuncio', 'Em processo adotivo', 'Adotado') NOT NULL DEFAULT 'Sob protecao',
     nome VARCHAR(50) NOT NULL,
     foto VARCHAR(255) NOT NULL DEFAULT 'default_unknown_pet.jpeg',
@@ -134,6 +135,9 @@ CREATE TABLE tbl_animal (
     FOREIGN KEY (cod_dono) REFERENCES tbl_usuario(cod_usuario),
     FOREIGN KEY (cod_dono_antigo) REFERENCES tbl_usuario(cod_usuario)
 );
+
+ALTER TABLE tbl_animal
+ADD COLUMN ativo TINYINT UNSIGNED NOT NULL DEFAULT 1 AFTER cod_dono_antigo;
 
 ALTER TABLE tbl_animal
 MODIFY COLUMN nome VARCHAR(50) NOT NULL;
@@ -794,6 +798,9 @@ SELECT * FROM tbl_anuncio;
 SELECT * FROM tbl_animal;
 SELECT * FROM tbl_album_animal;
 SELECT * FROM tbl_foto_animal;
+
+SELECT * FROM tbl_animal
+ORDER BY ativo DESC;
 
 SELECT * FROM tbl_usuario;
 SELECT * FROM tbl_conta_local;

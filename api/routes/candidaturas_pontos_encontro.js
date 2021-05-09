@@ -726,70 +726,70 @@ router.post('/:codCandidatura', async (req, res, next) => {
 
         // Início da efetivação do registro de um novo Ponto de Encontro para a Candidatura.
         
-                let dataAtual = new Date();
-                let novoPontoEncontro = undefined;
+            let dataAtual = new Date();
+            let novoPontoEncontro = undefined;
 
-                try {
+            try {
 
-                    await database.transaction( async (transaction) => {
+                await database.transaction( async (transaction) => {
 
-                        // Início da inativação dos Pontos de Encontro anteriores.
-                            await PontoEncontro.update({
-                                ativo: 0,
-                                data_modificacao: dataAtual
-                            }, {
-                                where: {
-                                    cod_candidatura: cod_candidatura
-                                },
-                                limit: 1,
-                                transaction
-                            });
-                        // Fim da inativação dos Pontos de Encontro anteriores.
+                    // Início da inativação dos Pontos de Encontro anteriores.
+                        await PontoEncontro.update({
+                            ativo: 0,
+                            data_modificacao: dataAtual
+                        }, {
+                            where: {
+                                cod_candidatura: cod_candidatura
+                            },
+                            limit: 1,
+                            transaction
+                        });
+                    // Fim da inativação dos Pontos de Encontro anteriores.
 
-                        // Início do registro do novo Ponto de encontro.
-                            novoPontoEncontro = await PontoEncontro.create({
-                                cod_candidatura: cod_candidatura,
-                                cod_anunciante: candidatura.Anuncio.cod_anunciante,
-                                cod_candidato: candidatura.cod_candidato,
-                                cep: req.body.cep,
-                                logradouro: req.body.logradouro,
-                                bairro: req.body.bairro,
-                                cidade: req.body.cidade,
-                                uf: req.body.uf,
-                                numero: req.body.numero
-                            }, {
-                                transaction
-                            });
+                    // Início do registro do novo Ponto de encontro.
+                        novoPontoEncontro = await PontoEncontro.create({
+                            cod_candidatura: cod_candidatura,
+                            cod_anunciante: candidatura.Anuncio.cod_anunciante,
+                            cod_candidato: candidatura.cod_candidato,
+                            cep: req.body.cep,
+                            logradouro: req.body.logradouro,
+                            bairro: req.body.bairro,
+                            cidade: req.body.cidade,
+                            uf: req.body.uf,
+                            numero: req.body.numero
+                        }, {
+                            transaction
+                        });
 
-                            novoPontoEncontro = await novoPontoEncontro.get({ plain: true });   // Captura os dados em um JSON.
-                        // Fim do registro do novo Ponto de encontro.
+                        novoPontoEncontro = await novoPontoEncontro.get({ plain: true });   // Captura os dados em um JSON.
+                    // Fim do registro do novo Ponto de encontro.
 
-                        // Início do envio da resposta de sucesso.
-                            return res.status(200).json({
-                                mensagem: 'O Ponto de Encontro foi definido para a candidatura, agora a candidatura pode ser aprovada.',
-                                ponto_encontro: novoPontoEncontro
-                            });
-                        // Fim do envio da resposta de sucesso.
+                    // Início do envio da resposta de sucesso.
+                        return res.status(200).json({
+                            mensagem: 'O Ponto de Encontro foi definido para a candidatura, agora a candidatura pode ser aprovada.',
+                            ponto_encontro: novoPontoEncontro
+                        });
+                    // Fim do envio da resposta de sucesso.
 
-                    })
-                    .catch((error) => {
-                        // Se qualquer erro acontecer no bloco acima, cairemos em CATCH do bloco TRY e faremos o rollback;
-                        throw new Error(error);
-                    });
+                })
+                .catch((error) => {
+                    // Se qualquer erro acontecer no bloco acima, cairemos em CATCH do bloco TRY e faremos o rollback;
+                    throw new Error(error);
+                });
 
-                    // Auto-commit.
-                } catch (error) {
-                    // Rollback.
+                // Auto-commit.
+            } catch (error) {
+                // Rollback.
 
-                    console.error('Algo inesperado aconteceu ao cadastrar um novo Ponto de Encontro para a Candidatura.', error);
+                console.error('Algo inesperado aconteceu ao cadastrar um novo Ponto de Encontro para a Candidatura.', error);
 
-                    let customErr = new Error('Algo inesperado aconteceu ao cadastrar um novo Ponto de Encontro para a Candidatura. Entre em contato com o administrador.');
-                    customErr.status = 500;
-                    customErr.code = 'INTERNAL_SERVER_ERROR';
+                let customErr = new Error('Algo inesperado aconteceu ao cadastrar um novo Ponto de Encontro para a Candidatura. Entre em contato com o administrador.');
+                customErr.status = 500;
+                customErr.code = 'INTERNAL_SERVER_ERROR';
 
-                    return next( customErr );
+                return next( customErr );
 
-                }
+            }
 
         // Fim da efetivação do registro de um novo Ponto de Encontro para a Candidatura.
 

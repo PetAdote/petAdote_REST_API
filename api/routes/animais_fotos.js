@@ -494,7 +494,7 @@ router.get('/', async (req, res, next) => {
                 }],
                 where: {
                     ativo: 1,
-                   '$AlbumAnimal.Animal.dono.esta_ativo$': 1
+                    '$AlbumAnimal.Animal.dono.esta_ativo$': 1
                 },
                 nest: true,
                 raw: true
@@ -1394,6 +1394,8 @@ router.post('/:codAlbum', async (req, res, next) => {
                 }],
                 where: {
                     cod_album: cod_album,
+                    '$Animal.estado_adocao$': ['Sob protecao', 'Em anuncio', 'Em processo adotivo'],
+                    '$Animal.ativo$': 1,
                     '$Animal.dono.esta_ativo$': 1
                 },
                 nest: true,
@@ -1418,7 +1420,7 @@ router.post('/:codAlbum', async (req, res, next) => {
         if (!album){
             // Se o álbum não foi encontrado, ele não existe ou o dono do animal que está vinculado ao álbum está inativo.
             return res.status(404).json({
-                mensagem: 'Não foi possível encontrar o álbum para realizar a adição da foto.',
+                mensagem: 'O álbum não foi encontrado ou o animal não está apto a receber novas fotos.',
                 code: 'RESOURCE_NOT_FOUND',
                 lista_albuns: `${req.protocol}://${req.get('host')}/usuarios/animais/albuns/?getAllActive=1`,
             });

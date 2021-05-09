@@ -19,6 +19,7 @@ const {DataTypes, Model, Sequelize} = require('sequelize');
         cod_dono_antigo: { type: DataTypes.INTEGER.UNSIGNED, 
             references: { model: Model.Usuario, key: 'cod_usuario' }
         },
+        ativo: { type: DataTypes.TINYINT.UNSIGNED, allowNull: false, defaultValue: 1 },
         estado_adocao: { type: DataTypes.ENUM('Sob protecao', 'Em anuncio', 'Em processo adotivo', 'Adotado'), allowNull: false, defaultValue: 'Sob protecao'},
         nome: { type: DataTypes.STRING(50), allowNull: false },
         foto: { type: DataTypes.STRING(255), allowNull: false, defaultValue: 'default_unknown_pet.jpeg' },
@@ -47,22 +48,22 @@ const {DataTypes, Model, Sequelize} = require('sequelize');
             allowNull: false
         });
 
-        Usuario.hasMany(Animal, {
-            as: 'dono',
-            foreignKey: 'cod_dono',
-            allowNull: false
-        })
+            Usuario.hasMany(Animal, {
+                as: 'animais_sou_dono',
+                foreignKey: 'cod_dono',
+                allowNull: false
+            })
 
         Animal.belongsTo(Usuario, {
             as: 'dono_antigo',
             foreignKey: 'cod_dono_antigo'
         });
 
-        Usuario.hasMany(Animal, {
-            as: 'dono_antigo',
-            foreignKey: 'cod_dono_antigo',
-            allowNull: false
-        })
+            Usuario.hasMany(Animal, {
+                as: 'animais_fui_dono',
+                foreignKey: 'cod_dono_antigo',
+                allowNull: false
+            })
 
 // Exportação.
 module.exports = Animal;

@@ -1,5 +1,8 @@
 // Importações.
 
+    // Conexões.
+        const database = require('../../configs/database').connection;
+
     // Models.
         const Usuario = require('../models/Usuario');
 
@@ -19,6 +22,8 @@
         const sharp = require('sharp');     // 'sharp' para processar imagens.
 
         const mv = require('mv');           // 'mv' para mover arquivos de forma segura.
+
+        const { Op } = require('sequelize');
 
     // Helpers.
         const checkUserBlockList = require('../../helpers/check_user_BlockList');
@@ -53,7 +58,7 @@
                 }
 
             // Capturando os dados do usuário, se o requisitante for o usuário de uma aplicação Pet Adote.
-                let { usuario } = req.dadosAuthToken;
+                const { usuario } = req.dadosAuthToken;
 
         // Fim das Restrições de Acesso à Rota.
 
@@ -73,6 +78,8 @@
 
                     if (req.query?.getAllActive == '0') { operacao = 'getAllNotActive'; };
 
+                    if (req.query?.getAllByName) { operacao = 'getAllByName'; };
+
                     break;
                 case 2:
                     if (req.query?.page && req.query?.limit) { operacao = 'getAll' };
@@ -81,11 +88,15 @@
 
                     if (req.query?.getAllActive == '0' && req.query?.page) { operacao = 'getAllNotActive'; };
 
+                    if (req.query?.getAllByName && page) { operacao = 'getAllByName'; };
+
                     break;
                 case 3:
                     if (req.query?.getAllActive == '1' && req.query?.page && req.query?.limit) { operacao = 'getAllActive'; };
 
                     if (req.query?.getAllActive == '0' && req.query?.page && req.query?.limit) { operacao = 'getAllNotActive'; };
+
+                    if (req.query?.getAllByName && page && limit) { operacao = 'getAllByName'; };
 
                     break;
                 default:
@@ -136,6 +147,15 @@
             // Fim das configuração de paginação.
 
             // Início das operações de busca.
+
+                if (!operacao){
+                    
+                    return res.status(400).json({
+                        mensagem: 'Algum parâmetro inválido foi passado na URL da requisição.',
+                        code: 'BAD_REQUEST'
+                    });
+        
+                };
 
                 if (operacao == 'getAll'){
 
@@ -433,14 +453,129 @@
 
                 }
 
-                if (!operacao){
+                if (operacao == 'getAllByName'){
+
+                    // Chamada para Usuários.
+                    // Entrega uma lista contendo o nome de um usuário e o end-point para os detalhes do usuário.
+                    // Permite que usuários busquem por outros usuários sabendo apenas o nome. Útil para listagens simplicadas de usuários.
+
+                    const nameToFind = req.query.getAllByName;
+
+                    Usuario.findAndCountAll({
+                        where: [ 
+                            database.Sequelize.where(
+                                database.Sequelize.fn(
+                                    'concat',
+                                    database.Sequelize.col('primeiro_nome'),
+                                    ' ',
+                                    database.Sequelize.col('sobrenome')
+                                ), {
+                                    [Op.like]: `%${nameToFind}%`
+                                }
+                            ), {
+                                esta_ativo: 1,
+                                e_admin: 0
+                            }
+                        ],
+                        limit: paginationLimit,
+                        offset: paginationOffset
+                    })
+                    .then( async (resultArr) => {
+
+                        if (resultArr.count === 0){
+                            return res.status(200).json({
+                                mensagem: `Nenhum usuário possui o nome parecido com o que foi declarado.`
+                            });
+                        }
+
+                        // Início da construção do objeto enviado na resposta.
+
+                            // Início da Verificação da Lista de Bloqueios de usuários requisitantes.
+                                let listaBloqueios = undefined;
+
+                                if (usuario){
+                                    listaBloqueios = await checkUserBlockList(usuario.cod_usuario);
+                                }
+
+                            // Fim da Verificação da Lista de Bloqueios de usuários requisitantes.
+
+                            let total_usuarios = resultArr.count - (listaBloqueios?.length || 0);   // Se por algum motivo listaBloqueios ficar NULL ou UNDEFINED, atribua zero à operação.
+
+                            let total_paginas = Math.ceil(total_usuarios / paginationLimit);
+
+                            let usuarios = [];
+
+                            let voltar_pagina = undefined;
+                            let avancar_pagina = undefined;
+
+                            if (requestedPage > 1 && requestedPage <= total_paginas){
+                                voltar_pagina = `${req.protocol}://${req.get('host')}/usuarios/?getAllByName=${nameToFind}&page=${requestedPage - 1}&limit=${paginationLimit}`;
+                            }
+
+                            if (requestedPage < total_paginas){
+                                avancar_pagina = `${req.protocol}://${req.get('host')}/usuarios/?getAllByName=${nameToFind}&page=${requestedPage + 1}&limit=${paginationLimit}`;
+                            } 
+
+                            if (requestedPage > total_paginas){
+                                return res.status(404).json({
+                                    mensagem: 'Você chegou ao final da lista de usuário.',
+                                    code: 'RESOURCE_NOT_FOUND'
+                                });
+                            }
+
+                            // Início da inclusão de atributos extra.
+                                resultArr.rows.forEach((usuario) => {
+
+                                    usuario = usuario.get({ plain: true });
+
+                                    let dadosUsuario = {};
+
+                                    // Separando os dados do objeto.
+                                        // ...
+                                    // Fim da separação dos dados.
+
+                                    // Inclusão de atributos essenciais aos clientes.
+                                        dadosUsuario.cod_usuario = `${usuario.cod_usuario}`;
+                                        dadosUsuario.nome_completo = `${usuario.primeiro_nome} ${usuario.sobrenome}`;
+                                        dadosUsuario.download_avatar = `${req.protocol}://${req.get('host')}/usuarios/avatars/${usuario.foto_usuario}`;
+                                        dadosUsuario.detalhes = `${req.protocol}://${req.get('host')}/usuarios/${usuario.cod_usuario}`;
+                                    // Fim da inclusão de atributos essenciais aos clientes.
+
+                                    // Unindo os dados em objeto em um objeto.
+                                        // ...
+                                    // Fim da união dos dados em um objeto.
+
+                                    usuarios.push(dadosUsuario);
+                                });
+                            // Fim da inclusão de atributos extra.
+                            
+                        // Fim da construção do objeto enviado na resposta.
+
+                        // Início do envio da Resposta.
+                            return res.status(200).json({
+                                mensagem: `Lista de usuários.`,
+                                total_usuarios,
+                                total_paginas,
+                                usuarios,
+                                voltar_pagina,
+                                avancar_pagina
+                            });
+                        // Fim do envio da resposta.
+
+                    })
+                    .catch((error) => {
+                        console.error('Algo inesperado aconteceu ao buscar a lista de usuários com o nome declarado.', error);
+
+                        let customErr = new Error('Algo inesperado aconteceu ao buscar a lista de usuários com o nome declarado. Entre em contato com o administrador.');
+                        customErr.status = 500;
+                        customErr.code = 'INTERNAL_SERVER_ERROR'
                 
-                    return res.status(400).json({
-                        mensagem: 'Algum parâmetro inválido foi passado na URL da requisição.',
-                        code: 'BAD_REQUEST'
+                        return next( customErr );
                     });
-        
-                };
+
+
+                }
+                
 
             // Fim das operações de busca.
 

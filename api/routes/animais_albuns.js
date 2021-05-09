@@ -290,6 +290,8 @@ router.get('/', async (req, res, next) => {
                     }]
                 }],
                 where: {
+                    '$Animal.ativo$': 1,
+                    '$Animal.estado_adocao$': ['Sob protecao', 'Em anuncio', 'Em processo adotivo'],
                     '$Animal.dono.esta_ativo$': 1
                 },
                 limit: paginationLimit,
@@ -326,6 +328,8 @@ router.get('/', async (req, res, next) => {
                                 }],
                                 where: {
                                     '$Animal.cod_dono$': listaBloqueios,
+                                    '$Animal.ativo$': 1,
+                                    '$Animal.estado_adocao$': ['Sob protecao', 'Em anuncio', 'Em processo adotivo'],
                                     '$Animal.dono.esta_ativo$': 1
                                 },
                                 // limit: paginationLimit,
@@ -543,6 +547,8 @@ router.get('/', async (req, res, next) => {
                 }],
                 where: {
                     cod_animal: cod_animal,
+                    '$Animal.ativo$': 1,
+                    '$Animal.estado_adocao$': ['Sob protecao', 'Em anuncio', 'Em processo adotivo'],
                     '$Animal.dono.esta_ativo$': 1
                 },
                 limit: paginationLimit,
@@ -674,6 +680,8 @@ router.get('/', async (req, res, next) => {
                 }],
                 where: {
                     cod_album: cod_album,
+                    '$Animal.ativo$': 1,
+                    '$Animal.estado_adocao$': ['Sob protecao', 'Em anuncio', 'Em processo adotivo'],
                     '$Animal.dono.esta_ativo$': 1
                 },
                 nest: true,

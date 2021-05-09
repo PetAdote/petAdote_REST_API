@@ -2301,7 +2301,7 @@ router.post('/:codAnimal', async (req, res, next) => {
         let animal = undefined;
 
         try {
-            // Para gerar um anúncio do animal, o dono do animal deve estar ativo.
+            // Para gerar um anúncio do animal, o dono do animal deve estar ativo e estar com o estado "Sob protecao" ou "Em anuncio".
             animal = await Animal.findOne({
                 include: [{
                     model: Usuario,
@@ -2311,7 +2311,8 @@ router.post('/:codAnimal', async (req, res, next) => {
                 }],
                 where: {
                     cod_animal: cod_animal,
-                    // ativo: 1,
+                    ativo: 1,
+                    estado_adocao: ['Sob protecao', 'Em anuncio'],
                     '$dono.esta_ativo$': 1
                 },
                 nest: true,

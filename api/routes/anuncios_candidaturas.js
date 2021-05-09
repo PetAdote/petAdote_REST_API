@@ -534,6 +534,7 @@ router.get('/', async (req, res, next) => {
 
             // Chamada para Usuários dos Clientes.
             // Entrega a lista de candidaturas ativas (ativo = 1) do usuário em um dos 3 estados ('Em avaliacao', 'Aprovada', 'Rejeitada').
+            // Ou seja, entrega os dados da perspectiva do Candidato.
 
             // Início da definição do tipo de busca.
                 let estadoCandidatura = undefined;
@@ -637,6 +638,21 @@ router.get('/', async (req, res, next) => {
                                 dadosCandidato.download_foto_candidato = `GET ${req.protocol}://${req.get('host')}/usuarios/avatars/${dadosCandidato.foto_usuario}`;
 
                                 dadosAnunciante.download_foto_anunciante = `GET ${req.protocol}://${req.get('host')}/usuarios/avatars/${dadosAnunciante.foto_usuario}`;
+
+                                switch (estadoCandidatura){
+                                    case 'Em avaliacao':
+                                        dadosCandidatura.rmv_candidatura = `PATCH ${req.protocol}://${req.get('host')}/anuncios/candidaturas/${candidatura.cod_candidatura}`;
+                                        break;
+                                    case 'Aprovada':
+                                        dadosCandidatura.termo_responsabilidade = `GET ${req.protocol}://${req.get('host')}/anuncios/candidaturas/documentos/?fromCandidature=${candidatura.cod_candidatura}`;
+                                        dadosCandidatura.rmv_candidatura = `PATCH ${req.protocol}://${req.get('host')}/anuncios/candidaturas/${candidatura.cod_candidatura}`;
+                                        break;
+                                    case 'Rejeitada':
+                                        dadosCandidatura.rmv_candidatura = `PATCH ${req.protocol}://${req.get('host')}/anuncios/candidaturas/${candidatura.cod_candidatura}`;
+                                        break;
+                                    default:
+                                        break;
+                                }  
                             // Fim da inclusão de atributos essenciais aos clientes.
 
                             // Unindo os dados em objeto em um objeto "dadosCandidatura".
@@ -679,6 +695,7 @@ router.get('/', async (req, res, next) => {
 
             // Chamada para Usuários dos Clientes.
             // Entrega a lista de candidaturas ativas (ativo = 1) relacionadas ao anúncio. Apenas o anunciante poderá visualizar a lista do anúncio.
+            // Ou seja, entrega os dados da perspectiva do Anunciante.
 
             // Início da definição do tipo de busca.
                 let estadoCandidatura = undefined;
@@ -782,6 +799,22 @@ router.get('/', async (req, res, next) => {
                                 dadosCandidato.download_foto_candidato = `GET ${req.protocol}://${req.get('host')}/usuarios/avatars/${dadosCandidato.foto_usuario}`;
 
                                 dadosAnunciante.download_foto_anunciante = `GET ${req.protocol}://${req.get('host')}/usuarios/avatars/${dadosAnunciante.foto_usuario}`;
+
+                                switch (estadoCandidatura){
+                                    case 'Em avaliacao':
+                                        dadosCandidatura.definir_ponto_encontro = `POST ${req.protocol}://${req.get('host')}/anuncios/candidaturas/pontosencontro/${candidatura.cod_candidatura}`;
+                                        dadosCandidatura.decidir_candidatura = `PATCH ${req.protocol}://${req.get('host')}/anuncios/candidaturas/${candidatura.cod_candidatura}`;
+                                        break;
+                                    case 'Aprovada':
+                                        dadosCandidatura.termo_responsabilidade = `GET ${req.protocol}://${req.get('host')}/anuncios/candidaturas/documentos/?fromCandidature=${candidatura.cod_candidatura}`;
+                                        dadosCandidatura.reconsiderar_candidatura = `PATCH ${req.protocol}://${req.get('host')}/anuncios/candidaturas/${candidatura.cod_candidatura}`;
+                                        break;
+                                    case 'Rejeitada':
+                                        dadosCandidatura.reconsiderar_candidatura = `PATCH ${req.protocol}://${req.get('host')}/anuncios/candidaturas/${candidatura.cod_candidatura}`;
+                                        break;
+                                    default:
+                                        break;
+                                }                                
                             // Fim da inclusão de atributos essenciais aos clientes.
 
                             // Unindo os dados em objeto em um objeto "dadosCandidatura".
