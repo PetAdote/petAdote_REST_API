@@ -2088,7 +2088,7 @@ router.post('/', async (req, res, next) => {
                         break;
                 }
 
-                const albumAnimal = await AlbumAnimal.create({
+                let albumAnimal = await AlbumAnimal.create({
                     cod_animal: animal.cod_animal,
                     titulo: `${albumPrefix} ${animal.nome}`,
                 }, {
@@ -2101,7 +2101,7 @@ router.post('/', async (req, res, next) => {
                     // Início da adição de atributos extras ao objeto.
 
                         // Adicionando o end-point para exibição da foto do animal.
-                            objAnimal.download_foto = `${req.protocol}://${req.get('host')}/usuarios/animais/albuns/fotos/${animal.foto}`
+                            objAnimal.download_foto = `GET ${req.protocol}://${req.get('host')}/usuarios/animais/albuns/fotos/${animal.foto}`
                         // --------------------------------------------------------
 
                     // Fim da adição de atributos extras ao objeto.
@@ -2111,8 +2111,11 @@ router.post('/', async (req, res, next) => {
                 // Início da entrega da mensagem de conclusão do cadastro do animal para o usuário.
 
                     return res.status(200).json({
-                        mensagem: 'Cadastro do animal foi realizado com sucesso! Utilize o [ cod_animal ] para alterar dados do animal, como por exemplo, trocar a [ foto ] padrão.',
-                        animal: objAnimal
+                        mensagem: 'Cadastro do animal foi realizado com sucesso! Utilize o [ cod_animal ] para alterar dados do animal, como por exemplo, trocar a [ foto ] padrão, ou o [ cod_album ] para adicionar uma nova foto ao álbum do animal.',
+                        animal: objAnimal,
+                        alterar_foto: `PATCH ${req.protocol}://${req.get('host')}/usuarios/animais/${animal.cod_animal}`,
+                        album: albumAnimal,
+                        add_foto_album: `POST ${req.protocol}://${req.get('host')}/usuarios/animais/albuns/fotos/${albumAnimal.cod_album}`,
                     });
 
                 // Fim da entrega da mensagem de conclusão do cadastro do animal para o usuário.
@@ -2749,6 +2752,14 @@ router.patch('/:codAnimal', async (req, res, next) => {
 
                                     })
                                     .catch((errorFindAnimal) => {
+
+                                        console.error(`Algo inesperado aconteceu ao buscar os dados atualizados do animal.`, errorFindAnimal);
+
+                                        let customErr = new Error('Algo inesperado aconteceu ao buscar os dados atualizados do animal. Entre em contato com o administrador.');
+                                        customErr.status = 500;
+                                        customErr.code = 'INTERNAL_SERVER_ERROR';
+
+                                        return next( customErr );
 
                                     })
                                     // Fim do envio da resposta com os dados do animal atualizados.

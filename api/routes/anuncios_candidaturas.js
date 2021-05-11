@@ -283,6 +283,8 @@ router.get('/', async (req, res, next) => {
                     model: Anuncio,
                     include: [{
                         model: Usuario
+                    }, {
+                        model: Animal
                     }]
                 }, {
                     model: Usuario
@@ -332,6 +334,8 @@ router.get('/', async (req, res, next) => {
                             // Separando os dados do objeto.
                                 let dadosAnunciante = candidatura.Anuncio.Usuario;
                                     delete candidatura.Anuncio.Usuario;
+                                let dadosAnimal = candidatura.Anuncio.Animal;
+                                    delete candidatura.Anuncio.Animal;
                                 let dadosCandidato = candidatura.Usuario;
                                     delete candidatura.Usuario;
                                 let dadosAnuncio = candidatura.Anuncio;
@@ -342,6 +346,8 @@ router.get('/', async (req, res, next) => {
                             // Inclusão de atributos essenciais aos clientes.
                                 dadosAnuncio.download_foto_anuncio = `GET ${req.protocol}://${req.get('host')}/usuarios/animais/albuns/fotos/${dadosAnuncio.uid_foto_animal}`;
 
+                                dadosAnimal.download_foto_animal = `GET ${req.protocol}://${req.get('host')}/usuarios/animais/albuns/fotos/${dadosAnimal.foto}`;
+
                                 dadosCandidato.download_foto_candidato = `GET ${req.protocol}://${req.get('host')}/usuarios/avatars/${dadosCandidato.foto_usuario}`;
 
                                 dadosAnunciante.download_foto_anunciante = `GET ${req.protocol}://${req.get('host')}/usuarios/avatars/${dadosAnunciante.foto_usuario}`;
@@ -349,6 +355,7 @@ router.get('/', async (req, res, next) => {
 
                             // Unindo os dados em objeto em um objeto "dadosCandidatura".
                                 dadosCandidatura.anuncio = dadosAnuncio;
+                                dadosCandidatura.animal = dadosAnimal;
                                 dadosCandidatura.anunciante = dadosAnunciante;
                                 dadosCandidatura.candidato = dadosCandidato;
                             // Fim da união dos dados em um objeto "dadosCandidatura"
@@ -421,6 +428,8 @@ router.get('/', async (req, res, next) => {
                     model: Anuncio,
                     include: [{
                         model: Usuario
+                    }, {
+                        model: Animal
                     }]
                 }, {
                     model: Usuario
@@ -479,6 +488,8 @@ router.get('/', async (req, res, next) => {
                             // Separando os dados do objeto.
                                 let dadosAnunciante = candidatura.Anuncio.Usuario;
                                     delete candidatura.Anuncio.Usuario;
+                                let dadosAnimal = candidatura.Anuncio.Animal;
+                                    delete candidatura.Anuncio.Animal;
                                 let dadosCandidato = candidatura.Usuario;
                                     delete candidatura.Usuario;
                                 let dadosAnuncio = candidatura.Anuncio;
@@ -489,6 +500,8 @@ router.get('/', async (req, res, next) => {
                             // Inclusão de atributos essenciais aos clientes.
                                 dadosAnuncio.download_foto_anuncio = `GET ${req.protocol}://${req.get('host')}/usuarios/animais/albuns/fotos/${dadosAnuncio.uid_foto_animal}`;
 
+                                dadosAnimal.download_foto_animal = `GET ${req.protocol}://${req.get('host')}/usuarios/animais/albuns/fotos/${dadosAnimal.foto}`;
+
                                 dadosCandidato.download_foto_candidato = `GET ${req.protocol}://${req.get('host')}/usuarios/avatars/${dadosCandidato.foto_usuario}`;
 
                                 dadosAnunciante.download_foto_anunciante = `GET ${req.protocol}://${req.get('host')}/usuarios/avatars/${dadosAnunciante.foto_usuario}`;
@@ -496,6 +509,7 @@ router.get('/', async (req, res, next) => {
 
                             // Unindo os dados em objeto em um objeto "dadosCandidatura".
                                 dadosCandidatura.anuncio = dadosAnuncio;
+                                dadosCandidatura.animal = dadosAnimal;
                                 dadosCandidatura.anunciante = dadosAnunciante;
                                 dadosCandidatura.candidato = dadosCandidato;
                             // Fim da união dos dados em um objeto "dadosCandidatura"
@@ -559,6 +573,8 @@ router.get('/', async (req, res, next) => {
                     model: Anuncio,
                     include: [{
                         model: Usuario
+                    }, {
+                        model: Animal
                     }]
                 }, {
                     model: Usuario
@@ -625,6 +641,8 @@ router.get('/', async (req, res, next) => {
                             // Separando os dados do objeto.
                                 let dadosAnunciante = candidatura.Anuncio.Usuario;
                                     delete candidatura.Anuncio.Usuario;
+                                let dadosAnimal = candidatura.Anuncio.Animal;
+                                    delete candidatura.Anuncio.Animal;
                                 let dadosCandidato = candidatura.Usuario;
                                     delete candidatura.Usuario;
                                 let dadosAnuncio = candidatura.Anuncio;
@@ -634,6 +652,8 @@ router.get('/', async (req, res, next) => {
 
                             // Inclusão de atributos essenciais aos clientes.
                                 dadosAnuncio.download_foto_anuncio = `GET ${req.protocol}://${req.get('host')}/usuarios/animais/albuns/fotos/${dadosAnuncio.uid_foto_animal}`;
+
+                                dadosAnimal.download_foto_animal = `GET ${req.protocol}://${req.get('host')}/usuarios/animais/albuns/fotos/${dadosAnimal.foto}`;
 
                                 dadosCandidato.download_foto_candidato = `GET ${req.protocol}://${req.get('host')}/usuarios/avatars/${dadosCandidato.foto_usuario}`;
 
@@ -657,6 +677,7 @@ router.get('/', async (req, res, next) => {
 
                             // Unindo os dados em objeto em um objeto "dadosCandidatura".
                                 dadosCandidatura.anuncio = dadosAnuncio;
+                                dadosCandidatura.animal = dadosAnimal;
                                 dadosCandidatura.anunciante = dadosAnunciante;
                                 dadosCandidatura.candidato = dadosCandidato;
                             // Fim da união dos dados em um objeto "dadosCandidatura"
@@ -720,6 +741,8 @@ router.get('/', async (req, res, next) => {
                     model: Anuncio,
                     include: [{
                         model: Usuario
+                    }, {
+                        model: Animal
                     }]
                 }, {
                     model: Usuario
@@ -786,6 +809,8 @@ router.get('/', async (req, res, next) => {
                             // Separando os dados do objeto.
                                 let dadosAnunciante = candidatura.Anuncio.Usuario;
                                     delete candidatura.Anuncio.Usuario;
+                                let dadosAnimal = candidatura.Anuncio.Animal;
+                                    delete candidatura.Anuncio.Animal;
                                 let dadosCandidato = candidatura.Usuario;
                                     delete candidatura.Usuario;
                                 let dadosAnuncio = candidatura.Anuncio;
@@ -795,6 +820,8 @@ router.get('/', async (req, res, next) => {
 
                             // Inclusão de atributos essenciais aos clientes.
                                 dadosAnuncio.download_foto_anuncio = `GET ${req.protocol}://${req.get('host')}/usuarios/animais/albuns/fotos/${dadosAnuncio.uid_foto_animal}`;
+
+                                dadosAnimal.download_foto_animal = `GET ${req.protocol}://${req.get('host')}/usuarios/animais/albuns/fotos/${dadosAnimal.foto}`;
 
                                 dadosCandidato.download_foto_candidato = `GET ${req.protocol}://${req.get('host')}/usuarios/avatars/${dadosCandidato.foto_usuario}`;
 
@@ -819,6 +846,7 @@ router.get('/', async (req, res, next) => {
 
                             // Unindo os dados em objeto em um objeto "dadosCandidatura".
                                 dadosCandidatura.anuncio = dadosAnuncio;
+                                dadosCandidatura.animal = dadosAnimal;
                                 dadosCandidatura.anunciante = dadosAnunciante;
                                 dadosCandidatura.candidato = dadosCandidato;
                             // Fim da união dos dados em um objeto "dadosCandidatura"

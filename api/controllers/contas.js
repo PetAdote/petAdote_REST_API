@@ -538,8 +538,7 @@
                     'bairro',
                     'cidade',
                     'uf',
-                    'numero',
-                    'complemento'
+                    'numero'
                 ];
             // Fim da lista de campos obrigatórios.
     
@@ -601,6 +600,10 @@
                         case 'confirma_senha': break;
                         case 'descricao': break;
                         case 'numero': break;
+                        case 'uf':
+                            // Deixa as letras da string em caixa alta.
+                            req.body[pair[0]] = pair[1].toUpperCase();
+                            break;
                         case 'complemento':
                             // Deixa a primeira letra da string como maiúscula.
                             req.body[pair[0]] = pair[1][0].toUpperCase() + pair[1].substr(1);
@@ -951,20 +954,23 @@
                             req.body.cpf = `${cpfDigitsArray.slice(0,3).join('')}.${cpfDigitsArray.slice(3,6).join('')}.${cpfDigitsArray.slice(6,9).join('')}-${cpfDigitsArray.slice(9).join('')}`;
                 
                             // Verificação do [ORM] sobre o CPF -- Caso o CPF já tenha sido utilizado, o usuário não poderá continuar o cadastro.
-                            await Usuario.findOne({ where: { cpf: req.body.cpf } })
+                            let isCpfAvailable = await Usuario.findOne({ where: { cpf: req.body.cpf } })
                             .then((result) => {
                                 if (result === null || result === undefined || result === ''){
                                     // console.log('[ORM] CPF livre!');
                                     return true;
-                                } else {
-                                    // console.log('[ORM] Esse CPF não está livre!');
-                                    return res.status(409).json({
-                                        mensagem: 'CPF - Em Uso.',
-                                        code: 'CPF_ALREADY_TAKEN'
-                                    });
                                 }
+
+                                return false;   // console.log('[ORM] Esse CPF não está livre!');
+                                    
                             });
-                
+
+                            if (!isCpfAvailable){
+                                return res.status(409).json({
+                                    mensagem: 'CPF - Em Uso.',
+                                    code: 'CPF_ALREADY_TAKEN'
+                                });
+                            }
                             
                         } else {
                             // console.log(`Erro: O CPF [${req.body.cpf}] é inválido!`)
@@ -1229,14 +1235,7 @@
                     }
                     // Fim da validação do 'numero'.
 
-                    // Validação do 'complemento'.
-                    if (req.body.complemento.length === 0 || req.body.numero.length > 255){
-                        return res.status(400).json({
-                            mensagem: 'COMPLEMENTO - Está vazio ou possui mais do que 255 caracteres.',
-                            code: 'INVALID_COMPLEMENTO_LENGTH',
-                        });
-                    }
-                    // Fim da validação do 'complemento'
+                    
                     
                 // Fim das validações relacionadas ao ENDEREÇO DO USUÁRIO.
         
@@ -1253,6 +1252,16 @@
                         code: 'INVALID_DESCRICAO_LENGTH'
                     })
                 }
+                // Fim da validação da descrição do usuário.
+
+                // Validação do campo 'complemento'.
+                if (req.body.complemento && req.body.complemento.length === 0 || req.body.numero.length > 255){
+                    return res.status(400).json({
+                        mensagem: 'COMPLEMENTO - Está vazio ou possui mais do que 255 caracteres.',
+                        code: 'INVALID_COMPLEMENTO_LENGTH',
+                    });
+                }
+                // Fim da validação do campo 'complemento'
 
             // Fim da validação dos campos opcionais.
     

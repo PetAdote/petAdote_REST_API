@@ -1224,22 +1224,28 @@
                             operacoes.cpf = `${cpfDigitsArray.slice(0,3).join('')}.${cpfDigitsArray.slice(3,6).join('')}.${cpfDigitsArray.slice(6,9).join('')}-${cpfDigitsArray.slice(9).join('')}`;
 
                             // Verificação do [ORM] sobre o CPF -- Caso o CPF já tenha sido utilizado, o usuário não poderá continuar a alteração
-                            await Usuario.findOne({ where: { cpf: operacoes.cpf } })
+                            let isCpfValid = await Usuario.findOne({ where: { cpf: operacoes.cpf } })
                             .then((result) => {
                                 if (result === null || result === undefined || result === ''){
                                     // console.log('[ORM] CPF livre!');
                                     return true;
                                 } else {
-                                    // console.log('[ORM] Esse CPF não está livre!');
+                                   
                                     if (result.cpf === operacoes.cpf){
                                         return true;
                                     }
-                                    return res.status(409).json({
-                                        mensagem: 'CPF - Em Uso.',
-                                        code: 'CPF_ALREADY_TAKEN'
-                                    });
+
+                                    return false;   // console.log('[ORM] Esse CPF não está livre!');
+                                    
                                 }
                             });
+
+                            if (!isCpfValid){
+                                return res.status(409).json({
+                                    mensagem: 'CPF - Em Uso.',
+                                    code: 'CPF_ALREADY_TAKEN'
+                                });
+                            }
                             
                         } else {
                             // console.log(`Erro: O CPF [${operacoes.cpf}] é inválido!`)

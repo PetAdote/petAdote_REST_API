@@ -268,6 +268,7 @@ router.get('/', (req, res, next) => {
                                         delete documento.Candidatura_DocAnunciante.Anuncio;
                                     dadosCandidatura = documento.Candidatura_DocAnunciante;
                                         delete documento.Candidatura_DocAnunciante;
+                                    delete documento.segredo_qrcode;
                                     dadosDocumento = documento;
                                 }
                                 
@@ -278,6 +279,7 @@ router.get('/', (req, res, next) => {
                                         delete documento.Candidatura_DocCandidato.Anuncio;
                                     dadosCandidatura = documento.Candidatura_DocCandidato;
                                         delete documento.Candidatura_DocCandidato;
+                                    delete documento.segredo_qrcode;
                                     dadosDocumento = documento;
                                 }
                             // Fim da separação dos dados.

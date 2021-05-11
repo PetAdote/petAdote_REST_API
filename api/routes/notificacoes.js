@@ -133,6 +133,14 @@ router.get('/', (req, res, next) => {
                 });
             }
 
+            if (usuario?.e_admin == 0 && (usuario?.cod_usuario != fromUser)){
+                // Se o requisitante for um usuário comum - Deverá ter acesso apenas as notificações que pertencem a ele.
+                return res.status(401).json({
+                    mensagem: 'Você não possui o nível de acesso adequado para esse recurso.',
+                    code: 'ACCESS_TO_RESOURCE_NOT_ALLOWED'
+                });
+            }
+
         }
 
         if (filterBy){

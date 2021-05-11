@@ -72,39 +72,6 @@
         // Rota livre para testes simples durante a fase de desenvolvimento.
 
         console.log('Oi, eu sou uma rota de testes!');
-
-        // const Animal = require('./api/models/Animal');
-        // const Usuario = require('./api/models/Usuario');
-
-        // const database = require('sequelize');
-
-        // let nome = 'luc';
-
-        // Usuario.findAll({
-        //     where: database.where(
-        //         database.fn(
-        //             'concat',
-        //             database.col('primeiro_nome'),
-        //             ' ',
-        //             database.col('sobrenome')
-        //         ), {
-        //             [database.Op.like]: `%${nome}%`
-        //         }
-        //     )
-        // })
-        // .then((resultArr) => {
-        //     console.log(resultArr)
-        //     resultArr = resultArr.get({plain: true});
-        //     return res.status(200).json({
-        //         resultArr
-        //     });
-        // })
-        // .catch((error) => {
-        //     console.log(error);
-        //     return res.status(500).json({
-        //         error
-        //     });
-        // })
         
     });
 
