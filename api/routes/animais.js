@@ -8,9 +8,18 @@
         const Animal = require('../models/Animal');
         const AlbumAnimal = require('../models/AlbumAnimal');
         const FotoAnimal = require('../models/FotoAnimal');
+        const Anuncio = require('../models/Anuncio');
+        const Candidatura = require('../models/Candidatura');
 
         const Usuario = require('../models/Usuario');
+        const EnderecoUsuario = require('../models/EnderecoUsuario');
         const Bloqueio = require('../models/Bloqueio');
+
+        const Notificacao = require('../models/Notificacao');
+
+        const PontoEncontro = require('../models/PontoEncontro');
+
+        const DocResponsabilidade = require('../models/DocResponsabilidade');
     
     // Utilidades.
         const { Op } = require('sequelize');
@@ -37,24 +46,21 @@
 
 // Rotas.
 router.get('/', async (req, res, next) => {
-    /* 5 formas de listar os dados dos animais cadastrados.
-     1. Lista todos os animais;
-     2. Lista todos os animais de usuários ativos;
-     3. Lista todos os animais de usuários inativos;
-     4. Lista todos os animais de um usuário específico;
-     5. Lista os dados de um animal específico.
+    
+    /*  09 Formas de listar os dados dos animais cadastrados dos usuários.
+
+     01. Exibir os dados de um animal específico.
+     02. Listar todos os animais ativos de um usuário específico.
+     03. Listar os animais ativos de um usuário específico que possuam a espécie definida para busca.
+     04. Listar os animais ativos de um usuário específico sob determinado estado de adoção.
+     05. Listar os animais ativos de um usuário específico que possuam um nome similar ao definido para a busca.
+     06 até 09. São formas combinadas de realizar as buscas acima, nome + espécie, espécie + estado de adoção, etc.
+
     */
-
-    // Início da Verificação dos Parâmetros da Rota.
-
-        // As verificações dos parâmetros desta rota acontecem nas configurações das opções de busca.
-
-    // Fim da verificação dos parâmetros da Rota.
 
     // Início das Restrições de acesso à rota.
 
-        // Apenas aplicações Pet Adote e Usuários das aplicações Pet Adote poderão acessar a listagem dos animais dos usuários.
-        // Além disso, usuários só podem visualizar animais de usuários ativos e que não são de usuários que estão em sua lista de bloqueios.
+        // Apenas Usuários das aplicações Pet Adote poderão acessar a listagem de animais dos usuários.
             if (!req.dadosAuthToken){   
 
                 // Se em algum caso não identificado, a requisição de uma aplicação chegou aqui e não apresentou suas credenciais JWT, não permita o acesso.
@@ -74,532 +80,358 @@ router.get('/', async (req, res, next) => {
             }
         
         // Capturando os dados do usuário, se o requisitante for o usuário de uma aplicação Pet Adote.
-            let { usuario } = req.dadosAuthToken;
-
-        // Se o usuário da aplicação estiver requisitando qualquer rota além de "getAllActive=1", "getAllFromUser" ou "getOne". Não permita o acesso.
-            if (usuario && !(req.query.getAllActive == 1 || req.query.getAllFromUser || req.query.getOne)){
-                return res.status(401).json({
-                    mensagem: 'Requisição inválida - Você não possui o nível de acesso adequado para esse recurso.',
-                    code: 'ACCESS_TO_RESOURCE_NOT_ALLOWED'
-                });
-            }
+            const { usuario } = req.dadosAuthToken;
 
     // Fim das Restrições de acesso à rota.
 
-    // Início da configuração das possíveis operações de busca.
+    // Início das configurações de possíveis operações de busca.
 
         let operacao = undefined;   // Se a operação continuar como undefined, envie BAD_REQUEST (400).
 
+        let { getOne, getAllFromUser, bySpecie, byStatus, byName, page, limit } = req.query;
+
         switch (Object.entries(req.query).length){
             case 0:
-                operacao = 'getAll';
-
                 break;
             case 1:
-                if (req.query?.page) { operacao = 'getAll' };
+                if (getOne) { operacao = 'getOne' };
 
-                if (req.query?.getAllActive == '1') { operacao = 'getAllActive'; };
-
-                if (req.query?.getAllActive == '0') { operacao = 'getAllNotActive'; };
-
-                if (req.query?.getAllFromUser) { operacao = 'getAllFromUser'; };
-
-                if (req.query?.getOne) { operacao = 'getOne'; };
+                if (getAllFromUser) { operacao = 'getAll_fromUser' };
 
                 break;
             case 2:
-                if (req.query?.page && req.query?.limit) { operacao = 'getAll' };
+                if (getAllFromUser && page) { operacao = 'getAll_fromUser' };
 
-                if (req.query?.getAllActive == '1' && req.query?.page) { operacao = 'getAllActive'; };
-
-                if (req.query?.getAllActive == '0' && req.query?.page) { operacao = 'getAllNotActive'; };
-
-                if (req.query?.getAllFromUser && req.query?.page) { operacao = 'getAllFromUser'; };
+                if (getAllFromUser && bySpecie) { operacao = 'getAll_fromUser_bySpecie' };
+                if (getAllFromUser && byStatus) { operacao = 'getAll_fromUser_byStatus' };
+                if (getAllFromUser && byName) { operacao = 'getAll_fromUser_byName' };
 
                 break;
             case 3:
-                if (req.query?.getAllActive == '1' && req.query?.page && req.query?.limit) { operacao = 'getAllActive'; };
+                if (getAllFromUser && bySpecie && page) { operacao = 'getAll_fromUser_bySpecie' };
+                if (getAllFromUser && byStatus && page) { operacao = 'getAll_fromUser_byStatus' };
+                if (getAllFromUser && byName && page) { operacao = 'getAll_fromUser_byName' };
 
-                if (req.query?.getAllActive == '0' && req.query?.page && req.query?.limit) { operacao = 'getAllNotActive'; };
+                if (getAllFromUser && bySpecie && byStatus) { operacao = 'getAll_fromUser_bySpecie_n_byStatus' };
+                if (getAllFromUser && bySpecie && byName) { operacao = 'getAll_fromUser_bySpecie_n_byName' };
 
-                if (req.query?.getAllFromUser && req.query?.page && req.query?.limit) { operacao = 'getAllFromUser'; };
-
+                if (getAllFromUser && byStatus && byName) { operacao = 'getAll_fromUser_byStatus_n_byName' };
                 break;
+            case 4:
+                if (getAllFromUser && bySpecie && page && limit) { operacao = 'getAll_fromUser_bySpecie' };
+                if (getAllFromUser && byStatus && page && limit) { operacao = 'getAll_fromUser_byStatus' };
+                if (getAllFromUser && byName && page && limit) { operacao = 'getAll_fromUser_byName' };
+
+                if (getAllFromUser && bySpecie && byStatus && page) { operacao = 'getAll_fromUser_bySpecie_n_byStatus' };
+                if (getAllFromUser && bySpecie && byName && page) { operacao = 'getAll_fromUser_bySpecie_n_byName' };
+
+                if (getAllFromUser && byStatus && byName && page) { operacao = 'getAll_fromUser_byStatus_n_byName' };
+
+                if (getAllFromUser && bySpecie && byStatus && byName) { operacao = 'getAll_fromUser_bySpecie_n_byStatus_n_byName' };
+                break;
+            case 5:
+                if (getAllFromUser && bySpecie && byStatus && page && limit) { operacao = 'getAll_fromUser_bySpecie_n_byStatus' };
+                if (getAllFromUser && bySpecie && byName && page && limit) { operacao = 'getAll_fromUser_bySpecie_n_byName' };
+
+                if (getAllFromUser && byStatus && byName && page && limit) { operacao = 'getAll_fromUser_byStatus_n_byName' };
+
+                if (getAllFromUser && bySpecie && byStatus && byName && page) { operacao = 'getAll_fromUser_bySpecie_n_byStatus_n_byName' };
+            case 6:
+                if (getAllFromUser && bySpecie && byStatus && byName && page && limit) { operacao = 'getAll_fromUser_bySpecie_n_byStatus_n_byName' };
             default:
                 break;
         }
 
-    // Fim da configuração das possíveis operações de busca.
+    // Fim das configurações de possíveis operações de busca.
 
-    // Início da Validação dos parâmetros.
+    // Início da validação dos parâmetros.
+        if (getOne){
 
-        if (req.query?.getOne){
-            if (String(req.query.getOne).match(/[^\d]+/g)){     // Se "getOne" conter algo diferente do esperado.
+            if (String(getOne).match(/[^\d]+/g)){     // Se "getOne" conter algo diferente do esperado.
                 return res.status(400).json({
-                    mensagem: 'Requisição inválida - O ID do Animal deve conter apenas dígitos.',
+                    mensagem: 'Requisição inválida - O ID de um Animal deve conter apenas dígitos.',
                     code: 'INVALID_REQUEST_QUERY'
                 });
             }
-        }
 
-        if (req.query?.getAllFromUser){
-            if (String(req.query.getAllFromUser).match(/[^\d]+/g)){     // Se "getAllFromUser" conter algo diferente do esperado.
+        }
+        
+        if (getAllFromUser){
+
+            if (String(getAllFromUser).match(/[^\d]+/g)){     // Se "getAllFromUser" conter algo diferente do esperado.
                 return res.status(400).json({
-                    mensagem: 'Requisição inválida - O ID do Usuário deve conter apenas dígitos.',
+                    mensagem: 'Requisição inválida - O ID de um Usuário deve conter apenas dígitos.',
                     code: 'INVALID_REQUEST_QUERY'
                 });
             }
+
         }
 
-        // Se "page" ou "limit" forem menores que 1, ou for um número real. Entregue BAD_REQUEST.
-        if (req.query.page){
-            if (Number(req.query.page) < 1 || req.query.page != Number.parseInt(req.query.page)) {
+        if (bySpecie){
+
+            let allowedSpecies = [
+                'cats',
+                'dogs',
+                'others'
+            ];
+
+            if (!allowedSpecies.includes(bySpecie)){
                 return res.status(400).json({
-                    mensagem: 'Algum parâmetro inválido foi passado na URL da requisição.',
-                    code: 'BAD_REQUEST'
+                    mensagem: 'Requisição inválida - (bySpecie) deve receber um dos seguintes valores [cats], [dogs], [others].',
+                    code: 'INVALID_REQUEST_QUERY'
                 });
             }
+
         }
 
-        if (req.query.limit){
-            if (Number(req.query.limit) < 1 || req.query.limit != Number.parseInt(req.query.limit)) {
+        if (byStatus){
+
+            let allowedStatus = [
+                'protected',
+                'announced',
+                'trial',
+                'adopted'
+            ];
+
+            if (!allowedStatus.includes(byStatus)){
                 return res.status(400).json({
-                    mensagem: 'Algum parâmetro inválido foi passado na URL da requisição.',
-                    code: 'BAD_REQUEST'
+                    mensagem: 'Requisição inválida - (byStatus) deve receber um dos seguintes valores [protected], [announced], [trial], [adopted].',
+                    code: 'INVALID_REQUEST_QUERY'
                 });
             }
+
         }
+    // Fim da validação dos parâmetros.
 
-    // Fim da Validação dos parâmetros.
-
-    // Início da Normalização dos parâmetros.
-
+    // Início da normalização dos parâmetros.
+        
         req.query.page = Number(req.query.page);    // Se o valor para a página do sistema de páginação for recebido como String, torne-o um Number.
         req.query.limit = Number(req.query.limit);  // Se o valor para o limite de entrega de dados do sistema de páginação for recebido como String, torne-o um Number.
 
-        req.query.getAllFromUser = String(req.query.getAllFromUser);
         req.query.getOne = String(req.query.getOne);
+        req.query.getAllFromUser = String(req.query.getAllFromUser);
+        req.query.bySpecie = String(req.query.bySpecie);
+        req.query.byStatus = String(req.query.byStatus);
+        req.query.byName = String(req.query.byName);
+        
+    // Fim da normalização dos parâmetros.
 
-    // Fim da Normalização dos parâmetros.
-
-    // Início do processo de listagem dos animais cadastrados.
+    // Início dos processos de listagem dos animais.
 
         // Início das configurações de paginação.
             let requestedPage = req.query.page || 1;        // Página por padrão será a primeira.
             let paginationLimit = req.query.limit || 10;     // Limite padrão de dados por página = 10;
 
             let paginationOffset = (requestedPage - 1) * paginationLimit;   // Define o índice de partida para coleta dos dados.
-        // Fim das configuração de paginação.
+        // Fim das configurações de paginação.
 
-        if (operacao == 'getAll'){
+        // Início da captura da lista de bloqueios do usuário.
+            let listaBloqueiosReq = [];
 
-            // Restrições de Uso.
-                if (usuario?.e_admin == 0){
-                    // Se o requisitante for um usuário e não for um administrador...
-                    return res.status(401).json({
-                        mensagem: 'Você não possui o nível de acesso adequado para esse recurso.',
-                        code: 'ACCESS_TO_RESOURCE_NOT_ALLOWED'
-                    });
-                }
-            // -----------------
+            if (usuario?.e_admin == 0){
+                // Se for um usuário comum...
+                listaBloqueiosReq = await checkUserBlockList(usuario.cod_usuario);
+            }
+        // Fim da captura da lista de bloqueios do usuário.
 
-            Animal.findAndCountAll({
-                limit: paginationLimit,
-                offset: paginationOffset,
-                raw: true
-            })
-            .then((resultArr) => {
-
-                if (resultArr.count === 0){
-
-                    return res.status(200).json({
-                        mensagem: 'Nenhum animal está cadastrado.'
-                    });
-
-                }
-
-                // Início da construção do objeto enviado na resposta.
-                    let total_animais = resultArr.count;
-
-                    let total_paginas = Math.ceil(total_animais / paginationLimit);
-
-                    let animais = [];
-
-                    let voltar_pagina = undefined;
-                    let avancar_pagina = undefined;
-
-                    if (requestedPage > 1 && requestedPage <= total_paginas){
-                        voltar_pagina = `${req.protocol}://${req.get('host')}/usuarios/animais/?page=${requestedPage - 1}&limit=${paginationLimit}`;
-                    }
-
-                    if (requestedPage < total_paginas){
-                        avancar_pagina = `${req.protocol}://${req.get('host')}/usuarios/animais/?page=${requestedPage + 1}&limit=${paginationLimit}`;
-                    } 
-
-                    if (requestedPage > total_paginas){
-                        return res.status(404).json({
-                            mensagem: 'Você chegou ao final da lista de animais cadastrados.',
-                            code: 'RESOURCE_NOT_FOUND'
-                        });
-                    }
-
-                    resultArr.rows.forEach((animal) => {
-                        if (animal.cod_dono){
-                            animal.detalhes_dono = `${req.protocol}://${req.get('host')}/usuarios/${animal.cod_dono}`;
-                        }
-
-                        if (animal.cod_dono_antigo){
-                            // Se foi adotado nos sistemas Pet Adote, possui um dono antigo...
-                            animal.detalhes_dono_antigo = `${req.protocol}://${req.get('host')}/usuarios/${animal.cod_dono_antigo}`
-                        }
-
-                        // Adicionando o end-point para exibição da foto do animal.
-                            animal.download_foto = `${req.protocol}://${req.get('host')}/usuarios/animais/albuns/fotos/${animal.foto}`
-                        // --------------------------------------------------------
-                        
-                        // Adicionando o end-point para listagem de álbuns do animal.
-                            animal.lista_albuns = `${req.protocol}://${req.get('host')}/usuarios/animais/albuns/?getAllFromAnimal=${animal.cod_animal}`
-                        // ----------------------------------------------------------
-                        
-                        animais.push(animal);
-                    });
-                    
-                // Fim da construção do objeto enviado na resposta.
-                
-                return res.status(200).json({
-                    mensagem: 'Lista de todos os animais cadastrados.',
-                    total_animais,
-                    total_paginas,
-                    animais,
-                    voltar_pagina,
-                    avancar_pagina
-                });
-
-            })
-            .catch((error) => {
-                console.error('Algo inesperado aconteceu ao listar os animais cadastrados.', error);
-    
-                let customErr = new Error('Algo inesperado aconteceu ao listar os animais cadastrados. Entre em contato com o administrador.');
-                customErr.status = 500;
-                customErr.code = 'INTERNAL_SERVER_ERROR'
-        
-                return next( customErr );
+        if (!operacao){
+            return res.status(400).json({
+                mensagem: 'Algum parâmetro inválido foi passado na URL da requisição.',
+                code: 'BAD_REQUEST'
             });
+        }
 
-        };
+        if (operacao == 'getOne'){
 
-        if (operacao == 'getAllActive'){
+            // Chamada para Usuários.
+            // Exibe os dados de um animal específico.
 
-            Animal.findAndCountAll({
+            Animal.findOne({
                 include: [{
                     model: Usuario,
                     as: 'dono'
                 }, {
-                    model: AlbumAnimal
-                }],
-                where: {
-                    '$dono.esta_ativo$': 1
-                },
-                limit: paginationLimit,
-                offset: paginationOffset,
-                nest: true,
-                raw: true
-            })
-            .then( async (resultArr) => {
-
-                if (resultArr.count == 0){
-                    return res.status(200).json({
-                        mensagem: 'Nenhum usuário ativo cadastrou animais.'
-                    });
-                }
-
-                // Início da construção do objeto enviado na resposta.
-
-                    // Início da verificação da lista de bloqueios e calculo da quantidade de animais que não serão exibidos.
-                        let listaBloqueios = undefined;
-
-                        let qtdAnimaisDosBloqueados = undefined;
-
-                        if (usuario) { 
-
-                            listaBloqueios = await checkUserBlockList(usuario.cod_usuario);
-
-                            qtdAnimaisDosBloqueados = await Animal.count({
-                                include: [{
-                                    model: Usuario,
-                                    as: 'dono'
-                                }, {
-                                    model: AlbumAnimal
-                                }],
-                                where: {
-                                    cod_dono: listaBloqueios,
-                                    '$dono.esta_ativo$': 1
-                                }
-                            });
-
-                        };
-
-                    // Fim da verificação da lista de bloqueios e calculo da quantidade de animais que não serão exibidos.
-
-                    let total_animais = resultArr.count - (qtdAnimaisDosBloqueados || 0); // Se qtdAnimaisDosBloqueados estiver como NULL ou UNDEFINED, atribua zero à operação.
-
-                    let total_paginas = Math.ceil(total_animais / paginationLimit);
-
-                    let animais = [];
-
-                    let voltar_pagina = undefined;
-                    let avancar_pagina = undefined;
-
-                    if (requestedPage > 1 && requestedPage <= total_paginas){
-                        voltar_pagina = `${req.protocol}://${req.get('host')}/usuarios/animais/?getAllActive=1&page=${requestedPage - 1}&limit=${paginationLimit}`;
-                    }
-
-                    if (requestedPage < total_paginas){
-                        avancar_pagina = `${req.protocol}://${req.get('host')}/usuarios/animais/?getAllActive=1&page=${requestedPage + 1}&limit=${paginationLimit}`;
-                    } 
-
-                    if (requestedPage > total_paginas){
-                        return res.status(404).json({
-                            mensagem: 'Você chegou ao final da lista de animais de usuários ativos.',
-                            code: 'RESOURCE_NOT_FOUND'
-                        });
-                    }
-
-                    resultArr.rows.forEach((animal) => {
-
-                        // Removendo estruturas que agora são desnecessárias.
-                            delete animal.dono;
-                            delete animal.dono_antigo;
-                            delete animal.AlbumAnimal;
-                        // --------------------------------------------------
-
-                        // Início da adição de atributos extras ao objeto.
-                            if (animal.cod_dono){
-                                animal.detalhes_dono = `${req.protocol}://${req.get('host')}/usuarios/${animal.cod_dono}`;
-                            }
-                            
-                            if (animal.cod_dono_antigo){
-                                animal.detalhes_dono_antigo = `${req.protocol}://${req.get('host')}/usuarios/${animal.cod_dono_antigo}`;
-                            }
-                            // Adicionando o end-point para exibição da foto do animal.
-                                animal.download_foto = `${req.protocol}://${req.get('host')}/usuarios/animais/albuns/fotos/${animal.foto}`
-                            // --------------------------------------------------------
-
-                            // Adicionando o end-point para listagem de álbuns do animal.
-                                animal.lista_albuns = `${req.protocol}://${req.get('host')}/usuarios/animais/albuns/?getAllFromAnimal=${animal.cod_animal}`
-                            // ----------------------------------------------------------
-                        // Fim da adição de atributos extras ao objeto.
-
-                        if (usuario){
-                            // Se o requisitante for um usuário...
-                            if (!listaBloqueios.includes(animal.cod_dono)){
-                                // E o dono do animal não estiver na lista de bloqueios do usuário (Bloqueado/Bloqueante)...
-                                animais.push(animal);
-                            }
-                        } else {
-                            // Se o requisitante for uma aplicação...
-                            animais.push(animal);
-                        }
-                        
-                    });
-
-                // Fim da construção do objeto enviado na resposta.
-
-                // Início do envio da resposta.
-
-                    return res.status(200).json({
-                        mensagem: 'Lista de todos os animais cadastrados de usuários ativos.',
-                        total_animais,
-                        total_paginas,
-                        animais,
-                        voltar_pagina,
-                        avancar_pagina
-                    });
-
-                // Fim do envio da resposta.
-
-            })
-            .catch((error) =>{
-
-                console.error('Algo inesperado aconteceu ao listar os animais cadastrados que possuem usuários ativos.', error);
-    
-                let customErr = new Error('Algo inesperado aconteceu ao listar os animais cadastrados que possuem usuários ativos. Entre em contato com o administrador.');
-                customErr.status = 500;
-                customErr.code = 'INTERNAL_SERVER_ERROR'
-        
-                return next( customErr );
-
-            });
-
-        };
-
-        if (operacao == 'getAllNotActive'){
-
-            // Restrições de Uso.
-                if (usuario?.e_admin == 0){
-                    // Se o requisitante for um usuário e não for um administrador...
-                    return res.status(401).json({
-                        mensagem: 'Você não possui o nível de acesso adequado para esse recurso.',
-                        code: 'ACCESS_TO_RESOURCE_NOT_ALLOWED'
-                    });
-                }
-            // -----------------
-
-            Animal.findAndCountAll({
-                include: [{
                     model: Usuario,
-                    as: 'dono'
+                    as: 'dono_antigo'
+                }, {
+                    model: Anuncio
                 }, {
                     model: AlbumAnimal
                 }],
                 where: {
-                    '$dono.esta_ativo$': 0
-                },
-                limit: paginationLimit,
-                offset: paginationOffset,
-                nest: true,
-                raw: true
+                    cod_animal: req.query.getOne,
+                }
             })
-            .then((resultArr) => {
+            .then((result) => {
 
-                if (resultArr.count == 0){
+                if (!result) {
                     return res.status(200).json({
-                        mensagem: 'Nenhum usuário inativo possui animais cadastrados.'
+                        mensagem: 'Nenhum animal encontrado no ID informado.'
                     });
                 }
 
-                // Início da construção do objeto enviado na resposta.
+                // return res.status(200).json({
+                //     animal: result
+                // });
 
-                    let total_animais = resultArr.count;
+                // Restrições de uso da chamada.
+                    if (usuario?.e_admin == 0){
+                    // Se o requisitante for um usuário comum...
 
-                    let total_paginas = Math.ceil(total_animais / paginationLimit);
-
-                    let animais = [];
-
-                    let voltar_pagina = undefined;
-                    let avancar_pagina = undefined;
-
-                    if (requestedPage > 1 && requestedPage <= total_paginas){
-                        voltar_pagina = `${req.protocol}://${req.get('host')}/usuarios/animais/?getAllActive=0&page=${requestedPage - 1}&limit=${paginationLimit}`;
-                    }
-
-                    if (requestedPage < total_paginas){
-                        avancar_pagina = `${req.protocol}://${req.get('host')}/usuarios/animais/?getAllActive=0&page=${requestedPage + 1}&limit=${paginationLimit}`;
-                    } 
-
-                    if (requestedPage > total_paginas){
-                        return res.status(404).json({
-                            mensagem: 'Você chegou ao final da lista de animais de usuários inativos.',
-                            code: 'RESOURCE_NOT_FOUND'
-                        });
-                    }
-
-                    resultArr.rows.forEach((animal) => {
-
-                        // Removendo estruturas que agora são desnecessárias.
-                            delete animal.dono;
-                            delete animal.dono_antigo;
-                            delete animal.AlbumAnimal;
-                        // --------------------------------------------------
-
-                        // Início da adição de atributos extras ao objeto.
-                            if (animal.cod_dono){
-                                animal.detalhes_dono = `${req.protocol}://${req.get('host')}/usuarios/${animal.cod_dono}`;
-                            }
-                            
-                            if (animal.cod_dono_antigo){
-                                animal.detalhes_dono_antigo = `${req.protocol}://${req.get('host')}/usuarios/${animal.cod_dono_antigo}`;
-                            }
-
-                            // Adicionando o end-point para exibição da foto do animal.
-                                animal.download_foto = `${req.protocol}://${req.get('host')}/usuarios/animais/albuns/fotos/${animal.foto}`
-                            // --------------------------------------------------------
-
-                            // Adicionando o end-point para listagem de álbuns do animal.
-                                animal.lista_albuns = `${req.protocol}://${req.get('host')}/usuarios/animais/albuns/?getAllFromAnimal=${animal.cod_animal}`
-                            // ----------------------------------------------------------
-                        // Fim da adição de atributos extras ao objeto.
-
-                        animais.push(animal);
-                        
-                    });
-
-                // Fim da construção do objeto enviado na resposta.
-
-                // Início do envio da resposta.
-
-                    return res.status(200).json({
-                        mensagem: 'Lista de todos os animais cadastrados de usuários inativos.',
-                        total_animais,
-                        total_paginas,
-                        animais,
-                        voltar_pagina,
-                        avancar_pagina
-                    });
-
-                // Fim do envio da resposta.
-
-            })
-            .catch((error) => {
-
-                console.error('Algo inesperado aconteceu ao listar os animais cadastrados que possuem usuários inativos.', error);
-    
-                let customErr = new Error('Algo inesperado aconteceu ao listar os animais cadastrados que possuem usuários inativos. Entre em contato com o administrador.');
-                customErr.status = 500;
-                customErr.code = 'INTERNAL_SERVER_ERROR'
-        
-                return next( customErr );
-
-            });
-
-        };
-
-        if (operacao == 'getAllFromUser'){
-
-            let dono_recurso = Number(req.query.getAllFromUser);
-
-            // Início da verificação de bloqueios para usuários requisitantes.
-                // Se o requisitante for o usuário de uma aplicação, exiba apenas os animais dos usuários que não estão bloqueados por ele, ou bloquearam ele.
-                if (usuario?.e_admin == 0) {
-                    try {
-                        let listaBloqueios = [];    // Lista contendo todos os IDs dos usuários que bloquearam ou foram bloqueados pelo usuário requisitante.
-
-                        listaBloqueios = await checkUserBlockList(usuario.cod_usuario);
-
-                        if(listaBloqueios.includes(dono_recurso)){
+                        if (listaBloqueiosReq.includes(result.cod_dono)){
+                        // Não deverá ter acesso à recursos de usuários bloqueados ou que bloquearam ele.
                             return res.status(401).json({
                                 mensagem: 'Você não possui o nível de acesso adequado para esse recurso.',
                                 code: 'ACCESS_TO_RESOURCE_NOT_ALLOWED'
                             });
                         }
-                    
-                    } catch (error) {
-                        console.error('Algo inesperado aconteceu ao listar os animais que estão sob a guarda do usuário.', error);
-    
-                        let customErr = new Error('Algo inesperado aconteceu ao listar os animais que estão sob a guarda do usuário. Entre em contato com o administrador.');
-                        customErr.status = 500;
-                        customErr.code = 'INTERNAL_SERVER_ERROR'
-                
-                        return next( customErr );
+
+                        if (result.ativo == 0){
+                        // Não deverá ter acesso à recursos inativos.
+                            return res.status(200).json({
+                                mensagem: 'Nenhum animal encontrado no ID informado.'
+                            });
+                        }
+
+                        if ((usuario.cod_usuario != result.dono.cod_usuario) && result.dono.esta_ativo == 0){
+                        // Se não for o dono do recurso e o dono estiver inativo, não deve ter acesso.
+                            return res.status(200).json({
+                                mensagem: 'Nenhum animal encontrado no ID informado.'
+                            });
+                        }
                     }
-                };
-            // Fim da verificação de bloqueios para usuários requisitantes.
+                // Fim das restrições de uso da chamada.
+
+                // Início da construção do objeto enviado na resposta.
+
+                    let objDadosAnimal = result.get({ plain: true });
+
+                    // Início da inclusão de atributos extra.
+
+                        // Separando os dados do objeto.
+                            
+                            let dadosDono = objDadosAnimal.dono;
+                                delete objDadosAnimal.dono;
+                            let dadosDonoAntigo = objDadosAnimal.dono_antigo;
+                                delete objDadosAnimal.dono_antigo;
+                            let dadosAnuncio = objDadosAnimal.Anuncio;
+                                delete objDadosAnimal.Anuncio;
+                            let dadosAlbumAnimal = objDadosAnimal.AlbumAnimal;
+                                delete objDadosAnimal.AlbumAnimal;
+                            let dadosAnimal = objDadosAnimal; 
+
+                        // Fim da separação dos dados.
+
+                        // Inclusão de atributos essenciais aos clientes.
+                            dadosAnimal.download_foto = `${req.protocol}://${req.get('host')}/usuarios/animais/albuns/fotos/${dadosAnimal.foto}`;
+                            // dadosAnimal.lista_albuns = `${req.protocol}://${req.get('host')}/usuarios/animais/albuns/?getAllFromAnimal=${dadosAnimal.cod_animal}`;
+                        // Fim da inclusão de atributos essenciais aos clientes.
+
+                        // Unindo os dados em objeto em um objeto.
+                            if (dadosDono) {
+                                dadosAnimal.dono = dadosDono;
+                                dadosAnimal.dono.download_avatar = `${req.protocol}://${req.get('host')}/usuarios/avatars/${dadosDono.foto_usuario}`;
+                            }
+                            
+                            if (dadosDonoAntigo) {
+                                dadosAnimal.dono_antigo = dadosDonoAntigo;
+                                dadosAnimal.dono_antigo.download_avatar = `${req.protocol}://${req.get('host')}/usuarios/avatars/${dadosDonoAntigo.foto_usuario}`;
+                            }
+
+                            if (dadosAnuncio){
+                                dadosAnimal.anuncio = dadosAnuncio;
+                                dadosAnimal.anuncio.download_foto = `GET ${req.protocol}://${req.get('host')}/usuarios/animais/albuns/fotos/${dadosAnuncio.uid_foto_animal}`;
+                            }
+                            
+                            if (dadosAlbumAnimal) {
+                                dadosAnimal.album_animal = dadosAlbumAnimal;
+                                dadosAnimal.album_animal.lista_fotos = `${req.protocol}://${req.get('host')}/usuarios/animais/albuns/fotos/?getAllActiveFromAlbum=${dadosAlbumAnimal.cod_album}`;
+                            }
+                            
+                        // Fim da união dos dados em um objeto.
+
+                    // Fim da inclusão de atributos extra.
+
+                // Fim da construção do objeto enviado na resposta.
+
+                // Início do envio da Resposta.
+                    return res.status(200).json({
+                        mensagem: `Dados do animal do usuário.`,
+                        animal: dadosAnimal
+                    });
+                // Fim do envio da resposta.
+
+            })
+            .catch((error) => {
+                console.error('Algo inesperado aconteceu ao buscar os dados de um animal.', error);
+
+                let customErr = new Error('Algo inesperado aconteceu ao buscar os dados de um animal. Entre em contato com o administrador.');
+                customErr.status = 500;
+                customErr.code = 'INTERNAL_SERVER_ERROR'
+        
+                return next( customErr );
+            });
+
+        }
+
+        if (operacao == 'getAll_fromUser'){
+
+            // Chamada para Usuários.
+            // Exibe uma lista contendo todos os animais ativos de um usuário específico.
+            // Se o requerinte for uma Aplicação ou um Administrador, exibirá também os animais inativos no fim da listagem de animais ativos.
+
+            let whereConfig = {
+                cod_dono: req.query.getAllFromUser
+            };  // Padrão se o requirinte for um Admin/Aplicação.
+
+            if (usuario?.e_admin == 0){
+                // Padrão se o requirente for um usuário comum.
+                whereConfig = {
+                    cod_dono: req.query.getAllFromUser,
+                    ativo: 1
+                }
+            }
 
             Animal.findAndCountAll({
-                where: {
-                    cod_dono: dono_recurso
-                },
+                include: [{
+                    model: Usuario,
+                    as: 'dono',
+                    attributes: ['cod_usuario', 'esta_ativo']
+                }],
+                where: whereConfig,
+                order: [['ativo', 'DESC']],
                 limit: paginationLimit,
-                offset: paginationOffset,
-                raw: true
+                offset: paginationOffset
             })
             .then((resultArr) => {
 
-                if (resultArr.count == 0){
+                if (resultArr.count === 0){
                     return res.status(200).json({
-                        mensagem: 'Esse usuário ainda não possui nenhum animal sob sua guarda.'
+                        mensagem: 'Nenhum animal foi registrado pelo usuário.'
                     });
                 }
+
+                // Restrições de uso da chamada.
+                    if (usuario?.e_admin == 0){
+                        // Se o requisitante for um usuário comum...
+
+                        if (listaBloqueiosReq.includes(resultArr.rows[0].cod_dono)){
+                        // Não deverá ter acesso à recursos de usuários bloqueados ou que bloquearam ele.
+                            return res.status(401).json({
+                                mensagem: 'Você não possui o nível de acesso adequado para esse recurso.',
+                                code: 'ACCESS_TO_RESOURCE_NOT_ALLOWED'
+                            });
+                        }
+
+                        if ((usuario.cod_usuario != resultArr.rows[0].cod_dono) && resultArr.rows[0].dono.esta_ativo == 0){
+                        // Se não for o dono do recurso e o dono estiver inativo, não deve ter acesso.
+                            return res.status(200).json({
+                                mensagem: 'Nenhum animal foi registrado pelo usuário.'
+                            });
+                        }
+
+                    }
+                // Fim das restrições de uso da chamada.
 
                 // Início da construção do objeto enviado na resposta.
 
@@ -613,176 +445,1101 @@ router.get('/', async (req, res, next) => {
                     let avancar_pagina = undefined;
 
                     if (requestedPage > 1 && requestedPage <= total_paginas){
-                        voltar_pagina = `${req.protocol}://${req.get('host')}/usuarios/animais/?getAllFromUser=${dono_recurso}&page=${requestedPage - 1}&limit=${paginationLimit}`;
+                        voltar_pagina = `${req.protocol}://${req.get('host')}/usuarios/animais/?getAllFromUser=${req.query.getAllFromUser}&page=${requestedPage - 1}&limit=${paginationLimit}`;
                     }
 
                     if (requestedPage < total_paginas){
-                        avancar_pagina = `${req.protocol}://${req.get('host')}/usuarios/animais/?getAllFromUser=${dono_recurso}&page=${requestedPage + 1}&limit=${paginationLimit}`;
+                        avancar_pagina = `${req.protocol}://${req.get('host')}/usuarios/animais/?getAllFromUser=${req.query.getAllFromUser}&page=${requestedPage + 1}&limit=${paginationLimit}`;
                     } 
 
                     if (requestedPage > total_paginas){
                         return res.status(404).json({
-                            mensagem: 'Você chegou ao final da lista de animais do usuário.',
+                            mensagem: 'Você chegou ao final da lista de animais deste usuário.',
                             code: 'RESOURCE_NOT_FOUND'
                         });
                     }
 
-                    resultArr.rows.forEach((animal) => {
+                    // Início da inclusão de atributos extra.
+                        resultArr.rows.forEach((animal) => {
 
-                        // Início da adição de atributos extras ao objeto.
-                            if (animal.cod_dono_antigo){
-                                animal.detalhes_dono_antigo = `${req.protocol}://${req.get('host')}/usuarios/${animal.cod_dono_antigo}`;
-                            }
+                            let objDadosAnimal = animal.get({ plain: true });
 
-                            // Adicionando o end-point para exibição da foto do animal.
-                                animal.download_foto = `${req.protocol}://${req.get('host')}/usuarios/animais/albuns/fotos/${animal.foto}`
-                            // --------------------------------------------------------
+                            // Separando os dados do objeto.
+                                let dadosDono = objDadosAnimal.dono;
+                                    delete objDadosAnimal.dono;
+                                let dadosAnimal = objDadosAnimal; 
+                            // Fim da separação dos dados.
 
-                            // Adicionando o end-point para listagem de álbuns do animal.
-                                animal.lista_albuns = `${req.protocol}://${req.get('host')}/usuarios/animais/albuns/?getAllFromAnimal=${animal.cod_animal}`
-                            // ----------------------------------------------------------
-                        // Fim da adição de atributos extras ao objeto.
-                        
-                        animais.push(animal);
-                        
-                    });
+                            // Inclusão de atributos essenciais aos clientes.
+                                dadosAnimal.download_foto = `${req.protocol}://${req.get('host')}/usuarios/animais/albuns/fotos/${dadosAnimal.foto}`;
+                                dadosAnimal.detalhes_animal = `${req.protocol}://${req.get('host')}/usuarios/animais/?getOne=${dadosAnimal.cod_animal}`;
+                            // Fim da inclusão de atributos essenciais aos clientes.
 
+                            // Unindo os dados em objeto em um objeto.
+                                // ...
+                            // Fim da união dos dados em um objeto.
+
+                            animais.push(dadosAnimal);
+                        });
+                    // Fim da inclusão de atributos extra.
+                    
                 // Fim da construção do objeto enviado na resposta.
 
-                // Início do envio da resposta.
-
+                // Início do envio da Resposta.
                     return res.status(200).json({
-                        mensagem: 'Lista dos animais sob guarda do usuário.',
-                        detalhes_dono: `${req.protocol}://${req.get('host')}/usuarios/${dono_recurso}`,
+                        mensagem: `Lista de animais do usuário.`,
                         total_animais,
                         total_paginas,
                         animais,
                         voltar_pagina,
                         avancar_pagina
                     });
-
                 // Fim do envio da resposta.
 
-
             })
-            .catch((error) =>{
-                console.error('Algo inesperado aconteceu ao listar os animais que estão sob a guarda do usuário.', error);
-    
-                let customErr = new Error('Algo inesperado aconteceu ao listar os animais que estão sob a guarda do usuário. Entre em contato com o administrador.');
+            .catch((error) => {
+                console.error('Algo inesperado aconteceu ao listar os animais do usuário.', error);
+
+                let customErr = new Error('Algo inesperado aconteceu ao listar os animais do usuário. Entre em contato com o administrador.');
                 customErr.status = 500;
                 customErr.code = 'INTERNAL_SERVER_ERROR'
         
                 return next( customErr );
             });
 
-        };
+        }
 
-        if (operacao == 'getOne'){
+        if (operacao == 'getAll_fromUser_bySpecie'){
 
-            let cod_animal = Number(req.query.getOne);
+            // Chamada para Usuários.
+            // Exibe uma lista contendo todos os animais ativos de uma espécie específica, que pertencem a um usuário específico.
+            // Se o requerinte for uma Aplicação ou um Administrador, exibirá também os animais inativos no fim da listagem de animais ativos.
 
-            Animal.findOne({
-                include: [{ 
-                    all: true   // Ao entregar os dados, trate todos os dados provenientes dos relacionamentos.
+            let especie = undefined;
+                req.query.bySpecie == 'cats' ? especie = 'Gato': undefined ;
+                req.query.bySpecie == 'dogs' ? especie = 'Cao': undefined ;
+                req.query.bySpecie == 'others' ? especie = 'Outros': undefined ;
+
+            let whereConfig = {
+                cod_dono: req.query.getAllFromUser,
+                especie: especie
+            };  // Padrão se o requirinte for um Admin/Aplicação.
+
+            if (usuario?.e_admin == 0){
+                // Padrão se o requirente for um usuário comum.
+                whereConfig = {
+                    cod_dono: req.query.getAllFromUser,
+                    especie: especie,
+                    ativo: 1
+                }
+            }
+
+            Animal.findAndCountAll({
+                include: [{
+                    model: Usuario,
+                    as: 'dono',
+                    attributes: ['cod_usuario', 'esta_ativo']
                 }],
-                where: {
-                    cod_animal,
-                    '$dono.esta_ativo$': 1
-                },
-                nest: true,
-                raw: true,
+                where: whereConfig,
+                order: [['ativo', 'DESC']],
+                limit: paginationLimit,
+                offset: paginationOffset
             })
-            .then(async (result) => {
+            .then((resultArr) => {
 
-                if (!result){
-                    return res.status(404).json({
-                        mensagem: 'Nenhum animal de um usuário ativo está vinculado à esse ID.',
-                        code: 'RESOURCE_NOT_FOUND',
-                        lista_animais: `${req.protocol}://${req.get('host')}/usuarios/animais/`,
+                if (resultArr.count === 0){
+                    return res.status(200).json({
+                        mensagem: 'Nenhum animal da espécie selecionada foi registrado pelo usuário.'
                     });
                 }
 
-                // Início da construção do objeto enviado na resposta.
+                // Restrições de uso da chamada.
+                    if (usuario?.e_admin == 0){
+                        // Se o requisitante for um usuário comum...
 
-                    if (!result.cod_dono_antigo){
-                        delete result.dono_antigo;  // Garante que {dono_antigo} só vai existir se "cod_dono_antigo" existir.
-                    };
-
-                    if (!result.Anuncio.cod_anuncio){
-                        delete result.Anuncio;      // Garanteu que {Anuncio} só vai existir se "Anuncio.cod_anuncio" existir.
-                    }
-
-                    let { dono, dono_antigo, Anuncio } = result;
-
-                    delete result.dono;
-                    delete result.dono_antigo;
-                    delete result.AlbumAnimal;
-                    delete result.Anuncio;
-
-                    let animal = result;
-
-                    // Adicionando o end-point para exibição da foto do animal.
-                        animal.download_foto = `${req.protocol}://${req.get('host')}/usuarios/animais/albuns/fotos/${animal.foto}`
-                    // --------------------------------------------------------
-
-                    // Adicionando o end-point para listagem de álbuns do animal.
-                        animal.lista_albuns = `${req.protocol}://${req.get('host')}/usuarios/animais/albuns/?getAllFromAnimal=${animal.cod_animal}`
-                    // ----------------------------------------------------------
-
-                    // Início da verificação de bloqueios para usuário requisitante.
-                    
-                        // Se o requisitante for o usuário de uma aplicação, exiba apenas os animais dos usuários que não estão bloqueados por ele, ou bloquearam ele.
-                        if (usuario?.e_admin == 0) {
-                            let listaBloqueios = [];    // Lista contendo todos os IDs dos usuários que bloquearam ou foram bloqueados pelo usuário requisitante.
-
-                            listaBloqueios = await checkUserBlockList(usuario.cod_usuario);
-
-                            if (listaBloqueios.includes(animal.cod_dono)){
-                                return res.status(401).json({
-                                    mensagem: 'Você não possui o nível de acesso adequado para esse recurso.',
-                                    code: 'ACCESS_TO_RESOURCE_NOT_ALLOWED'
-                                });
-                            }
+                        if (listaBloqueiosReq.includes(resultArr.rows[0].cod_dono)){
+                        // Não deverá ter acesso à recursos de usuários bloqueados ou que bloquearam ele.
+                            return res.status(401).json({
+                                mensagem: 'Você não possui o nível de acesso adequado para esse recurso.',
+                                code: 'ACCESS_TO_RESOURCE_NOT_ALLOWED'
+                            });
                         }
 
-                    // Fim da verificação de bloqueios para usuário requisitante.
+                        if ((usuario.cod_usuario != resultArr.rows[0].cod_dono) && resultArr.rows[0].dono.esta_ativo == 0){
+                        // Se não for o dono do recurso e o dono estiver inativo, não deve ter acesso.
+                            return res.status(200).json({
+                                mensagem: 'Nenhum animal da espécie selecionada foi registrado pelo usuário.'
+                            });
+                        }
 
+                    }
+                // Fim das restrições de uso da chamada.
+
+                // Início da construção do objeto enviado na resposta.
+
+                    let total_animais = resultArr.count;
+
+                    let total_paginas = Math.ceil(total_animais / paginationLimit);
+
+                    let animais = [];
+
+                    let voltar_pagina = undefined;
+                    let avancar_pagina = undefined;
+
+                    if (requestedPage > 1 && requestedPage <= total_paginas){
+                        voltar_pagina = `${req.protocol}://${req.get('host')}/usuarios/animais/?getAllFromUser=${req.query.getAllFromUser}&bySpecie=${req.query.bySpecie}&page=${requestedPage - 1}&limit=${paginationLimit}`;
+                    }
+
+                    if (requestedPage < total_paginas){
+                        avancar_pagina = `${req.protocol}://${req.get('host')}/usuarios/animais/?getAllFromUser=${req.query.getAllFromUser}&bySpecie=${req.query.bySpecie}&page=${requestedPage + 1}&limit=${paginationLimit}`;
+                    } 
+
+                    if (requestedPage > total_paginas){
+                        return res.status(404).json({
+                            mensagem: 'Você chegou ao final da lista de animais deste usuário para a espécie selecionada.',
+                            code: 'RESOURCE_NOT_FOUND'
+                        });
+                    }
+
+                    // Início da inclusão de atributos extra.
+                        resultArr.rows.forEach((animal) => {
+
+                            let objDadosAnimal = animal.get({ plain: true });
+
+                            // Separando os dados do objeto.
+                                let dadosDono = objDadosAnimal.dono;
+                                    delete objDadosAnimal.dono;
+                                let dadosAnimal = objDadosAnimal; 
+                            // Fim da separação dos dados.
+
+                            // Inclusão de atributos essenciais aos clientes.
+                                dadosAnimal.download_foto = `${req.protocol}://${req.get('host')}/usuarios/animais/albuns/fotos/${dadosAnimal.foto}`;
+                                dadosAnimal.detalhes_animal = `${req.protocol}://${req.get('host')}/usuarios/animais/?getOne=${dadosAnimal.cod_animal}`;
+                            // Fim da inclusão de atributos essenciais aos clientes.
+
+                            // Unindo os dados em objeto em um objeto.
+                                // ...
+                            // Fim da união dos dados em um objeto.
+
+                            animais.push(dadosAnimal);
+                        });
+                    // Fim da inclusão de atributos extra.
+                    
                 // Fim da construção do objeto enviado na resposta.
 
-                // Início do envio da resposta.
+                // Início do envio da Resposta.
                     return res.status(200).json({
-                        mensagem: 'Exibindo os dados do animal encontrado.',
-                        animal,
-                        dono,
-                        dono_antigo,
-                        anuncio: Anuncio
+                        mensagem: `Lista de animais do usuário sob a espécie selecionada.`,
+                        total_animais,
+                        total_paginas,
+                        animais,
+                        voltar_pagina,
+                        avancar_pagina
                     });
                 // Fim do envio da resposta.
-                
+
             })
             .catch((error) => {
+                console.error('Algo inesperado aconteceu ao listar os animais do usuário sob uma espécie específica.', error);
 
-                console.error('Algo inesperado aconteceu ao buscar os dados do animal.', error);
-    
-                let customErr = new Error('Algo inesperado aconteceu ao buscar os dados do animal. Entre em contato com o administrador.');
+                let customErr = new Error('Algo inesperado aconteceu ao listar os animais do usuário sob uma espécie específica. Entre em contato com o administrador.');
                 customErr.status = 500;
                 customErr.code = 'INTERNAL_SERVER_ERROR'
         
                 return next( customErr );
-
             });
 
-        };
+        }
 
-        if (!operacao){
-            
-            return res.status(400).json({
-                mensagem: 'Algum parâmetro inválido foi passado na URL da requisição.',
-                code: 'BAD_REQUEST'
+        if (operacao == 'getAll_fromUser_byStatus'){
+
+            // Chamada para Usuários.
+            // Exibe uma lista contendo todos os animais ativos sob um estado específico de adoção, que pertencem a um usuário específico.
+            // Se o requerinte for uma Aplicação ou um Administrador, exibirá também os animais inativos no fim da listagem de animais ativos.
+
+            let estado_adocao = undefined;
+                req.query.byStatus == 'protected' ? estado_adocao = 'Sob protecao': undefined ;
+                req.query.byStatus == 'announced' ? estado_adocao = 'Em anuncio': undefined ;
+                req.query.byStatus == 'trial' ? estado_adocao = 'Em processo adotivo': undefined ;
+                req.query.byStatus == 'adopted' ? estado_adocao = 'Adotado': undefined ;
+
+            let whereConfig = {
+                cod_dono: req.query.getAllFromUser,
+                estado_adocao: estado_adocao
+            };  // Padrão se o requirinte for um Admin/Aplicação.
+
+            if (usuario?.e_admin == 0){
+                // Padrão se o requirente for um usuário comum.
+                whereConfig = {
+                    cod_dono: req.query.getAllFromUser,
+                    estado_adocao: estado_adocao,
+                    ativo: 1
+                }
+            }
+
+            Animal.findAndCountAll({
+                include: [{
+                    model: Usuario,
+                    as: 'dono',
+                    attributes: ['cod_usuario', 'esta_ativo']
+                }],
+                where: whereConfig,
+                order: [['ativo', 'DESC']],
+                limit: paginationLimit,
+                offset: paginationOffset
+            })
+            .then((resultArr) => {
+
+                if (resultArr.count === 0){
+                    return res.status(200).json({
+                        mensagem: 'Nenhum animal sob o estado de adoção selecionado foi encontrado na lista de animais do usuário.'
+                    });
+                }
+
+                // Restrições de uso da chamada.
+                    if (usuario?.e_admin == 0){
+                        // Se o requisitante for um usuário comum...
+
+                        if (listaBloqueiosReq.includes(resultArr.rows[0].cod_dono)){
+                        // Não deverá ter acesso à recursos de usuários bloqueados ou que bloquearam ele.
+                            return res.status(401).json({
+                                mensagem: 'Você não possui o nível de acesso adequado para esse recurso.',
+                                code: 'ACCESS_TO_RESOURCE_NOT_ALLOWED'
+                            });
+                        }
+
+                        if ((usuario.cod_usuario != resultArr.rows[0].cod_dono) && resultArr.rows[0].dono.esta_ativo == 0){
+                        // Se não for o dono do recurso e o dono estiver inativo, não deve ter acesso.
+                            return res.status(200).json({
+                                mensagem: 'Nenhum animal sob o estado de adoção selecionado foi encontrado na lista de animais do usuário.'
+                            });
+                        }
+
+                    }
+                // Fim das restrições de uso da chamada.
+
+                // Início da construção do objeto enviado na resposta.
+
+                    let total_animais = resultArr.count;
+
+                    let total_paginas = Math.ceil(total_animais / paginationLimit);
+
+                    let animais = [];
+
+                    let voltar_pagina = undefined;
+                    let avancar_pagina = undefined;
+
+                    if (requestedPage > 1 && requestedPage <= total_paginas){
+                        voltar_pagina = `${req.protocol}://${req.get('host')}/usuarios/animais/?getAllFromUser=${req.query.getAllFromUser}&byStatus=${req.query.byStatus}&page=${requestedPage - 1}&limit=${paginationLimit}`;
+                    }
+
+                    if (requestedPage < total_paginas){
+                        avancar_pagina = `${req.protocol}://${req.get('host')}/usuarios/animais/?getAllFromUser=${req.query.getAllFromUser}&byStatus=${req.query.byStatus}&page=${requestedPage + 1}&limit=${paginationLimit}`;
+                    } 
+
+                    if (requestedPage > total_paginas){
+                        return res.status(404).json({
+                            mensagem: 'Você chegou ao final da lista de animais sob o estado de adoção selecionado deste usuário.',
+                            code: 'RESOURCE_NOT_FOUND'
+                        });
+                    }
+
+                    // Início da inclusão de atributos extra.
+                        resultArr.rows.forEach((animal) => {
+
+                            let objDadosAnimal = animal.get({ plain: true });
+
+                            // Separando os dados do objeto.
+                                let dadosDono = objDadosAnimal.dono;
+                                    delete objDadosAnimal.dono;
+                                let dadosAnimal = objDadosAnimal; 
+                            // Fim da separação dos dados.
+
+                            // Inclusão de atributos essenciais aos clientes.
+                                dadosAnimal.download_foto = `${req.protocol}://${req.get('host')}/usuarios/animais/albuns/fotos/${dadosAnimal.foto}`;
+                                dadosAnimal.detalhes_animal = `${req.protocol}://${req.get('host')}/usuarios/animais/?getOne=${dadosAnimal.cod_animal}`;
+                            // Fim da inclusão de atributos essenciais aos clientes.
+
+                            // Unindo os dados em objeto em um objeto.
+                                // ...
+                            // Fim da união dos dados em um objeto.
+
+                            animais.push(dadosAnimal);
+                        });
+                    // Fim da inclusão de atributos extra.
+                    
+                // Fim da construção do objeto enviado na resposta.
+
+                // Início do envio da Resposta.
+                    return res.status(200).json({
+                        mensagem: `Lista de animais do usuário sob o estado de adoção selecionado.`,
+                        total_animais,
+                        total_paginas,
+                        animais,
+                        voltar_pagina,
+                        avancar_pagina
+                    });
+                // Fim do envio da resposta.
+
+            })
+            .catch((error) => {
+                console.error('Algo inesperado aconteceu ao listar os animais do usuário sob um estado de adoção específico.', error);
+
+                let customErr = new Error('Algo inesperado aconteceu ao listar os animais do usuário sob um estado de adoção específico. Entre em contato com o administrador.');
+                customErr.status = 500;
+                customErr.code = 'INTERNAL_SERVER_ERROR'
+        
+                return next( customErr );
             });
 
-        };
-    // Fim do processo de listagem dos animais cadastrados.
+        }
+
+        if (operacao == 'getAll_fromUser_byName'){
+
+            // Chamada para Usuários.
+            // Exibe uma lista contendo todos os animais ativos que possuam o nome parecido com o que foi definido na busca e que pertencem a um usuário específico.
+            // Se o requerinte for uma Aplicação ou um Administrador, exibirá também os animais inativos no fim da listagem de animais ativos.
+
+            let whereConfig = {
+                cod_dono: req.query.getAllFromUser,
+                nome: {
+                    [Op.like]: `%${req.query.byName}%`
+                }
+            };  // Padrão se o requirinte for um Admin/Aplicação.
+
+            if (usuario?.e_admin == 0){
+                // Padrão se o requirente for um usuário comum.
+                whereConfig = {
+                    cod_dono: req.query.getAllFromUser,
+                    nome: {
+                        [Op.like]: `%${req.query.byName}%`
+                    },
+                    ativo: 1
+                }
+            }
+
+            Animal.findAndCountAll({
+                include: [{
+                    model: Usuario,
+                    as: 'dono',
+                    attributes: ['cod_usuario', 'esta_ativo']
+                }],
+                where: whereConfig,
+                order: [['ativo', 'DESC']],
+                limit: paginationLimit,
+                offset: paginationOffset
+            })
+            .then((resultArr) => {
+
+                if (resultArr.count === 0){
+                    return res.status(200).json({
+                        mensagem: 'Nenhum animal com o nome similar ao definido na busca foi encontrado na lista de animais do usuário.'
+                    });
+                }
+
+                // Restrições de uso da chamada.
+                    if (usuario?.e_admin == 0){
+                        // Se o requisitante for um usuário comum...
+
+                        if (listaBloqueiosReq.includes(resultArr.rows[0].cod_dono)){
+                        // Não deverá ter acesso à recursos de usuários bloqueados ou que bloquearam ele.
+                            return res.status(401).json({
+                                mensagem: 'Você não possui o nível de acesso adequado para esse recurso.',
+                                code: 'ACCESS_TO_RESOURCE_NOT_ALLOWED'
+                            });
+                        }
+
+                        if ((usuario.cod_usuario != resultArr.rows[0].cod_dono) && resultArr.rows[0].dono.esta_ativo == 0){
+                        // Não deverá ter acesso se não for o dono do recurso e o dono estiver inativo.
+                            return res.status(200).json({
+                                mensagem: 'Nenhum animal com o nome similar ao definido na busca foi encontrado na lista de animais do usuário.'
+                            });
+                        }
+
+                    }
+                // Fim das restrições de uso da chamada.
+
+                // Início da construção do objeto enviado na resposta.
+
+                    let total_animais = resultArr.count;
+
+                    let total_paginas = Math.ceil(total_animais / paginationLimit);
+
+                    let animais = [];
+
+                    let voltar_pagina = undefined;
+                    let avancar_pagina = undefined;
+
+                    if (requestedPage > 1 && requestedPage <= total_paginas){
+                        voltar_pagina = `${req.protocol}://${req.get('host')}/usuarios/animais/?getAllFromUser=${req.query.getAllFromUser}&byName=${req.query.byName}&page=${requestedPage - 1}&limit=${paginationLimit}`;
+                    }
+
+                    if (requestedPage < total_paginas){
+                        avancar_pagina = `${req.protocol}://${req.get('host')}/usuarios/animais/?getAllFromUser=${req.query.getAllFromUser}&byName=${req.query.byName}&page=${requestedPage + 1}&limit=${paginationLimit}`;
+                    } 
+
+                    if (requestedPage > total_paginas){
+                        return res.status(404).json({
+                            mensagem: 'Você chegou ao final da lista dos animais deste usuário que possuem o nome similar ao que foi definido na busca.',
+                            code: 'RESOURCE_NOT_FOUND'
+                        });
+                    }
+
+                    // Início da inclusão de atributos extra.
+                        resultArr.rows.forEach((animal) => {
+
+                            let objDadosAnimal = animal.get({ plain: true });
+
+                            // Separando os dados do objeto.
+                                let dadosDono = objDadosAnimal.dono;
+                                    delete objDadosAnimal.dono;
+                                let dadosAnimal = objDadosAnimal; 
+                            // Fim da separação dos dados.
+
+                            // Inclusão de atributos essenciais aos clientes.
+                                dadosAnimal.download_foto = `${req.protocol}://${req.get('host')}/usuarios/animais/albuns/fotos/${dadosAnimal.foto}`;
+                                dadosAnimal.detalhes_animal = `${req.protocol}://${req.get('host')}/usuarios/animais/?getOne=${dadosAnimal.cod_animal}`;
+                            // Fim da inclusão de atributos essenciais aos clientes.
+
+                            // Unindo os dados em objeto em um objeto.
+                                // ...
+                            // Fim da união dos dados em um objeto.
+
+                            animais.push(dadosAnimal);
+                        });
+                    // Fim da inclusão de atributos extra.
+                    
+                // Fim da construção do objeto enviado na resposta.
+
+                // Início do envio da Resposta.
+                    return res.status(200).json({
+                        mensagem: `Lista de animais do usuário que possuem o nome similar ao que foi definido na busca.`,
+                        total_animais,
+                        total_paginas,
+                        animais,
+                        voltar_pagina,
+                        avancar_pagina
+                    });
+                // Fim do envio da resposta.
+
+            })
+            .catch((error) => {
+                console.error('Algo inesperado aconteceu ao listar os animais do usuário que possuem o nome similar ao que foi definido na busca.', error);
+
+                let customErr = new Error('Algo inesperado aconteceu ao listar os animais do usuário que possuem o nome similar ao que foi definido na busca. Entre em contato com o administrador.');
+                customErr.status = 500;
+                customErr.code = 'INTERNAL_SERVER_ERROR'
+        
+                return next( customErr );
+            });
+
+        }
+
+        if (operacao == 'getAll_fromUser_bySpecie_n_byStatus'){
+
+            // Chamada para Usuários.
+            // Exibe uma lista contendo todos os animais ativos sob um estado específico de adoção, que pertencem a um usuário específico.
+            // Se o requerinte for uma Aplicação ou um Administrador, exibirá também os animais inativos no fim da listagem de animais ativos.
+
+            let especie = undefined;
+                req.query.bySpecie == 'cats' ? especie = 'Gato': undefined ;
+                req.query.bySpecie == 'dogs' ? especie = 'Cao': undefined ;
+                req.query.bySpecie == 'others' ? especie = 'Outros': undefined ;
+
+            let estado_adocao = undefined;
+                req.query.byStatus == 'protected' ? estado_adocao = 'Sob protecao': undefined ;
+                req.query.byStatus == 'announced' ? estado_adocao = 'Em anuncio': undefined ;
+                req.query.byStatus == 'trial' ? estado_adocao = 'Em processo adotivo': undefined ;
+                req.query.byStatus == 'adopted' ? estado_adocao = 'Adotado': undefined ;
+
+            let whereConfig = {
+                cod_dono: req.query.getAllFromUser,
+                especie: especie,
+                estado_adocao: estado_adocao
+            };  // Padrão se o requirinte for um Admin/Aplicação.
+
+            if (usuario?.e_admin == 0){
+                // Padrão se o requirente for um usuário comum.
+                whereConfig = {
+                    cod_dono: req.query.getAllFromUser,
+                    especie: especie,
+                    estado_adocao: estado_adocao,
+                    ativo: 1
+                }
+            }
+
+            Animal.findAndCountAll({
+                include: [{
+                    model: Usuario,
+                    as: 'dono',
+                    attributes: ['cod_usuario', 'esta_ativo']
+                }],
+                where: whereConfig,
+                order: [['ativo', 'DESC']],
+                limit: paginationLimit,
+                offset: paginationOffset
+            })
+            .then((resultArr) => {
+
+                if (resultArr.count === 0){
+                    return res.status(200).json({
+                        mensagem: 'Nenhum animal foi encontrado para os filtros definidos na lista de animais do usuário.'
+                    });
+                }
+
+                // Restrições de uso da chamada.
+                    if (usuario?.e_admin == 0){
+                        // Se o requisitante for um usuário comum...
+
+                        if (listaBloqueiosReq.includes(resultArr.rows[0].cod_dono)){
+                        // Não deverá ter acesso à recursos de usuários bloqueados ou que bloquearam ele.
+                            return res.status(401).json({
+                                mensagem: 'Você não possui o nível de acesso adequado para esse recurso.',
+                                code: 'ACCESS_TO_RESOURCE_NOT_ALLOWED'
+                            });
+                        }
+
+                        if ((usuario.cod_usuario != resultArr.rows[0].cod_dono) && resultArr.rows[0].dono.esta_ativo == 0){
+                        // Se não for o dono do recurso e o dono estiver inativo, não deve ter acesso.
+                            return res.status(200).json({
+                                mensagem: 'Nenhum animal foi encontrado para os filtros definidos na lista de animais do usuário.'
+                            });
+                        }
+
+                    }
+                // Fim das restrições de uso da chamada.
+
+                // Início da construção do objeto enviado na resposta.
+
+                    let total_animais = resultArr.count;
+
+                    let total_paginas = Math.ceil(total_animais / paginationLimit);
+
+                    let animais = [];
+
+                    let voltar_pagina = undefined;
+                    let avancar_pagina = undefined;
+
+                    if (requestedPage > 1 && requestedPage <= total_paginas){
+                        voltar_pagina = `${req.protocol}://${req.get('host')}/usuarios/animais/?getAllFromUser=${req.query.getAllFromUser}&bySpecie=${req.query.bySpecie}&byStatus=${req.query.byStatus}&page=${requestedPage - 1}&limit=${paginationLimit}`;
+                    }
+
+                    if (requestedPage < total_paginas){
+                        avancar_pagina = `${req.protocol}://${req.get('host')}/usuarios/animais/?getAllFromUser=${req.query.getAllFromUser}&bySpecie=${req.query.bySpecie}&byStatus=${req.query.byStatus}&page=${requestedPage + 1}&limit=${paginationLimit}`;
+                    } 
+
+                    if (requestedPage > total_paginas){
+                        return res.status(404).json({
+                            mensagem: 'Você chegou ao final da lista com filtro dos animais deste usuário.',
+                            code: 'RESOURCE_NOT_FOUND'
+                        });
+                    }
+
+                    // Início da inclusão de atributos extra.
+                        resultArr.rows.forEach((animal) => {
+
+                            let objDadosAnimal = animal.get({ plain: true });
+
+                            // Separando os dados do objeto.
+                                let dadosDono = objDadosAnimal.dono;
+                                    delete objDadosAnimal.dono;
+                                let dadosAnimal = objDadosAnimal; 
+                            // Fim da separação dos dados.
+
+                            // Inclusão de atributos essenciais aos clientes.
+                                dadosAnimal.download_foto = `${req.protocol}://${req.get('host')}/usuarios/animais/albuns/fotos/${dadosAnimal.foto}`;
+                                dadosAnimal.detalhes_animal = `${req.protocol}://${req.get('host')}/usuarios/animais/?getOne=${dadosAnimal.cod_animal}`;
+                            // Fim da inclusão de atributos essenciais aos clientes.
+
+                            // Unindo os dados em objeto em um objeto.
+                                // ...
+                            // Fim da união dos dados em um objeto.
+
+                            animais.push(dadosAnimal);
+                        });
+                    // Fim da inclusão de atributos extra.
+                    
+                // Fim da construção do objeto enviado na resposta.
+
+                // Início do envio da Resposta.
+                    return res.status(200).json({
+                        mensagem: `Lista de animais do usuário sob filtro de espécie e estado de adoção.`,
+                        total_animais,
+                        total_paginas,
+                        animais,
+                        voltar_pagina,
+                        avancar_pagina
+                    });
+                // Fim do envio da resposta.
+
+            })
+            .catch((error) => {
+                console.error('Algo inesperado aconteceu ao listar os animais do usuário sob filtro de espécie e estado de adoção.', error);
+
+                let customErr = new Error('Algo inesperado aconteceu ao listar os animais do usuário sob filtro de espécie e estado de adoção. Entre em contato com o administrador.');
+                customErr.status = 500;
+                customErr.code = 'INTERNAL_SERVER_ERROR'
+        
+                return next( customErr );
+            });
+
+        }
+
+        if (operacao == 'getAll_fromUser_bySpecie_n_byName'){
+
+            // Chamada para Usuários.
+            // Exibe uma lista contendo os animais ativos de um usuário cujo nome são semelhantes ao nome definido na busca, que são de uma determinada espécie.
+            // Se o requerinte for uma Aplicação ou um Administrador, exibirá também os animais inativos no fim da listagem de animais ativos.
+
+            let especie = undefined;
+                req.query.bySpecie == 'cats' ? especie = 'Gato': undefined ;
+                req.query.bySpecie == 'dogs' ? especie = 'Cao': undefined ;
+                req.query.bySpecie == 'others' ? especie = 'Outros': undefined ;
+
+            let whereConfig = {
+                cod_dono: req.query.getAllFromUser,
+                especie: especie,
+                nome: {
+                    [Op.like]: `%${req.query.byName}%`
+                }
+            };  // Padrão se o requirinte for um Admin/Aplicação.
+
+            if (usuario?.e_admin == 0){
+                // Padrão se o requirente for um usuário comum.
+                whereConfig = {
+                    cod_dono: req.query.getAllFromUser,
+                    especie: especie,
+                    nome: {
+                        [Op.like]: `%${req.query.byName}%`
+                    },
+                    ativo: 1
+                }
+            }
+
+            Animal.findAndCountAll({
+                include: [{
+                    model: Usuario,
+                    as: 'dono',
+                    attributes: ['cod_usuario', 'esta_ativo']
+                }],
+                where: whereConfig,
+                order: [['ativo', 'DESC']],
+                limit: paginationLimit,
+                offset: paginationOffset
+            })
+            .then((resultArr) => {
+
+                if (resultArr.count === 0){
+                    return res.status(200).json({
+                        mensagem: 'Nenhum animal da lista de animais do usuário se encaixa nos filtros que foram definidos para esta busca.'
+                    });
+                }
+
+                // Restrições de uso da chamada.
+                    if (usuario?.e_admin == 0){
+                        // Se o requisitante for um usuário comum...
+
+                        if (listaBloqueiosReq.includes(resultArr.rows[0].cod_dono)){
+                        // Não deverá ter acesso à recursos de usuários bloqueados ou que bloquearam ele.
+                            return res.status(401).json({
+                                mensagem: 'Você não possui o nível de acesso adequado para esse recurso.',
+                                code: 'ACCESS_TO_RESOURCE_NOT_ALLOWED'
+                            });
+                        }
+
+                        if ((usuario.cod_usuario != resultArr.rows[0].cod_dono) && resultArr.rows[0].dono.esta_ativo == 0){
+                        // Se não for o dono do recurso e o dono estiver inativo, não deve ter acesso.
+                            return res.status(200).json({
+                                mensagem: 'Nenhum animal da lista de animais do usuário se encaixa nos filtros que foram definidos para esta busca.'
+                            });
+                        }
+
+                    }
+                // Fim das restrições de uso da chamada.
+
+                // Início da construção do objeto enviado na resposta.
+
+                    let total_animais = resultArr.count;
+
+                    let total_paginas = Math.ceil(total_animais / paginationLimit);
+
+                    let animais = [];
+
+                    let voltar_pagina = undefined;
+                    let avancar_pagina = undefined;
+
+                    if (requestedPage > 1 && requestedPage <= total_paginas){
+                        voltar_pagina = `${req.protocol}://${req.get('host')}/usuarios/animais/?getAllFromUser=${req.query.getAllFromUser}&byName=${req.query.byName}&bySpecie=${req.query.bySpecie}&page=${requestedPage - 1}&limit=${paginationLimit}`;
+                    }
+
+                    if (requestedPage < total_paginas){
+                        avancar_pagina = `${req.protocol}://${req.get('host')}/usuarios/animais/?getAllFromUser=${req.query.getAllFromUser}&byName=${req.query.byName}&bySpecie=${req.query.bySpecie}&page=${requestedPage + 1}&limit=${paginationLimit}`;
+                    } 
+
+                    if (requestedPage > total_paginas){
+                        return res.status(404).json({
+                            mensagem: 'Você chegou ao final da lista de animais do usuário filtrada por nome e espécie.',
+                            code: 'RESOURCE_NOT_FOUND'
+                        });
+                    }
+
+                    // Início da inclusão de atributos extra.
+                        resultArr.rows.forEach((animal) => {
+
+                            let objDadosAnimal = animal.get({ plain: true });
+
+                            // Separando os dados do objeto.
+                                let dadosDono = objDadosAnimal.dono;
+                                    delete objDadosAnimal.dono;
+                                let dadosAnimal = objDadosAnimal; 
+                            // Fim da separação dos dados.
+
+                            // Inclusão de atributos essenciais aos clientes.
+                                dadosAnimal.download_foto = `${req.protocol}://${req.get('host')}/usuarios/animais/albuns/fotos/${dadosAnimal.foto}`;
+                                dadosAnimal.detalhes_animal = `${req.protocol}://${req.get('host')}/usuarios/animais/?getOne=${dadosAnimal.cod_animal}`;
+                            // Fim da inclusão de atributos essenciais aos clientes.
+
+                            // Unindo os dados em objeto em um objeto.
+                                // ...
+                            // Fim da união dos dados em um objeto.
+
+                            animais.push(dadosAnimal);
+                        });
+                    // Fim da inclusão de atributos extra.
+                    
+                // Fim da construção do objeto enviado na resposta.
+
+                // Início do envio da Resposta.
+                    return res.status(200).json({
+                        mensagem: `Lista de animais do usuário filtrada por nome e espécie.`,
+                        total_animais,
+                        total_paginas,
+                        animais,
+                        voltar_pagina,
+                        avancar_pagina
+                    });
+                // Fim do envio da resposta.
+
+            })
+            .catch((error) => {
+                console.error('Algo inesperado aconteceu ao listar os animais do usuário sob filtro de nome e espécie.', error);
+
+                let customErr = new Error('Algo inesperado aconteceu ao listar os animais do usuário sob filtro de nome e espécie. Entre em contato com o administrador.');
+                customErr.status = 500;
+                customErr.code = 'INTERNAL_SERVER_ERROR'
+        
+                return next( customErr );
+            });
+
+        }
+
+        if (operacao == 'getAll_fromUser_byStatus_n_byName'){
+
+            // Chamada para Usuários.
+            // Exibe uma lista contendo os animais ativos de um usuário cujo nome são semelhantes ao nome definido na busca, que estão sob um determinado estado de adoção.
+            // Se o requerinte for uma Aplicação ou um Administrador, exibirá também os animais inativos no fim da listagem de animais ativos.
+
+            let estado_adocao = undefined;
+                req.query.byStatus == 'protected' ? estado_adocao = 'Sob protecao': undefined ;
+                req.query.byStatus == 'announced' ? estado_adocao = 'Em anuncio': undefined ;
+                req.query.byStatus == 'trial' ? estado_adocao = 'Em processo adotivo': undefined ;
+                req.query.byStatus == 'adopted' ? estado_adocao = 'Adotado': undefined ;
+
+            let whereConfig = {
+                cod_dono: req.query.getAllFromUser,
+                estado_adocao: estado_adocao,
+                nome: {
+                    [Op.like]: `%${req.query.byName}%`
+                }
+            };  // Padrão se o requirinte for um Admin/Aplicação.
+
+            if (usuario?.e_admin == 0){
+                // Padrão se o requirente for um usuário comum.
+                whereConfig = {
+                    cod_dono: req.query.getAllFromUser,
+                    estado_adocao: estado_adocao,
+                    nome: {
+                        [Op.like]: `%${req.query.byName}%`
+                    },
+                    ativo: 1
+                }
+            }
+
+            Animal.findAndCountAll({
+                include: [{
+                    model: Usuario,
+                    as: 'dono',
+                    attributes: ['cod_usuario', 'esta_ativo']
+                }],
+                where: whereConfig,
+                order: [['ativo', 'DESC']],
+                limit: paginationLimit,
+                offset: paginationOffset
+            })
+            .then((resultArr) => {
+
+                if (resultArr.count === 0){
+                    return res.status(200).json({
+                        mensagem: 'Nenhum animal da lista de animais do usuário se encaixa nos filtros que foram definidos para esta busca.'
+                    });
+                }
+
+                // Restrições de uso da chamada.
+                    if (usuario?.e_admin == 0){
+                        // Se o requisitante for um usuário comum...
+
+                        if (listaBloqueiosReq.includes(resultArr.rows[0].cod_dono)){
+                        // Não deverá ter acesso à recursos de usuários bloqueados ou que bloquearam ele.
+                            return res.status(401).json({
+                                mensagem: 'Você não possui o nível de acesso adequado para esse recurso.',
+                                code: 'ACCESS_TO_RESOURCE_NOT_ALLOWED'
+                            });
+                        }
+
+                        if ((usuario.cod_usuario != resultArr.rows[0].cod_dono) && resultArr.rows[0].dono.esta_ativo == 0){
+                        // Se não for o dono do recurso e o dono estiver inativo, não deve ter acesso.
+                            return res.status(200).json({
+                                mensagem: 'Nenhum animal da lista de animais do usuário se encaixa nos filtros que foram definidos para esta busca.'
+                            });
+                        }
+
+                    }
+                // Fim das restrições de uso da chamada.
+
+                // Início da construção do objeto enviado na resposta.
+
+                    let total_animais = resultArr.count;
+
+                    let total_paginas = Math.ceil(total_animais / paginationLimit);
+
+                    let animais = [];
+
+                    let voltar_pagina = undefined;
+                    let avancar_pagina = undefined;
+
+                    if (requestedPage > 1 && requestedPage <= total_paginas){
+                        voltar_pagina = `${req.protocol}://${req.get('host')}/usuarios/animais/?getAllFromUser=${req.query.getAllFromUser}&byName=${req.query.byName}&byStatus=${req.query.byStatus}&page=${requestedPage - 1}&limit=${paginationLimit}`;
+                    }
+
+                    if (requestedPage < total_paginas){
+                        avancar_pagina = `${req.protocol}://${req.get('host')}/usuarios/animais/?getAllFromUser=${req.query.getAllFromUser}&byName=${req.query.byName}&byStatus=${req.query.byStatus}&page=${requestedPage + 1}&limit=${paginationLimit}`;
+                    } 
+
+                    if (requestedPage > total_paginas){
+                        return res.status(404).json({
+                            mensagem: 'Você chegou ao final da lista de animais do usuário filtrada por nome e estado de adoção.',
+                            code: 'RESOURCE_NOT_FOUND'
+                        });
+                    }
+
+                    // Início da inclusão de atributos extra.
+                        resultArr.rows.forEach((animal) => {
+
+                            let objDadosAnimal = animal.get({ plain: true });
+
+                            // Separando os dados do objeto.
+                                let dadosDono = objDadosAnimal.dono;
+                                    delete objDadosAnimal.dono;
+                                let dadosAnimal = objDadosAnimal; 
+                            // Fim da separação dos dados.
+
+                            // Inclusão de atributos essenciais aos clientes.
+                                dadosAnimal.download_foto = `${req.protocol}://${req.get('host')}/usuarios/animais/albuns/fotos/${dadosAnimal.foto}`;
+                                dadosAnimal.detalhes_animal = `${req.protocol}://${req.get('host')}/usuarios/animais/?getOne=${dadosAnimal.cod_animal}`;
+                            // Fim da inclusão de atributos essenciais aos clientes.
+
+                            // Unindo os dados em objeto em um objeto.
+                                // ...
+                            // Fim da união dos dados em um objeto.
+
+                            animais.push(dadosAnimal);
+                        });
+                    // Fim da inclusão de atributos extra.
+                    
+                // Fim da construção do objeto enviado na resposta.
+
+                // Início do envio da Resposta.
+                    return res.status(200).json({
+                        mensagem: `Lista de animais do usuário filtrada por nome e estado de adoção.`,
+                        total_animais,
+                        total_paginas,
+                        animais,
+                        voltar_pagina,
+                        avancar_pagina
+                    });
+                // Fim do envio da resposta.
+
+            })
+            .catch((error) => {
+                console.error('Algo inesperado aconteceu ao listar os animais do usuário sob filtro de nome e estado de adoção.', error);
+
+                let customErr = new Error('Algo inesperado aconteceu ao listar os animais do usuário sob filtro de nome e estado de adoção. Entre em contato com o administrador.');
+                customErr.status = 500;
+                customErr.code = 'INTERNAL_SERVER_ERROR'
+        
+                return next( customErr );
+            });
+
+        }
+
+        if (operacao == 'getAll_fromUser_bySpecie_n_byStatus_n_byName'){
+
+            // Chamada para Usuários.
+            // Exibe uma lista contendo os animais ativos de um usuário cujo nome são semelhantes ao nome definido na busca, que são de uma determinada espécie e que estão sob um determinado estado de adoção.
+            // Se o requerinte for uma Aplicação ou um Administrador, exibirá também os animais inativos no fim da listagem de animais ativos.
+
+            let especie = undefined;
+                req.query.bySpecie == 'cats' ? especie = 'Gato': undefined ;
+                req.query.bySpecie == 'dogs' ? especie = 'Cao': undefined ;
+                req.query.bySpecie == 'others' ? especie = 'Outros': undefined ;
+
+            let estado_adocao = undefined;
+                req.query.byStatus == 'protected' ? estado_adocao = 'Sob protecao': undefined ;
+                req.query.byStatus == 'announced' ? estado_adocao = 'Em anuncio': undefined ;
+                req.query.byStatus == 'trial' ? estado_adocao = 'Em processo adotivo': undefined ;
+                req.query.byStatus == 'adopted' ? estado_adocao = 'Adotado': undefined ;
+
+            let whereConfig = {
+                cod_dono: req.query.getAllFromUser,
+                especie: especie,
+                estado_adocao: estado_adocao,
+                nome: {
+                    [Op.like]: `%${req.query.byName}%`
+                }
+            };  // Padrão se o requirinte for um Admin/Aplicação.
+
+            if (usuario?.e_admin == 0){
+                // Padrão se o requirente for um usuário comum.
+                whereConfig = {
+                    cod_dono: req.query.getAllFromUser,
+                    especie: especie,
+                    estado_adocao: estado_adocao,
+                    nome: {
+                        [Op.like]: `%${req.query.byName}%`
+                    },
+                    ativo: 1
+                }
+            }
+
+            Animal.findAndCountAll({
+                include: [{
+                    model: Usuario,
+                    as: 'dono',
+                    attributes: ['cod_usuario', 'esta_ativo']
+                }],
+                where: whereConfig,
+                order: [['ativo', 'DESC']],
+                limit: paginationLimit,
+                offset: paginationOffset
+            })
+            .then((resultArr) => {
+
+                if (resultArr.count === 0){
+                    return res.status(200).json({
+                        mensagem: 'Nenhum animal da lista de animais do usuário se encaixa nos filtros que foram definidos para esta busca.'
+                    });
+                }
+
+                // Restrições de uso da chamada.
+                    if (usuario?.e_admin == 0){
+                        // Se o requisitante for um usuário comum...
+
+                        if (listaBloqueiosReq.includes(resultArr.rows[0].cod_dono)){
+                        // Não deverá ter acesso à recursos de usuários bloqueados ou que bloquearam ele.
+                            return res.status(401).json({
+                                mensagem: 'Você não possui o nível de acesso adequado para esse recurso.',
+                                code: 'ACCESS_TO_RESOURCE_NOT_ALLOWED'
+                            });
+                        }
+
+                        if ((usuario.cod_usuario != resultArr.rows[0].cod_dono) && resultArr.rows[0].dono.esta_ativo == 0){
+                        // Se não for o dono do recurso e o dono estiver inativo, não deve ter acesso.
+                            return res.status(200).json({
+                                mensagem: 'Nenhum animal da lista de animais do usuário se encaixa nos filtros que foram definidos para esta busca.'
+                            });
+                        }
+
+                    }
+                // Fim das restrições de uso da chamada.
+
+                // Início da construção do objeto enviado na resposta.
+
+                    let total_animais = resultArr.count;
+
+                    let total_paginas = Math.ceil(total_animais / paginationLimit);
+
+                    let animais = [];
+
+                    let voltar_pagina = undefined;
+                    let avancar_pagina = undefined;
+
+                    if (requestedPage > 1 && requestedPage <= total_paginas){
+                        voltar_pagina = `${req.protocol}://${req.get('host')}/usuarios/animais/?getAllFromUser=${req.query.getAllFromUser}&byName=${req.query.byName}&byStatus=${req.query.byStatus}&bySpecie=${req.query.bySpecie}&page=${requestedPage - 1}&limit=${paginationLimit}`;
+                    }
+
+                    if (requestedPage < total_paginas){
+                        avancar_pagina = `${req.protocol}://${req.get('host')}/usuarios/animais/?getAllFromUser=${req.query.getAllFromUser}&byName=${req.query.byName}&byStatus=${req.query.byStatus}&bySpecie=${req.query.bySpecie}&page=${requestedPage + 1}&limit=${paginationLimit}`;
+                    } 
+
+                    if (requestedPage > total_paginas){
+                        return res.status(404).json({
+                            mensagem: 'Você chegou ao final da lista de animais do usuário filtrada por nome, espécie e estado de adoção.',
+                            code: 'RESOURCE_NOT_FOUND'
+                        });
+                    }
+
+                    // Início da inclusão de atributos extra.
+                        resultArr.rows.forEach((animal) => {
+
+                            let objDadosAnimal = animal.get({ plain: true });
+
+                            // Separando os dados do objeto.
+                                let dadosDono = objDadosAnimal.dono;
+                                    delete objDadosAnimal.dono;
+                                let dadosAnimal = objDadosAnimal; 
+                            // Fim da separação dos dados.
+
+                            // Inclusão de atributos essenciais aos clientes.
+                                dadosAnimal.download_foto = `${req.protocol}://${req.get('host')}/usuarios/animais/albuns/fotos/${dadosAnimal.foto}`;
+                                dadosAnimal.detalhes_animal = `${req.protocol}://${req.get('host')}/usuarios/animais/?getOne=${dadosAnimal.cod_animal}`;
+                            // Fim da inclusão de atributos essenciais aos clientes.
+
+                            // Unindo os dados em objeto em um objeto.
+                                // ...
+                            // Fim da união dos dados em um objeto.
+
+                            animais.push(dadosAnimal);
+                        });
+                    // Fim da inclusão de atributos extra.
+                    
+                // Fim da construção do objeto enviado na resposta.
+
+                // Início do envio da Resposta.
+                    return res.status(200).json({
+                        mensagem: `Lista de animais do usuário filtrada por nome, espécie e estado de adoção.`,
+                        total_animais,
+                        total_paginas,
+                        animais,
+                        voltar_pagina,
+                        avancar_pagina
+                    });
+                // Fim do envio da resposta.
+
+            })
+            .catch((error) => {
+                console.error('Algo inesperado aconteceu ao listar os animais do usuário sob filtro de nome, espécie e estado de adoção.', error);
+
+                let customErr = new Error('Algo inesperado aconteceu ao listar os animais do usuário sob filtro nome, espécie e estado de adoção. Entre em contato com o administrador.');
+                customErr.status = 500;
+                customErr.code = 'INTERNAL_SERVER_ERROR'
+        
+                return next( customErr );
+            });
+
+        }
+
+
+    // Fim dos processos de listagem dos animais.
 
 });
 
@@ -839,6 +1596,7 @@ router.post('/', async (req, res, next) => {
                 'porte',
                 'esta_castrado',
                 'esta_vacinado',
+                'possui_rga',
                 'detalhes_comportamento',
                 'detalhes_saude',
                 'historia'
@@ -892,6 +1650,7 @@ router.post('/', async (req, res, next) => {
                 'porte',
                 'esta_castrado',
                 'esta_vacinado',
+                'possui_rga',
                 'detalhes_comportamento',
                 'detalhes_saude',
             ];
@@ -979,9 +1738,9 @@ router.post('/', async (req, res, next) => {
                     });
                 }
 
-                if (req.body.nome.length === 0 || req.body.nome.length > 100){
+                if (req.body.nome.length === 0 || req.body.nome.length > 50){
                     return res.status(400).json({
-                        mensagem: 'O nome do animal está vazio ou possui mais do que 100 caracteres.',
+                        mensagem: 'O nome do animal está vazio ou possui mais do que 50 caracteres.',
                         code: 'INVALID_LENGTH_NOME'
                     });
                 }
@@ -1195,6 +1954,28 @@ router.post('/', async (req, res, next) => {
                 
             }
         // ------------------------
+
+        // Validação Possui RGA?
+            if (req.body.possui_rga?.length >= 0){
+
+                let allowedValues = [
+                    '0',
+                    '1'
+                ];
+
+                if (!allowedValues.includes(req.body.possui_rga)){
+                    return res.status(400).json({
+                        mensagem: 'O estado de posse de RGA é inválido',
+                        code: 'INVALID_INPUT_ESTA_VACINADO'
+                    });
+                }
+
+                // Se chegou aqui, o valor é válido. Converta para Number.
+                    req.body.possui_rga = Number(req.body.possui_rga);
+                // Fim da conversão do estado de vacinação para Number.
+                
+            }
+        // ------------------------
         
         // Validação Detalhes comportamento.
             if (req.body.detalhes_comportamento?.length >= 0){
@@ -1283,6 +2064,7 @@ router.post('/', async (req, res, next) => {
                     porte: req.body.porte,
                     esta_castrado: req.body.esta_castrado,
                     esta_vacinado: req.body.esta_vacinado,
+                    possui_rga: req.body.possui_rga,
                     detalhes_comportamento: req.body.detalhes_comportamento,
                     detalhes_saude: req.body.detalhes_saude,
                     historia: req.body.historia
@@ -1290,6 +2072,8 @@ router.post('/', async (req, res, next) => {
                     transaction
                 });
 
+                // [!] Atenção, se o álbum começar a ter prefixos, isso deve ser verificado também na chamada PATCH do Animal, ao alterar o nome do animal...
+                // [!] Se o nome do animal for alterado, o álbum padrão que ele recebe quando cadastrado terá seu nome alterado também...
                 let albumPrefix = undefined;
 
                 switch(animal.genero){
@@ -1304,7 +2088,7 @@ router.post('/', async (req, res, next) => {
                         break;
                 }
 
-                const albumAnimal = await AlbumAnimal.create({
+                let albumAnimal = await AlbumAnimal.create({
                     cod_animal: animal.cod_animal,
                     titulo: `${albumPrefix} ${animal.nome}`,
                 }, {
@@ -1317,7 +2101,7 @@ router.post('/', async (req, res, next) => {
                     // Início da adição de atributos extras ao objeto.
 
                         // Adicionando o end-point para exibição da foto do animal.
-                            objAnimal.download_foto = `${req.protocol}://${req.get('host')}/usuarios/animais/albuns/fotos/${animal.foto}`
+                            objAnimal.download_foto = `GET ${req.protocol}://${req.get('host')}/usuarios/animais/albuns/fotos/${animal.foto}`
                         // --------------------------------------------------------
 
                     // Fim da adição de atributos extras ao objeto.
@@ -1327,8 +2111,11 @@ router.post('/', async (req, res, next) => {
                 // Início da entrega da mensagem de conclusão do cadastro do animal para o usuário.
 
                     return res.status(200).json({
-                        mensagem: 'Cadastro do animal foi realizado com sucesso! Utilize o [ cod_animal ] para alterar dados do animal, como por exemplo, trocar a [ foto ] padrão.',
-                        animal: objAnimal
+                        mensagem: 'Cadastro do animal foi realizado com sucesso! Utilize o [ cod_animal ] para alterar dados do animal, como por exemplo, trocar a [ foto ] padrão, ou o [ cod_album ] para adicionar uma nova foto ao álbum do animal.',
+                        animal: objAnimal,
+                        alterar_foto: `PATCH ${req.protocol}://${req.get('host')}/usuarios/animais/${animal.cod_animal}`,
+                        album: albumAnimal,
+                        add_foto_album: `POST ${req.protocol}://${req.get('host')}/usuarios/animais/albuns/fotos/${albumAnimal.cod_album}`,
                     });
 
                 // Fim da entrega da mensagem de conclusão do cadastro do animal para o usuário.
@@ -1404,7 +2191,11 @@ router.patch('/:codAnimal', async (req, res, next) => {
 
         try {
 
-            animal = await Animal.findByPk(cod_animal, {
+            animal = await Animal.findOne({
+                where: {
+                    cod_animal: cod_animal,
+                    ativo: 1
+                },
                 raw: true
             })
             .catch((error) => {
@@ -1431,6 +2222,7 @@ router.patch('/:codAnimal', async (req, res, next) => {
                 lista_usuarios: `${req.protocol}://${req.get('host')}/usuarios/`,
             });
         }
+
     // Fim da verificação do cadastro do animal.
 
     // Início das restrições de uso da rota.
@@ -1455,9 +2247,13 @@ router.patch('/:codAnimal', async (req, res, next) => {
             case 0:
                 operacao = 'update';
 
+                if (animal.estado_adocao == 'Adotado') { operacao = 'update_adopted_animal' };
+
                 break;
             case 1:
                 if (req.query?.setDefault == 'foto') { operacao = 'setDefault_Foto' };
+
+                if (animal.estado_adocao == 'Adotado' && req.query.setDefault == 'foto') { operacao = 'update_adopted_animal' };
 
                 break;
             default:
@@ -1957,6 +2753,14 @@ router.patch('/:codAnimal', async (req, res, next) => {
                                     })
                                     .catch((errorFindAnimal) => {
 
+                                        console.error(`Algo inesperado aconteceu ao buscar os dados atualizados do animal.`, errorFindAnimal);
+
+                                        let customErr = new Error('Algo inesperado aconteceu ao buscar os dados atualizados do animal. Entre em contato com o administrador.');
+                                        customErr.status = 500;
+                                        customErr.code = 'INTERNAL_SERVER_ERROR';
+
+                                        return next( customErr );
+
                                     })
                                     // Fim do envio da resposta com os dados do animal atualizados.
 
@@ -1983,6 +2787,7 @@ router.patch('/:codAnimal', async (req, res, next) => {
                     // Lista de campos permitidos.
 
                         let allowedFields = [
+                            'ativo',
                             'nome',
                             'foto',
                             'data_nascimento',
@@ -1992,6 +2797,7 @@ router.patch('/:codAnimal', async (req, res, next) => {
                             'porte',
                             'esta_castrado',
                             'esta_vacinado',
+                            'possui_rga',
                             'detalhes_comportamento',
                             'detalhes_saude',
                             'historia'
@@ -2075,6 +2881,24 @@ router.patch('/:codAnimal', async (req, res, next) => {
 
                 // Início da Validação dos Campos.
 
+                    // Validação "ativo".
+                        if (req.body.ativo?.length >= 0){
+
+                            let allowedValues = [
+                                '0',
+                                '1'
+                            ];
+
+                            if (!allowedValues.includes(req.body.ativo)){
+                                return res.status(400).json({
+                                    mensagem: 'O estado de ativação declarado para o animal é inválido, aceitamos apenas [0] ou [1].',
+                                    code: 'INVALID_INPUT_ATIVO'
+                                });
+                            }
+
+                        }
+                    // Fim da validação "ativo".
+
                     // Validação Nome.
                         if (req.body.nome?.length >= 0){
 
@@ -2085,9 +2909,9 @@ router.patch('/:codAnimal', async (req, res, next) => {
                                 });
                             }
 
-                            if (req.body.nome.length === 0 || req.body.nome.length > 100){
+                            if (req.body.nome.length === 0 || req.body.nome.length > 50){
                                 return res.status(400).json({
-                                    mensagem: 'O nome do animal está vazio ou possui mais do que 100 caracteres.',
+                                    mensagem: 'O nome do animal está vazio ou possui mais do que 50 caracteres.',
                                     code: 'INVALID_LENGTH_NOME'
                                 });
                             }
@@ -2355,6 +3179,28 @@ router.patch('/:codAnimal', async (req, res, next) => {
                             
                         }
                     // ------------------------
+
+                    // Validação Possui RGA?
+                        if (req.body.possui_rga?.length >= 0){
+
+                            let allowedValues = [
+                                '0',
+                                '1'
+                            ];
+
+                            if (!allowedValues.includes(req.body.possui_rga)){
+                                return res.status(400).json({
+                                    mensagem: 'O estado de posse de RGA é inválido',
+                                    code: 'INVALID_INPUT_ESTA_VACINADO'
+                                });
+                            }
+
+                            // Se chegou aqui, o valor é válido. Converta para Number.
+                                req.body.possui_rga = Number(req.body.possui_rga);
+                            // Fim da conversão do estado de vacinação para Number.
+                            
+                        }
+                    // ------------------------
                     
                     // Validação Detalhes comportamento.
                         if (req.body.detalhes_comportamento?.length >= 0){
@@ -2405,9 +3251,23 @@ router.patch('/:codAnimal', async (req, res, next) => {
                         },
                         limit: 1
                     })
-                    .then((resultUpdate) => {
+                    .then( async (resultUpdate) => {
 
-                        Animal.findByPk(req.params.codAnimal, {
+                        if (req.body.nome){
+                        // Atualiza o nome do álbum primário do animal caso o nome do animal for alterado.
+                            await AlbumAnimal.update({
+                                titulo: `Álbum ${req.body.nome}`,
+                                data_modificacao: new Date()
+                            }, {
+                                where: {
+                                    titulo: `Álbum ${animal.nome}`,
+                                    cod_animal: req.params.codAnimal,
+                                },
+                                limit: 1
+                            });
+                        }
+
+                        await Animal.findByPk(req.params.codAnimal, {
                             raw: true
                         })
                         .then((updatedResult) => {
@@ -2457,6 +3317,207 @@ router.patch('/:codAnimal', async (req, res, next) => {
                 // Fim da efetivação das alterações.
 
             // Fim do gerenciamento de alterações em campos comuns dos dados do animal.
+
+        };
+
+        if (operacao == 'update_adopted_animal'){
+
+            // Permite a alteração de animais que estão no histórico de animais adotados.
+            // Chamada única pois possui restrições específicas.
+
+            // Início da verificação de conteúdo do pacote de dados da requisição.
+                if (!req.headers['content-type']){
+                    return res.status(400).json({
+                        mensagem: 'Dados não foram encontrados na requisição',
+                        code: 'INVALID_REQUEST_CONTENT'
+                    });
+                }
+            // Fim da verificação de conteúdo do pacote de dados da requisição.
+
+            // Início do gerenciamento de alterações em campos comuns dos dados do recurso.
+
+                // Início das restrições de envio de campos.
+
+                    let hasUnauthorizedField = false;
+                    let emptyFields = [];   // Se campos vazios forem detectados, envie (400 - INVALID_REQUEST_FIELDS)
+                    let missingFields = []; // Receberá os campos obrigatórios que faltaram na requisição.
+
+                    // Lista de campos permitidos.
+
+                        let allowedFields = [
+                            'ativo'
+                        ];
+
+                    // Fim da lista de campos permitidos.
+
+                    // Lista de campos obrigatórios.
+
+                        let requiredFields = [
+                            'ativo'
+                        ];
+
+                    // Fim da lista de campos obrigatórios.
+
+                    // Início da verificação de campos.
+
+                        // Verificação dos campos não permitidos.
+                        Object.entries(req.body).forEach((pair) => {
+                            if (!allowedFields.includes(pair[0])){
+                                hasUnauthorizedField = true;
+                            }
+
+                            if (String(pair[1]).length == 0){
+                                emptyFields.push(String(pair[0]));
+                            }
+                        });
+
+                        // Verificação da existência dos campos obrigatórios.
+                        requiredFields.forEach((field) => {
+                            if (!Object.keys(req.body).includes(field)){
+                                missingFields.push(`Campo [${field}] não encontrado.`);
+                            }
+                        })
+
+                        if (hasUnauthorizedField){
+                            return res.status(400).json({
+                                mensagem: 'Algum dos campos enviados é inválido.',
+                                code: 'INVALID_REQUEST_FIELDS'
+                            });
+                        }
+
+                        if (emptyFields.length > 0){
+                            return res.status(400).json({
+                                mensagem: `Campos vazios foram detectados.`,
+                                code: 'INVALID_REQUEST_FIELDS',
+                                campos_vazios: emptyFields
+                            });
+                        }
+
+                        if (missingFields.length > 0){
+                    
+                            return res.status(400).json({
+                                mensagem: 'Campos obrigatórios estão faltando.',
+                                code: 'INVALID_REQUEST_FIELDS',
+                                missing_fields: missingFields
+                            });
+                        }
+
+                    // Fim da verificação de campos.
+
+                // Fim das restrições de envio de campos.
+
+                // Início da Normalização dos campos recebidos.
+
+                    Object.entries(req.body).forEach((pair) => {
+                        req.body[pair[0]] = String(pair[1]).trim();     // Remove espaços excessivos no início e no fim do valor.
+                    });
+
+                // Fim da Normalização dos campos recebidos.
+
+                // Início da Validação dos campos.
+
+                    // Validação do campo "ativo".
+                        if (req.body.ativo?.length >= 0){
+
+                            let allowedValues = [
+                                '0',
+                                '1'
+                            ];
+
+                            if (!allowedValues.includes(req.body.ativo)){
+                                return res.status(400).json({
+                                    mensagem: 'O estado de ativação declarado para o animal é inválido, aceitamos apenas [0] ou [1].',
+                                    code: 'INVALID_INPUT_ATIVO'
+                                });
+                            }
+
+                        }
+                    // Fim da validação do campo "ativo".
+                    
+                // Fim da Validação dos campos.
+
+                // Início da efetivação das alterações dos dados do recurso.
+
+                    try {
+
+                        let dataAtual = new Date();
+
+                        await database.transaction( async (transaction) => {
+
+                            req.body.data_modificacao = dataAtual;
+
+                            await Animal.update(req.body, {
+                                where: {
+                                    cod_animal: req.params.codAnimal
+                                },
+                                limit: 1,
+                                transaction
+                            });
+
+                        })
+                        .catch((error) => {
+                            // Se qualquer erro acontecer no bloco acima, cairemos em CATCH do bloco TRY e faremos o rollback;
+                            throw new Error(error);
+                        })
+
+                        // Auto-commit.
+                    } catch (error) {
+                        // Rollback.
+
+                        console.error('Algo inesperado aconteceu ao alterar o estado de ativação de um animal do histórico de animais adotados.', error);
+
+                        let customErr = new Error('Algo inesperado aconteceu ao alterar o estado de ativação de um animal do histórico de animais adotados. Entre em contato com o administrador.');
+                        customErr.status = 500;
+                        customErr.code = 'INTERNAL_SERVER_ERROR';
+
+                        return next( customErr );
+                    }
+
+                // Fim da efetivação das alterações dos dados do recurso.
+
+                // Início do envio da resposta com os dados atualizados do recurso.
+
+                    let updatedAnimal = undefined;
+
+                    updatedAnimal = await Animal.findByPk(req.params.codAnimal);
+
+                    if (!updatedAnimal){
+                        console.error('Algo inesperado aconteceu ao buscar os dados do animal do histórico de animais adotados após a alteração do seu estado de ativação.');
+
+                        let customErr = new Error('Algo inesperado aconteceu ao buscar os dados do animal do histórico de animais adotados após a alteração do seu estado de ativação. Entre em contato com o administrador.');
+                        customErr.status = 500;
+                        customErr.code = 'INTERNAL_SERVER_ERROR';
+
+                        return next( customErr );
+                    }
+
+                    // Início da inclusão de atributos extra.
+                        updatedAnimal = await updatedAnimal.get({ plain: true });
+
+                        // Separando os dados do objeto.
+                            // ...
+                        // Fim da separação dos dados.
+
+                        // Inclusão de atributos essenciais aos clientes.
+                            updatedAnimal.download_foto = `${req.protocol}://${req.get('host')}/usuarios/animais/albuns/fotos/${updatedAnimal.foto}`;
+                            updatedAnimal.detalhes_animal = `${req.protocol}://${req.get('host')}/usuarios/animais/?getOne=${updatedAnimal.cod_animal}`;
+                        // Fim da inclusão de atributos essenciais aos clientes.
+
+                        // Unindo os dados em objeto em um objeto.
+                            // ...
+                        // Fim da união dos dados em um objeto.
+
+                    // Fim da inclusão de atributos extra.
+
+                    // Início do envio da Resposta.
+                        return res.status(200).json({
+                            mensagem: 'Os dados do animal foram atualizados com sucesso',
+                            animal: updatedAnimal
+                        })
+                    // Fim do envio da Resposta.
+                // Fim do envio da resposta com os dados atualizados do recurso.
+
+            // Fim do gerenciamento de alterações em campos comuns dos dados do recurso.
 
         };
 

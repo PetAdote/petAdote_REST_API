@@ -11,9 +11,13 @@
 
 // Verificações pré-inicialização.
 
-    // Realiza a remoção de arquivos temporários remanecentes de processos que falharam.
+    // Realiza a remoção de arquivos temporários remanecentes de processos de tratamento de imagens que falharam.
     fs.rmSync(path.resolve(__dirname, "api", "uploads", "tmp"), { recursive: true, force: true });
     fs.mkdirSync(path.resolve(__dirname, "api", "uploads", "tmp"));
+
+    // Realiza a remoção de arquivos temporários remanecentes de processos de geração de documentos que falharam.
+    fs.rmSync(path.resolve(__dirname, "api", "docs", "tmp"), { recursive: true, force: true });
+    fs.mkdirSync(path.resolve(__dirname, "api", "docs", "tmp"));
 
 // Inicialização do servidor http.
 

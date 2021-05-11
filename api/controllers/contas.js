@@ -537,7 +537,8 @@
                     'logradouro',
                     'bairro',
                     'cidade',
-                    'estado'
+                    'uf',
+                    'numero'
                 ];
             // Fim da lista de campos obrigatórios.
     
@@ -598,6 +599,15 @@
                         case 'senha': break;
                         case 'confirma_senha': break;
                         case 'descricao': break;
+                        case 'numero': break;
+                        case 'uf':
+                            // Deixa as letras da string em caixa alta.
+                            req.body[pair[0]] = pair[1].toUpperCase();
+                            break;
+                        case 'complemento':
+                            // Deixa a primeira letra da string como maiúscula.
+                            req.body[pair[0]] = pair[1][0].toUpperCase() + pair[1].substr(1);
+                            break;
                         default:
                             partes = pair[1].trim().split(' ');     // Remove os espaços excessivos no início/fim da String antes de dividí-la em substrings.
             
@@ -729,6 +739,13 @@
                     } else {
                         // console.log('Nome: [' + req.body.primeiro_nome + ']');
             
+                        if (req.body.primeiro_nome.length > 50){
+                            return res.status(400).json({
+                                mensagem: 'PRIMEIRO NOME - A quantidade de caracteres ultrapassa 50.',
+                                code: 'INVALID_PRIMEIRO_NOME_LENGTH'
+                            });
+                        }
+
                         if (req.body.primeiro_nome.match(/\s{2}|[^A-Za-zÀ-ÖØ-öø-ÿ ,.'-]+/g)){  // Anterior: /\s{2}|[^a-zà-ü ,.'-]+/gi
                             // console.log('Erro: Espaços excessivos ou caracteres inválidos detectados!');
                             return res.status(400).json({
@@ -749,6 +766,13 @@
                     } else {
                         // console.log('Sobrenome: [' + req.body.sobrenome + ']');
                         
+                        if (req.body.sobrenome.length > 50){
+                            return res.status(400).json({
+                                mensagem: 'SOBRENOME - A quantidade de caracteres ultrapassa 50.',
+                                code: 'INVALID_SOBRENOME_LENGTH'
+                            });
+                        }
+
                         if (req.body.sobrenome.match(/\s|[^A-Za-zÀ-ÖØ-öø-ÿ ,.'-]+/g)){  // Anterior: /\s{2}|[^a-zà-ü ,.'-]+/gi
                             // console.log('Erro: Espaços excessivos ou caracteres inválidos detectados!');
                             return res.status(400).json({
@@ -930,20 +954,23 @@
                             req.body.cpf = `${cpfDigitsArray.slice(0,3).join('')}.${cpfDigitsArray.slice(3,6).join('')}.${cpfDigitsArray.slice(6,9).join('')}-${cpfDigitsArray.slice(9).join('')}`;
                 
                             // Verificação do [ORM] sobre o CPF -- Caso o CPF já tenha sido utilizado, o usuário não poderá continuar o cadastro.
-                            await Usuario.findOne({ where: { cpf: req.body.cpf } })
+                            let isCpfAvailable = await Usuario.findOne({ where: { cpf: req.body.cpf } })
                             .then((result) => {
                                 if (result === null || result === undefined || result === ''){
                                     // console.log('[ORM] CPF livre!');
                                     return true;
-                                } else {
-                                    // console.log('[ORM] Esse CPF não está livre!');
-                                    return res.status(409).json({
-                                        mensagem: 'CPF - Em Uso.',
-                                        code: 'CPF_ALREADY_TAKEN'
-                                    });
                                 }
+
+                                return false;   // console.log('[ORM] Esse CPF não está livre!');
+                                    
                             });
-                
+
+                            if (!isCpfAvailable){
+                                return res.status(409).json({
+                                    mensagem: 'CPF - Em Uso.',
+                                    code: 'CPF_ALREADY_TAKEN'
+                                });
+                            }
                             
                         } else {
                             // console.log(`Erro: O CPF [${req.body.cpf}] é inválido!`)
@@ -1048,9 +1075,9 @@
                         // console.log('Início da verificação do objeto javascript contendo os DDDs do Brasil.');
                 
                         let isDDDValid;
-                        for (estado in brDDD){
+                        for (uf in brDDD){
                 
-                            brDDD[estado].forEach((ddd, index) => {
+                            brDDD[uf].forEach((ddd, index) => {
                                 if (ddd == telDDD){
                                     isDDDValid = true;
                                 }
@@ -1063,9 +1090,9 @@
                         }
                 
                         if (!isDDDValid){
-                            // console.log('Erro: O DDD não pertence a nenhum estado brasileiro.');
+                            // console.log('Erro: O DDD não pertence a nenhuma uf brasileira.');
                             return res.status(400).json({
-                                mensagem: 'TELEFONE - O DDD não pertence a nenhum estado brasileiro.',
+                                mensagem: 'TELEFONE - O DDD não pertence a nenhuma UF brasileira.',
                                 code: 'INVALID_TELEFONE_DDD'
                             })
                         }
@@ -1176,21 +1203,40 @@
                         })
                     }
                 
-                    // Validação do estado
-                    if (req.body.estado.length === 0 || req.body.estado.length > 100){
+                    // Validação da uf
+                    if (req.body.uf.length === 0 || req.body.uf.length > 100){
                         return res.status(400).json({
-                            mensagem: 'ESTADO - Está vazio ou possui mais do que 100 caracteres.',
-                            code: 'INVALID_ESTADO_LENGTH',
+                            mensagem: 'UF - Está vazio ou possui mais do que 100 caracteres.',
+                            code: 'INVALID_UF_LENGTH',
                             exemplo: 'SP'
                         })
                     }
                 
-                    if (!infoCEP.uf.toLowerCase().includes(req.body.estado.toLowerCase())){
+                    if (!infoCEP.uf.toLowerCase().includes(req.body.uf.toLowerCase())){
                         return res.status(400).json({
-                            mensagem: 'ESTADO - O estado informado não está de acordo com o CEP.',
-                            code: 'ESTADO_DONT_BELONG_TO_CEP'
+                            mensagem: 'UF - A UF informada não está de acordo com o CEP.',
+                            code: 'UF_DONT_BELONG_TO_CEP'
                         })
                     }
+
+                    // Validação do 'numero'.
+                    if (req.body.numero.match(/[^\d]+/g)){
+                        return res.status(400).json({
+                            mensagem: 'NUMERO - Deve possuir apenas dígitos.',
+                            code: 'INVALID_INPUT_NUMERO',
+                        });
+                    }
+
+                    if (req.body.numero.length === 0 || req.body.numero.length > 100){
+                        return res.status(400).json({
+                            mensagem: 'NUMERO - Está vazio ou possui mais do que 100 dígitos.',
+                            code: 'INVALID_NUMERO_LENGTH',
+                        });
+                    }
+                    // Fim da validação do 'numero'.
+
+                    
+                    
                 // Fim das validações relacionadas ao ENDEREÇO DO USUÁRIO.
         
             // Fim da validação dos campos obrigatórios.
@@ -1206,6 +1252,16 @@
                         code: 'INVALID_DESCRICAO_LENGTH'
                     })
                 }
+                // Fim da validação da descrição do usuário.
+
+                // Validação do campo 'complemento'.
+                if (req.body.complemento && req.body.complemento.length === 0 || req.body.numero.length > 255){
+                    return res.status(400).json({
+                        mensagem: 'COMPLEMENTO - Está vazio ou possui mais do que 255 caracteres.',
+                        code: 'INVALID_COMPLEMENTO_LENGTH',
+                    });
+                }
+                // Fim da validação do campo 'complemento'
 
             // Fim da validação dos campos opcionais.
     
@@ -1278,7 +1334,9 @@
                             logradouro: req.body.logradouro,
                             bairro: req.body.bairro,
                             cidade: req.body.cidade,
-                            estado: req.body.estado
+                            uf: req.body.uf,
+                            numero: req.body.numero,
+                            complemento: req.body.complemento || null,
                         }, { 
                             transaction
                         });

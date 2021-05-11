@@ -92,19 +92,6 @@ router.get('/', async (req, res, next) => {
         // Capturando os dados do usuário, se o requisitante for o usuário de uma aplicação Pet Adote.
             const { usuario } = req.dadosAuthToken;
 
-        // Se o usuário da aplicação estiver requisitando qualquer rota além de "getAllActive=1", "getAllFromUser" ou "getOne". Não permita o acesso.
-
-            let allowedQueriesForUsers = [
-
-            ];
-
-            // if (usuario && !( (req.query.getAllActive == 1 & req.query.activeOwner == 1) || req.query.getAllFromAlbum || req.query.getOne)){
-            //     return res.status(401).json({
-            //         mensagem: 'Requisição inválida - Você não possui o nível de acesso adequado para esse recurso.',
-            //         code: 'ACCESS_TO_RESOURCE_NOT_ALLOWED'
-            //     });
-            // }
-
     // Fim das restrições básicas de acesso à rota.
 
     // Início das configurações de possíveis operações de busca.
@@ -199,7 +186,7 @@ router.get('/', async (req, res, next) => {
         if (getOne){
             if (String(getOne).match(/[^\d]+/g)){     // Se "getOne" conter algo diferente do esperado.
                 return res.status(400).json({
-                    mensagem: 'Requisição inválida - O ID do Anúncio não parece ser válido.',
+                    mensagem: 'Requisição inválida - O ID do Anúncio deve conter apenas dígitos.',
                     code: 'INVALID_REQUEST_QUERY'
                 });
             }
@@ -2247,6 +2234,18 @@ router.post('/:codAnimal', async (req, res, next) => {
     // Início da verificação do parâmetro de rota.
 
         if (String(req.params.codAnimal).match(/[^\d]+/g)){
+
+            let anuncioPostSubrouters = [
+                'avaliacoes',
+                'favoritos',
+                'candidaturas'
+            ]
+
+            if ( anuncioPostSubrouters.includes(String(req.params.codAnimal)) ){
+                // Se os subrouters que precisarem de parâmetros forem chamados sem parâmetros e cairem aqui, passe a requisição adiante, respondendo (404 - Not Found).
+                return next();
+            }
+
             return res.status(400).json({
                 mensagem: "Requisição inválida - O ID de um Animal deve conter apenas dígitos.",
                 code: 'BAD_REQUEST'
@@ -2302,7 +2301,7 @@ router.post('/:codAnimal', async (req, res, next) => {
         let animal = undefined;
 
         try {
-            // Para gerar um anúncio do animal, o dono do animal deve estar ativo.
+            // Para gerar um anúncio do animal, o dono do animal deve estar ativo e estar com o estado "Sob protecao" ou "Em anuncio".
             animal = await Animal.findOne({
                 include: [{
                     model: Usuario,
@@ -2312,7 +2311,8 @@ router.post('/:codAnimal', async (req, res, next) => {
                 }],
                 where: {
                     cod_animal: cod_animal,
-                    // ativo: 1,
+                    ativo: 1,
+                    estado_adocao: ['Sob protecao', 'Em anuncio'],
                     '$dono.esta_ativo$': 1
                 },
                 nest: true,
@@ -2487,6 +2487,8 @@ router.post('/:codAnimal', async (req, res, next) => {
 
         // Início da efetivação do cadastro de um novo anúncio.
 
+            let dataAtual = new Date();
+
             let novoAnuncio = undefined;
 
             try {
@@ -2499,7 +2501,8 @@ router.post('/:codAnimal', async (req, res, next) => {
 
                             await Anuncio.update({
                                 uid_foto_animal: req.body.uid_foto_animal,
-                                estado_anuncio: 'Aberto'
+                                estado_anuncio: 'Aberto',
+                                data_modificacao: dataAtual
                             }, {
                                 where: {
                                     cod_anuncio: animal.Anuncio.cod_anuncio
@@ -2539,7 +2542,7 @@ router.post('/:codAnimal', async (req, res, next) => {
                     // Início da atualização do "estado_adocao" do animal.
                         await Animal.update({
                             estado_adocao: 'Em anuncio',
-                            data_modificacao: new Date()
+                            data_modificacao: dataAtual
                         }, {
                             where: {
                                 cod_animal: cod_animal
@@ -2593,6 +2596,16 @@ router.patch('/:codAnuncio', async (req, res, next) => {
     // Início da verificação do parâmetro de rota.
 
         if (String(req.params.codAnuncio).match(/[^\d]+/g)){
+
+            let anuncioPatchSubrouters = [
+                'candidaturas'
+            ]
+
+            if ( anuncioPatchSubrouters.includes(String(req.params.codAnuncio)) ){
+                // Se os subrouters que precisarem de parâmetros forem chamados sem parâmetros e cairem aqui, passe a requisição adiante, respondendo (404 - Not Found).
+                return next();
+            }
+
             return res.status(400).json({
                 mensagem: "Requisição inválida - O ID de um Anúncio deve conter apenas dígitos.",
                 code: 'BAD_REQUEST'
@@ -2889,15 +2902,37 @@ router.patch('/:codAnuncio', async (req, res, next) => {
 
                         await database.transaction( async (transaction) => {
 
-                            // Atualiza os dados do anúncio.
-                            await Anuncio.update(req.body, {
-                                where: {
-                                    cod_anuncio: cod_anuncio
-                                },
-                                limit: 1,
-                                transaction
-                            })
-                            // ----------------------------
+                            let dataModificacao = new Date();
+
+                            req.body.data_modificacao = dataModificacao;   // Configurando a data de modificação do anúncio.
+
+                            // Se o anúncio não estiver sendo fechado... Atualiza normalmente os dados do anúncio.
+                                if (req.body.estado_anuncio != 'Fechado'){
+                                    await Anuncio.update(req.body, {
+                                        where: {
+                                            cod_anuncio: cod_anuncio
+                                        },
+                                        limit: 1,
+                                        transaction
+                                    });
+                                }
+                            // Fim da atualização normal dos dados do anúncio.
+
+                            // Reinicia o contador de candidaturas caso o anúncio estiver sendo fechado.
+                                if (req.body.estado_anuncio == 'Fechado'){
+
+                                    req.body.qtd_candidaturas = 0;
+
+                                    await Anuncio.update(req.body, {
+                                        where: {
+                                            cod_anuncio: cod_anuncio
+                                        },
+                                        limit: 1,
+                                        transaction
+                                    });
+
+                                }
+                            // Fim da reinicialização do contador de candidaturas.
 
                             // Início das alterações no caso do usuário "deletar" o anúncio.
                             
@@ -2906,7 +2941,8 @@ router.patch('/:codAnuncio', async (req, res, next) => {
                                     if (req.body.estado_anuncio == 'Fechado'){
 
                                         await Animal.update({
-                                            estado_adocao: 'Sob protecao'
+                                            estado_adocao: 'Sob protecao',
+                                            data_modificacao: dataModificacao
                                         }, {
                                             where: {
                                                 cod_animal: anuncio.Animal.cod_animal
@@ -2916,7 +2952,8 @@ router.patch('/:codAnuncio', async (req, res, next) => {
                                         })
 
                                         await Candidatura.update({
-                                            ativo: 0
+                                            ativo: 0,
+                                            data_modificacao: dataModificacao
                                         }, {
                                             where: {
                                                 cod_anuncio: cod_anuncio

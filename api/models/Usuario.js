@@ -13,8 +13,8 @@
         cod_usuario: { type: DataTypes.INTEGER.UNSIGNED, allowNull: false, unique: true, autoIncrement: true,
             primaryKey: true
         },
-        primeiro_nome: { type: DataTypes.STRING(100), allowNull: false },
-        sobrenome: { type: DataTypes.STRING(100), allowNull: false },
+        primeiro_nome: { type: DataTypes.STRING(50), allowNull: false },
+        sobrenome: { type: DataTypes.STRING(50), allowNull: false },
         cpf: { type: DataTypes.STRING(14), allowNull: false, unique: true },
         telefone: { type: DataTypes.STRING(17), allowNull: false },
         data_nascimento: { type: DataTypes.DATEONLY, allowNull: false },

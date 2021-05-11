@@ -19,8 +19,9 @@ const {DataTypes, Model, Sequelize} = require('sequelize');
         cod_dono_antigo: { type: DataTypes.INTEGER.UNSIGNED, 
             references: { model: Model.Usuario, key: 'cod_usuario' }
         },
+        ativo: { type: DataTypes.TINYINT.UNSIGNED, allowNull: false, defaultValue: 1 },
         estado_adocao: { type: DataTypes.ENUM('Sob protecao', 'Em anuncio', 'Em processo adotivo', 'Adotado'), allowNull: false, defaultValue: 'Sob protecao'},
-        nome: { type: DataTypes.STRING(100), allowNull: false },
+        nome: { type: DataTypes.STRING(50), allowNull: false },
         foto: { type: DataTypes.STRING(255), allowNull: false, defaultValue: 'default_unknown_pet.jpeg' },
         data_nascimento: { type: DataTypes.DATEONLY, allowNull: false },
         especie: { type: DataTypes.ENUM('Cao', 'Gato', 'Outros'), allowNull: false },
@@ -29,6 +30,7 @@ const {DataTypes, Model, Sequelize} = require('sequelize');
         porte: { type: DataTypes.ENUM('P', 'M', 'G'), allowNull: false },
         esta_castrado: { type: DataTypes.TINYINT.UNSIGNED, allowNull: false },
         esta_vacinado: { type: DataTypes.TINYINT.UNSIGNED, allowNull: false },
+        possui_rga: { type: DataTypes.TINYINT.UNSIGNED, allowNull: false },
         detalhes_comportamento: { type: DataTypes.STRING(255), allowNull: false },
         detalhes_saude: { type: DataTypes.STRING(255), allowNull: false },
         historia: { type: DataTypes.TEXT },
@@ -46,22 +48,22 @@ const {DataTypes, Model, Sequelize} = require('sequelize');
             allowNull: false
         });
 
-        Usuario.hasMany(Animal, {
-            as: 'dono',
-            foreignKey: 'cod_dono',
-            allowNull: false
-        })
+            Usuario.hasMany(Animal, {
+                as: 'animais_sou_dono',
+                foreignKey: 'cod_dono',
+                allowNull: false
+            })
 
         Animal.belongsTo(Usuario, {
             as: 'dono_antigo',
             foreignKey: 'cod_dono_antigo'
         });
 
-        Usuario.hasMany(Animal, {
-            as: 'dono_antigo',
-            foreignKey: 'cod_dono_antigo',
-            allowNull: false
-        })
+            Usuario.hasMany(Animal, {
+                as: 'animais_fui_dono',
+                foreignKey: 'cod_dono_antigo',
+                allowNull: false
+            })
 
 // Exportação.
 module.exports = Animal;

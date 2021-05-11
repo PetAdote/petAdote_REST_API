@@ -227,6 +227,11 @@
     /** @description Middleware para verificação/autenticação dos Tokens de Acesso. */
     verifyAccessToken = (req, res, next) => {
 
+        // if (req.socket.localAddress === req.socket.remoteAddress){
+        //    // Quando for realizar chamadas muito específicas e sem restrições fortificadas de uso/acesso.
+        //    return next();
+        // }
+
         if (req.url.match(/^\/autenticacoes\/apis/)){   // Como a rota de autenticação deverá ser a única rota acessível à qualquer um, simplesmente passamos ela adiante, caso uma requisição chegue para ela.
             return next();
         }
@@ -246,6 +251,14 @@
             }
 
             if (req.url.match(/^\/favicon.ico$/)){
+                return next();
+            }
+
+            if (req.url.match(/^\/styles.css$/)){
+                return next();
+            }
+
+            if (req.url.match(/^\/styles.js$/)){
                 return next();
             }
 

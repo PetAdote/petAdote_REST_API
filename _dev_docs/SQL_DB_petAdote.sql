@@ -37,8 +37,8 @@ CREATE TABLE tbl_cliente (
 
 CREATE TABLE tbl_usuario (
 	cod_usuario INT UNSIGNED NOT NULL UNIQUE AUTO_INCREMENT,
-    primeiro_nome VARCHAR(100) NOT NULL,
-    sobrenome VARCHAR(100) NOT NULL,
+    primeiro_nome VARCHAR(50) NOT NULL,
+    sobrenome VARCHAR(50) NOT NULL,
     cpf VARCHAR(14) NOT NULL UNIQUE,
     telefone VARCHAR(17) NOT NULL,
     data_nascimento DATE NOT NULL,
@@ -55,6 +55,16 @@ CREATE TABLE tbl_usuario (
     data_modificacao DATETIME NOT NULL DEFAULT NOW(),
     PRIMARY KEY (cod_usuario)
 );
+
+ALTER TABLE tbl_usuario
+MODIFY COLUMN primeiro_nome VARCHAR(50) NOT NULL;
+
+ALTER TABLE tbl_usuario
+MODIFY COLUMN sobrenome VARCHAR(50) NOT NULL;
+
+SELECT * FROM tbl_usuario;
+
+DESCRIBE tbl_usuario;
 
 CREATE TABLE tbl_conta_local (
 	email VARCHAR(255) NOT NULL UNIQUE,
@@ -86,7 +96,9 @@ CREATE TABLE tbl_end_usuario (
     logradouro VARCHAR(100) NOT NULL,
     bairro VARCHAR(100) NOT NULL,
     cidade VARCHAR(100) NOT NULL,
-    estado VARCHAR(100) NOT NULL,
+    uf VARCHAR(100) NOT NULL,
+    numero VARCHAR(100) NOT NULL,
+    complemento VARCHAR(255),
     latitude VARCHAR(100),
     longitude VARCHAR(100),
     PRIMARY KEY (cod_end_usuario),
@@ -102,8 +114,9 @@ CREATE TABLE tbl_animal (
 	cod_animal INT UNSIGNED NOT NULL UNIQUE AUTO_INCREMENT,
     cod_dono INT UNSIGNED NOT NULL,
     cod_dono_antigo INT UNSIGNED,
+    ativo TINYINT UNSIGNED NOT NULL DEFAULT 1,
     estado_adocao ENUM('Sob protecao', 'Em anuncio', 'Em processo adotivo', 'Adotado') NOT NULL DEFAULT 'Sob protecao',
-    nome VARCHAR(100) NOT NULL,
+    nome VARCHAR(50) NOT NULL,
     foto VARCHAR(255) NOT NULL DEFAULT 'default_unknown_pet.jpeg',
     data_nascimento DATE NOT NULL,
     especie ENUM('Cao', 'Gato', 'Outros') NOT NULL,
@@ -112,6 +125,7 @@ CREATE TABLE tbl_animal (
     porte ENUM('P', 'M', 'G') NOT NULL,
     esta_castrado TINYINT UNSIGNED NOT NULL,
     esta_vacinado TINYINT UNSIGNED NOT NULL,
+    possui_rga TINYINT UNSIGNED NOT NULL,
     detalhes_comportamento VARCHAR(255) NOT NULL,
     detalhes_saude VARCHAR(255) NOT NULL,
     historia TEXT,
@@ -121,6 +135,14 @@ CREATE TABLE tbl_animal (
     FOREIGN KEY (cod_dono) REFERENCES tbl_usuario(cod_usuario),
     FOREIGN KEY (cod_dono_antigo) REFERENCES tbl_usuario(cod_usuario)
 );
+
+ALTER TABLE tbl_animal
+ADD COLUMN ativo TINYINT UNSIGNED NOT NULL DEFAULT 1 AFTER cod_dono_antigo;
+
+ALTER TABLE tbl_animal
+MODIFY COLUMN nome VARCHAR(50) NOT NULL;
+
+SELECT * FROM tbl_animal;
 
 CREATE TABLE tbl_album_animal (
 	cod_album INT UNSIGNED NOT NULL UNIQUE AUTO_INCREMENT,
@@ -137,7 +159,7 @@ CREATE TABLE tbl_foto_animal (
     cod_album INT UNSIGNED NOT NULL,
     nome VARCHAR(100) NOT NULL,
     descricao VARCHAR(255),
-    ativo TINYINT NOT NULL DEFAULT 1,
+    ativo TINYINT UNSIGNED NOT NULL DEFAULT 1,
     data_criacao DATETIME NOT NULL DEFAULT NOW(),
     data_modificacao DATETIME NOT NULL DEFAULT NOW(),
     PRIMARY KEY (uid_foto),
@@ -156,6 +178,7 @@ CREATE TABLE tbl_anuncio (
     uid_foto_animal VARCHAR(255) NOT NULL,
     qtd_visualizacoes INT UNSIGNED NOT NULL DEFAULT 0,
     qtd_avaliacoes INT UNSIGNED NOT NULL DEFAULT 0,
+    qtd_candidaturas INT UNSIGNED NOT NULL DEFAULT 0,
     estado_anuncio ENUM('Aberto', 'Concluido', 'Fechado') NOT NULL DEFAULT 'Aberto',
     data_criacao DATETIME NOT NULL DEFAULT NOW(),
     data_modificacao DATETIME NOT NULL DEFAULT NOW(),
@@ -241,13 +264,91 @@ CREATE TABLE tbl_candidatura (
 	cod_candidatura INT UNSIGNED NOT NULL UNIQUE AUTO_INCREMENT,
     cod_anuncio INT UNSIGNED NOT NULL,
     cod_candidato INT UNSIGNED NOT NULL,
-    estado_candidatura ENUM('Em avaliacao', 'Candidatura aceita', 'Candidatura rejeitada') NOT NULL DEFAULT 'Em avaliacao',
+    cod_doc_anunciante INT UNSIGNED,
+    cod_doc_candidato INT UNSIGNED,
+    estado_candidatura ENUM('Em avaliacao', 'Aprovada', 'Rejeitada', 'Concluida') NOT NULL DEFAULT 'Em avaliacao',
     ativo TINYINT UNSIGNED NOT NULL DEFAULT 1,
+    anunciante_entregou TINYINT UNSIGNED NOT NULL DEFAULT 0,
+    candidato_recebeu TINYINT UNSIGNED NOT NULL DEFAULT 0,
     data_criacao DATETIME NOT NULL DEFAULT NOW(),
     data_modificacao DATETIME NOT NULL DEFAULT NOW(),
     PRIMARY KEY (cod_candidatura),
-    FOREIGN KEY (cod_anuncio) REFERENCES tbl_anuncio(cod_anuncio),
-    FOREIGN KEY (cod_usuario) REFERENCES tbl_usuario(cod_usuario)
+    FOREIGN KEY (cod_anuncio) REFERENCES tbl_anuncio (cod_anuncio),
+    FOREIGN KEY (cod_candidato) REFERENCES tbl_usuario (cod_usuario),
+    FOREIGN KEY (cod_doc_anunciante) REFERENCES tbl_doc_resp (cod_doc),
+    FOREIGN KEY (cod_doc_candidato) REFERENCES tbl_doc_resp (cod_doc)
+);
+
+DESCRIBE tbl_candidatura;
+
+SELECT * FROM tbl_candidatura;
+
+ALTER TABLE tbl_candidatura
+MODIFY COLUMN estado_candidatura ENUM('Em avaliacao', 'Aprovada', 'Rejeitada', 'Concluida') NOT NULL DEFAULT 'Em avaliacao';
+
+ALTER TABLE tbl_candidatura
+ADD COLUMN candidato_recebeu TINYINT UNSIGNED NOT NULL DEFAULT 0 AFTER anunciante_entregou;
+
+ALTER TABLE tbl_candidatura
+DROP COLUMN doc_candidato;
+
+ALTER TABLE tbl_candidatura
+CHANGE COLUMN doc_anunciante doc_responsabilidade VARCHAR(255);
+
+ALTER TABLE tbl_candidatura
+CHANGE COLUMN doc_responsabilidade doc_anunciante VARCHAR(255);
+
+ALTER TABLE tbl_candidatura
+ADD COLUMN doc_candidato VARCHAR(255) AFTER doc_anunciante;
+
+ALTER TABLE tbl_candidatura
+ADD COLUMN uid_doc_candidato VARCHAR(255) AFTER uid_doc_anunciante;
+
+ALTER TABLE tbl_candidatura
+ADD FOREIGN KEY (uid_doc_anunciante) REFERENCES tbl_doc_resp (uid_doc);
+
+ALTER TABLE tbl_candidatura
+ADD FOREIGN KEY (uid_doc_candidato) REFERENCES tbl_doc_resp (uid_doc);
+
+ALTER TABLE tbl_candidatura
+DROP COLUMN uid_doc_anunciante;
+
+SET FOREIGN_KEY_CHECKS = 0;
+DROP TABLE tbl_candidatura;
+
+CREATE TABLE tbl_doc_resp (
+	cod_doc INT UNSIGNED NOT NULL UNIQUE AUTO_INCREMENT,
+    cod_usuario INT UNSIGNED NOT NULL,
+    uid_doc VARCHAR(255) NOT NULL UNIQUE,
+    tipo_doc ENUM('anunciante', 'candidato') NOT NULL,
+    segredo_qrcode VARCHAR(255) NOT NULL,
+    data_criacao DATETIME NOT NULL DEFAULT NOW(),
+    data_modificacao DATETIME NOT NULL DEFAULT NOW(),
+    PRIMARY KEY (cod_doc),
+    FOREIGN KEY (cod_usuario) REFERENCES tbl_usuario (cod_usuario)
+);
+
+CREATE TABLE tbl_ponto_encontro (
+	cod_ponto_encontro INT UNSIGNED NOT NULL UNIQUE AUTO_INCREMENT,
+    cod_candidatura INT UNSIGNED NOT NULL,
+    cod_anunciante INT UNSIGNED NOT NULL,
+    cod_candidato INT UNSIGNED NOT NULL,
+    ativo TINYINT UNSIGNED NOT NULL DEFAULT 1,
+    cep VARCHAR(9) NOT NULL,
+    logradouro VARCHAR(100) NOT NULL,
+    bairro VARCHAR(100) NOT NULL,
+    cidade VARCHAR(100) NOT NULL,
+    uf VARCHAR(100) NOT NULL,
+    numero VARCHAR(100) NOT NULL,
+    complemento VARCHAR(255),
+    latitude VARCHAR(100),
+    longitude VARCHAR(100),
+    data_criacao DATETIME NOT NULL DEFAULT NOW(),
+    data_modificacao DATETIME NOT NULL DEFAULT NOW(),
+    PRIMARY KEY (cod_ponto_encontro),
+    FOREIGN KEY (cod_candidatura) REFERENCES tbl_candidatura (cod_candidatura),
+    FOREIGN KEY (cod_anunciante) REFERENCES tbl_usuario (cod_usuario),
+    FOREIGN KEY (cod_candidato) REFERENCES tbl_usuario (cod_usuario)
 );
 
 CREATE TABLE tbl_seguida (
@@ -311,6 +412,24 @@ CREATE TABLE tbl_bloqueio (
 );
 
 # Fim das tabelas de aspectos sociais entre usuários #
+#----------------------------------------------------#
+
+
+# Tabelas para os subsistemas			            #
+# (Sistema de notificacoes) 					    #
+
+CREATE TABLE tbl_notificacao (
+	cod_notificacao INT UNSIGNED NOT NULL UNIQUE AUTO_INCREMENT,
+    cod_usuario INT UNSIGNED NOT NULL,
+    mensagem VARCHAR(255) NOT NULL,
+    foi_lida TINYINT UNSIGNED NOT NULL DEFAULT 0,
+    data_criacao DATETIME NOT NULL DEFAULT NOW(),
+    data_modificacao DATETIME NOT NULL DEFAULT NOW(),
+    PRIMARY KEY (cod_notificacao),
+    FOREIGN KEY (cod_usuario) REFERENCES tbl_usuario(cod_usuario)
+);
+
+#            Fim das tabelas de subsistemas          #
 #----------------------------------------------------#
 
 
@@ -637,6 +756,7 @@ VALUES
 
 DESCRIBE tbl_anuncio;
 
+SELECT * FROM tbl_usuario;
 SELECT * FROM tbl_anuncio;
 
 SELECT * FROM tbl_animal;
@@ -667,12 +787,54 @@ VALUES
 # Cadastro de Candidaturas #
 
 DESCRIBE tbl_candidatura;
+
+DESCRIBE tbl_anuncio;
+DESCRIBE tbl_animal;
+
 SELECT * FROM tbl_candidatura;
+SELECT * FROM tbl_doc_resp;
+
 SELECT * FROM tbl_anuncio;
+SELECT * FROM tbl_animal;
+SELECT * FROM tbl_album_animal;
+SELECT * FROM tbl_foto_animal;
+
+SELECT * FROM tbl_animal
+ORDER BY ativo DESC;
+
 SELECT * FROM tbl_usuario;
+SELECT * FROM tbl_conta_local;
+SELECT * FROM tbl_end_usuario;
+
+SELECT * FROM tbl_notificacao;
+
+DESCRIBE tbl_ponto_encontro;
+SELECT * FROM tbl_ponto_encontro;
+
+#SELECT * FROM tbl_notificacao
+SELECT * FROM tbl_ponto_encontro
+ORDER BY ativo DESC, data_criacao DESC;
+
+INSERT INTO tbl_ponto_encontro
+	(cod_candidatura, cod_anunciante, cod_candidato,
+     cep, logradouro, bairro, cidade, uf, numero)
+VALUES
+	(1, 1, 4, '123456123', 'R. Rendezvous', 'Bairro Testes', 'São Paulo', 'SP', '12');
+
+SELECT * FROM tbl_conta_local;
 
 INSERT INTO tbl_candidatura
 	(cod_anuncio, cod_candidato)
 VALUES
 	(1, 4);
+    
+INSERT INTO tbl_candidatura
+	(cod_anuncio, cod_candidato)
+VALUES
+	(2, 4);
+    
+INSERT INTO tbl_candidatura
+	(cod_anuncio, cod_candidato)
+VALUES
+	(1, 3);
 

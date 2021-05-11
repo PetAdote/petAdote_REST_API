@@ -13,6 +13,7 @@
         const checkInactiveUserPermissions = require('./helpers/check_InactiveUserPermissions');    // Se o requisitante for o usuário de uma aplicação, determina se ele pode ou não requisitar algo à um end-point não-GET.
         const checkRequester = require('./helpers/check_requester');                                // Verifica o IP do requisitante.
         const manageCORS = require('./helpers/manage_cors');                                        // Gerencia as respostas de Cross-Origin Resource Sharing para navegadores.
+        const checkLocalRequest = require('./api/middlewares/check_isLocalRequest');                // Verifica se a requisição veio do host local.
 
     // Utilidades.
         const logger = require('morgan');                                   // Logger/Profiler que trará informações sobre as requisições e respostas das nossas rotas.
@@ -31,12 +32,16 @@
 
         const rotaContas = require('./api/routes/contas');
         const rotaUsuarios = require('./api/routes/usuarios');
+            const rotaNotificacoes = require('./api/routes/notificacoes');
             const rotaEnderecos = require('./api/routes/enderecos');
             const rotaAnimais = require('./api/routes/animais');
-                const rotaAlbuns = require('./api/routes/albuns_animais');
-                    const rotaFotos = require('./api/routes/fotos_animais');
+                const rotaAlbuns = require('./api/routes/animais_albuns');
+                    const rotaFotos = require('./api/routes/animais_fotos');
 
         const rotaAnuncios = require('./api/routes/anuncios');
+            const rotaCandidaturas = require('./api/routes/anuncios_candidaturas');
+                const rotaDocumentos = require('./api/routes/candidaturas_documentos');
+                const rotaPontosEncontro = require('./api/routes/candidaturas_pontos_encontro');
 
 // Instânciamentos.
 
@@ -59,14 +64,15 @@
     app.use(express.json());                             // Extrai os campos da requisição no formato JSON para o objeto "req.body".
 
     app.use('/favicon.ico', express.static( path.resolve(__dirname, "./api/uploads/images/favicon.ico") ) );
+    app.use('/styles.css', checkLocalRequest, express.static( path.resolve(__dirname, "./api/docs/templates/styles/bootstrap.css") ) );
+    app.use('/styles.js', checkLocalRequest, express.static( path.resolve(__dirname, "./api/docs/templates/styles/bootstrap.bundle.js") ) );
 
 // Rotas que vão gerenciar as requisições.
     app.get('/', async (req, res, next) => {
         // Rota livre para testes simples durante a fase de desenvolvimento.
 
         console.log('Oi, eu sou uma rota de testes!');
-
-        next();
+        
     });
 
     // app.use('/testes', rotaTestes);
@@ -75,18 +81,22 @@
 
     app.use('/contas', rotaContas);
 
-    // Entrega dos arquivos de imagem.
+    // Entrega dos arquivos em diretórios estáticos.
     app.use('/usuarios/animais/albuns/fotos', express.static( path.resolve(__dirname, "./api/uploads/images/usersAnimalPhotos") ) );
     app.use('/usuarios/avatars', express.static( path.resolve(__dirname, "./api/uploads/images/usersAvatar") ) );
     app.use('/usuarios/banners', express.static( path.resolve(__dirname, "./api/uploads/images/usersbanner") ) );
-    // -------------------------------------------------------
+    // ---------------------
 
     app.use('/usuarios/animais/albuns/fotos', rotaFotos);
     app.use('/usuarios/animais/albuns', rotaAlbuns);
+    app.use('/usuarios/notificacoes', rotaNotificacoes);
     app.use('/usuarios/animais', rotaAnimais);
     app.use('/usuarios/enderecos', rotaEnderecos);
     app.use('/usuarios', rotaUsuarios);
 
+    app.use('/anuncios/candidaturas/pontosencontro', rotaPontosEncontro);
+    app.use('/anuncios/candidaturas/documentos', rotaDocumentos);
+    app.use('/anuncios/candidaturas', rotaCandidaturas);
     app.use('/anuncios', rotaAnuncios);
 
     /* Observações sobre Conflito de Rotas

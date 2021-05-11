@@ -1,0 +1,26 @@
+<% const {usuario} = dataObj[0]; %>
+<% const {styles} = dataObj[1]; %>
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PDF TEST</title>
+
+    <link type="text/css" rel="stylesheet" href="<%= styles.css_url %>">
+</head>
+<body>
+
+    <h1 class="text-primary">Primeiro PDF Com Template</h1>
+    <p>Nome: <%= usuario.nome %></p>
+    <p>Idade: <%= usuario.idade %></p>
+    <hr>
+    <p><small><b>Não ouse ler esse QR Code... V2.0</b></small></p>
+
+    <img src='<%= usuario.qrc %>' width="150"/>
+
+    <script src="<%= styles.js_url %>"></script>
+</body>
+</html>

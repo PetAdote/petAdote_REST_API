@@ -39,6 +39,14 @@
                         code: 'ACCESS_NOT_ALLOWED'
                     });
                 }
+
+                // Se um usuário autenticado tentar autenticar-se novamente, não permita o acesso.
+                if (req.dadosAuthToken.usuario){
+                    return res.status(401).json({
+                        mensagem: 'Requisição inválida - Você não possui o nível de acesso adequado para esse recurso.',
+                        code: 'ACCESS_NOT_ALLOWED'
+                    });
+                }
         
             }
         // Fim das restrições de acesso à rota.
