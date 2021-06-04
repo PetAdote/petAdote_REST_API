@@ -268,8 +268,8 @@
 
             console.log('[manage_jwt.254] - Access not allowed. Authorization header not sent.');
             return res.status(401).json({
-                mensagem: 'Requisição não autorizada.',
-                code: 'ACCESS_NOT_ALLOWED'
+                mensagem: 'Requisição não autorizada. Os tokens de autorização não foram encontrados.',
+                code: 'AUTH_HEADER_NOT_SENT'
             });
 
             // let customErr = new Error('Requisição não autorizada.');
@@ -283,15 +283,51 @@
         jwt.verify(token, process.env.JWT_ACCESS_TOKEN_SECRET, (error, payload) => {
             if (error) {
 
+                const decodedJwt = jwt.decode(token);
+                // console.log('Conteudo do Access Token', decodedJwt);
+
+                if (decodedJwt?.usuario){
+
+                    if (error.name == 'JsonWebTokenError'){
+                        return res.status(401).json({
+                            mensagem: 'O Token de Acesso do usuário está inválido.',
+                            code: 'INVALID_USER_AUTH'
+                        })
+                    } else {
+                        return res.status(401).json({
+                            mensagem: 'O Token de Acesso do usuário está expirado.',
+                            code: 'EXPIRED_USER_AUTH',
+                        })
+                    };
+
+                }
+
+                if (decodedJwt?.cod_cliente && !decodedJwt?.usuario){
+
+                    if (error.name == 'JsonWebTokenError'){
+                        return res.status(401).json({
+                            mensagem: 'O Token de Acesso do cliente está inválido.',
+                            code: 'INVALID_CLIENT_AUTH'
+                        })
+                    } else {
+                        return res.status(401).json({
+                            mensagem: 'O Token de Acesso do cliente está expirado.',
+                            code: 'EXPIRED_CLIENT_AUTH'
+                        })
+                    };
+
+                }
+
                 if (error.name == 'JsonWebTokenError'){
+                    // console.log('Conteudo do Token', decodedJwt);
                     return res.status(401).json({
-                        mensagem: 'Requisição não autorizada.',
-                        code: 'ACCESS_NOT_ALLOWED'
+                        mensagem: 'O Token de Acesso enviado não parece ser válido.',
+                        code: 'INVALID_AUTH_HEADER'
                     })
                 } else {
                     return res.status(401).json({
                         mensagem: 'O Token de Acesso está expirado.',
-                        code: 'EXPIRED_AUTH'
+                        code: 'EXPIRED_AUTH_HEADER'
                     })
                 };
 
@@ -312,20 +348,63 @@
             jwt.verify(refreshToken, process.env.JWT_REFRESH_TOKEN_SECRET, (error, payload) => {
                 if (error){
 
+                    const decodedJwt = jwt.decode(refreshToken);
+                    // console.log('Conteudo do Refresh Token', decodedJwt);
+
                     console.error('Algo inesperado aconteceu ao verificar o RefreshToken.', error);
+
+                    if (decodedJwt?.usuario){
+
+                        if (error.name == 'JsonWebTokenError'){
+
+                            let customErr = new Error('O Token de Renovação do usuário está inválido.');
+                            customErr.status = 401;
+                            customErr.code = 'INVALID_USER_REFRESH';
+                            return reject(customErr);
+    
+                        } else {
+    
+                            let customErr = new Error('O Token de Renovação do usuário está expirado.');
+                            customErr.status = 401;
+                            customErr.code = 'EXPIRED_USER_REFRESH';
+                            return reject(customErr);
+    
+                        };
+
+                    }
+
+                    if (decodedJwt?.cod_cliente && !decodedJwt?.usuario){
+
+                        if (error.name == 'JsonWebTokenError'){
+
+                            let customErr = new Error('O Token de Renovação do cliente está inválido.');
+                            customErr.status = 401;
+                            customErr.code = 'INVALID_CLIENT_REFRESH';
+                            return reject(customErr);
+    
+                        } else {
+    
+                            let customErr = new Error('O Token de Renovação do cliente está expirado.');
+                            customErr.status = 401;
+                            customErr.code = 'EXPIRED_CLIENT_REFRESH';
+                            return reject(customErr);
+    
+                        };
+
+                    }
 
                     if (error.name == 'JsonWebTokenError'){
 
-                        let customErr = new Error('Requisição não autorizada.');
+                        let customErr = new Error('O Refresh Token não parece ser válido.');
                         customErr.status = 401;
-                        customErr.code = 'ACCESS_NOT_ALLOWED';
+                        customErr.code = 'INVALID_REFRESH';
                         return reject(customErr);
 
                     } else {
 
                         let customErr = new Error('O Refresh Token está expirado.');
                         customErr.status = 401;
-                        customErr.code = 'EXPIRED_AUTH';
+                        customErr.code = 'EXPIRED_REFRESH';
                         return reject(customErr);
 
                     };
@@ -362,10 +441,10 @@
                                 // Se não, não autorize o acesso.
                                 // console.log('O Refresh Token passado não foi encontrado no Redis DB');
 
-                                let customErr = new Error('Requisição não autorizada.');
+                                let customErr = new Error('O Token de Renovação do cliente não parece ser válido.');
 
                                 customErr.status = 401;
-                                customErr.code = 'ACCESS_NOT_ALLOWED';
+                                customErr.code = 'INVALID_CLIENT_REFRESH';
                                 return reject(customErr);
                             };
 
@@ -396,10 +475,10 @@
                                 return resolve(user);
                             } else {
                                 // Se não, não autorize o acesso.
-                                let customErr = new Error('Requisição não autorizada.');
+                                let customErr = new Error('O Token de Renovação do usuário não parece ser válido.');
 
                                 customErr.status = 401;
-                                customErr.code = 'ACCESS_NOT_ALLOWED';
+                                customErr.code = 'INVALID_USER_REFRESH';
                                 return reject(customErr);
                             };
 

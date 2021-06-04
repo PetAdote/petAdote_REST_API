@@ -89,7 +89,7 @@ router.get('/', (req, res, next) => {
 
         let operacao = undefined;   // Se a operação continuar como undefined, envie BAD_REQUEST (400).
 
-        let { fromUser, fromCandidature, page, limit } = req.query;
+        let { fromUser, fromCandidature, fromAnnouncement, page, limit } = req.query;
 
         switch (Object.entries(req.query).length){
             case 0:
@@ -102,6 +102,8 @@ router.get('/', (req, res, next) => {
                 if (fromUser) { operacao = 'getAll_fromUser' };
 
                 if (fromCandidature) { operacao = 'getOwn_fromCandidature' };
+
+                if (fromAnnouncement) { operacao = 'getOwn_fromAnnouncement' };
 
                 break;
             case 2:
@@ -144,6 +146,17 @@ router.get('/', (req, res, next) => {
             }
 
         }
+
+        if (fromAnnouncement){
+
+            if (String(fromAnnouncement).match(/[^\d]+/g)){     // Se "fromAnnouncement" conter algo diferente do esperado.
+                return res.status(400).json({
+                    mensagem: 'Requisição inválida - O ID de um Anúncio deve conter apenas dígitos.',
+                    code: 'INVALID_REQUEST_QUERY'
+                });
+            }
+
+        }
     // Fim da validação dos parâmetros.
 
     // Início da normalização dos parâmetros.
@@ -153,6 +166,7 @@ router.get('/', (req, res, next) => {
 
         req.query.fromUser = String(req.query.fromUser);
         req.query.fromCandidature = String(req.query.fromCandidature);
+        req.query.fromAnnouncement = String(req.query.fromAnnouncement);
         
     // Fim da normalização dos parâmetros.
 
@@ -465,6 +479,138 @@ router.get('/', (req, res, next) => {
 
         }
 
+        if (operacao == 'getOwn_fromAnnouncement'){
+
+            // Chamada Exclusiva para Usuários.
+            // Entrega os dados do documento contendo os Termos de Responsabilidades do usuário, dependendo de qual lado (Anunciante/Candidato) ele pertence em um anúncio que possua uma candidatura.
+
+            if (!usuario){
+                return res.status(401).json({
+                    mensagem: 'Você não possui o nível de acesso adequado para esse recurso.',
+                    code: 'ACCESS_TO_RESOURCE_NOT_ALLOWED'
+                });
+            }
+
+            Anuncio.findOne({
+                include: [{ 
+                    model: Candidatura,
+                    include: [{ 
+                        model: DocResponsabilidade,
+                        as: 'DocAnunciante',
+                    }, {
+                        model: DocResponsabilidade,
+                        as: 'DocCandidato',
+                    }],
+                }],
+                where: {
+                    cod_anuncio: req.query.fromAnnouncement,
+                    [Op.or]: [
+                        { '$Candidaturas.DocAnunciante.cod_usuario$': usuario.cod_usuario },
+                        { '$Candidaturas.DocCandidato.cod_usuario$': usuario.cod_usuario },
+                    ]
+                }
+            })
+            .then((result) => {
+
+                // return res.status(200).json({
+                //     result
+                // });
+
+                if (!result){
+                    return res.status(404).json({
+                        mensagem: 'O anúncio não possui documentos relacionados ao requisitante.',
+                        code: 'RESOURCE_NOT_FOUND'
+                    });
+                }
+
+                // Início das restrições de uso da chamada.
+                    let requesterType = undefined;
+
+                    let cod_anunciante = result.cod_anunciante;
+                    let cod_candidato = result.Candidaturas[0].cod_candidato;
+
+                    let docAnunciante = result.Candidaturas[0].DocAnunciante;
+                        delete docAnunciante.segredo_qrcode;
+                    
+                    let docCandidato = result.Candidaturas[0].DocCandidato;
+                        delete docCandidato.segredo_qrcode;
+
+                    let allowedRequester = [
+                        cod_anunciante,
+                        cod_candidato
+                    ];
+
+                    if (!allowedRequester.includes(usuario.cod_usuario)){
+                        return res.status(401).json({
+                            mensagem: 'Você não possui o nível de acesso adequado para esse recurso.',
+                            code: 'ACCESS_TO_RESOURCE_NOT_ALLOWED'
+                        })
+                    }
+
+                    // "requesterType" definirá se o requisitante é o Anunciante ou o Candidato.
+                    if (usuario.cod_usuario == cod_anunciante){
+                        requesterType = 'announcer';
+                    }
+
+                    if (usuario.cod_usuario == cod_candidato){
+                        requesterType = 'applicant';
+                    }
+                // Fim das restrições de uso da chamada.
+
+                // Início da entrega da resposta de sucesso.
+                    if (!requesterType){
+
+                        console.error('Algo inesperado aconteceu ao definir o tipo de usuário que receberá o resultado da busca de documentos de Termos de Responsabilidade.');
+
+                        let customErr = new Error('Algo inesperado aconteceu ao definir o tipo de usuário que receberá o resultado da busca de documentos de Termos de Responsabilidade. Entre em contato com o administrador.');
+                        customErr.status = 500;
+                        customErr.code = 'INTERNAL_SERVER_ERROR'
+
+                        return next( customErr );
+                    }
+
+                    if (requesterType == 'announcer'){
+                        if (!docAnunciante){
+                            return res.status(200).json({
+                                mensagem: 'Nenhum documento de Termos de Responsabilidades vinculado a você foi encontrado.'
+                            });
+                        }
+
+                        return res.status(200).json({
+                            mensagem: 'O documento contendo os seus Termos de Responsabilidades foi encontrado.',
+                            download_documento: `GET ${req.protocol}://${req.get('host')}/anuncios/candidaturas/documentos/${docAnunciante.uid_doc}`
+                        });
+                    }
+
+                    if (requesterType == 'applicant'){
+
+                        if (!docCandidato){
+                            return res.status(200).json({
+                                mensagem: 'Nenhum documento de Termos de Responsabilidades vinculado a você foi encontrado.'
+                            });
+                        }
+
+                        return res.status(200).json({
+                            mensagem: 'O documento contendo os seus Termos de Responsabilidades foi encontrado.',
+                            download_documento: `GET ${req.protocol}://${req.get('host')}/anuncios/candidaturas/documentos/${docCandidato.uid_doc}`
+                        });
+
+                    }
+                // Fim da entrega da resposta de sucesso.
+
+            })
+            .catch((error) => {
+                console.error('Algo inesperado aconteceu ao verificar os documentos de responsabilidade do requisitante em um anúncio.', error);
+
+                let customErr = new Error('Algo inesperado aconteceu ao verificar os documentos de responsabilidade do requisitante em um anúncio. Entre em contato com o administrador.');
+                customErr.status = 500;
+                customErr.code = 'INTERNAL_SERVER_ERROR'
+
+                return next( customErr );
+            });
+
+        }
+
     // Fim dos processos de listagem dos documentos de candidatura.
 
 });
@@ -534,8 +680,15 @@ router.get('/:uidDoc', (req, res, next) => {
 
         }
 
+        const options = {
+            headers: {
+                'Content-Disposition': `inline; filename=${result.uid_doc}`,
+                'Content-Type': 'application/pdf'
+            }
+        }
+
         const pathToDoc = path.resolve(__dirname, '..', 'docs', 'candidaturas_aprovadas', req.params.uidDoc);
-        return res.sendFile(pathToDoc);
+        return res.sendFile(pathToDoc, options);
 
     })
     .catch((error) => {

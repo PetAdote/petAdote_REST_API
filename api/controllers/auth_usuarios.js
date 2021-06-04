@@ -58,7 +58,7 @@
             if (req.body.email){
                 await ContaLocal.findOne({ 
                     where: {
-                        email: req.body.email
+                        email: String(req.body.email).toLowerCase()
                     },
                     include: [{
                         model: Usuario,
@@ -71,6 +71,10 @@
                     // console.log(result);
         
                     if (result){
+
+                        if (!req.body.senha){
+                            req.body.senha = '';
+                        }
         
                         // O e-mail está vinculado à uma conta. Verifique se a senha está correta.
                         if (bcrypt.compareSync(req.body.senha, result.senha)){
@@ -224,6 +228,17 @@
             };
     
         } catch (error) {
+            if (error?.code === 'INVALID_USER_REFRESH'){
+                console.error('O refresh token recebido pelo manage_jwt não parece ser válido.', error);
+
+                req.pause();
+                let customErr = new Error('O refresh token enviado não parece ser válido.');
+                customErr.status = 400;
+                customErr.code = 'INVALID_USER_REFRESH';
+                
+                return next( customErr );
+            }
+            
             console.error('Algo inesperado aconteceu ao renovar a autenticação do usuário.', error);
     
             req.pause();
@@ -255,13 +270,17 @@
     
                 return next( customErr );
             };
+
+            // console.log('Verificando refresh token!');
     
             const user = await verifyRefreshToken(refreshToken);
     
+            // console.log(user);
+            
             if (!user.usuario || !user.cod_cliente){ // Se o 'refreshToken' enviado não possuir os dados de um usuário ou da aplicação...
-                let customErr = new Error('Token inválido.');
+                let customErr = new Error('O Refresh Token do usuário, enviado para encerrar a renovação dos tokens com segurança parece ser inválido.');
                 customErr.status = 403;
-                customErr.code = 'NOT_ALLOWED';
+                customErr.code = 'RECEIVED_INVALID_TOKEN';
     
                 return next( customErr );
             };
@@ -269,7 +288,7 @@
             if (usuarioReq?.cod_usuario != user.usuario.cod_usuario){
                 let customErr = new Error('Você não possui o nível de acesso adequado.');
                 customErr.status = 403;
-                customErr.code = 'NOT_ALLOWED';
+                customErr.code = 'ACCESS_NOT_ALLOWED';
     
                 return next( customErr );
             }

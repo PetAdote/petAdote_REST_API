@@ -80,6 +80,8 @@
 
                     if (req.query?.getAllByName) { operacao = 'getAllByName'; };
 
+                    if (req.query?.get == 'self') { operacao = 'getSelf'; };
+
                     break;
                 case 2:
                     if (req.query?.page && req.query?.limit) { operacao = 'getAll' };
@@ -567,6 +569,74 @@
                         console.error('Algo inesperado aconteceu ao buscar a lista de usuários com o nome declarado.', error);
 
                         let customErr = new Error('Algo inesperado aconteceu ao buscar a lista de usuários com o nome declarado. Entre em contato com o administrador.');
+                        customErr.status = 500;
+                        customErr.code = 'INTERNAL_SERVER_ERROR'
+                
+                        return next( customErr );
+                    });
+
+
+                }
+
+                if (operacao == 'getSelf'){
+
+                    // Chamada exclusiva para Usuários.
+                    // Entrega os dados do perfil do usuário requisitante.
+
+                    // Restrições de Uso.
+                        if (!usuario){
+                            // Se o requisitante não for um usuário...
+                            return res.status(401).json({
+                                mensagem: 'Você não possui o nível de acesso adequado para esse recurso.',
+                                code: 'ACCESS_TO_RESOURCE_NOT_ALLOWED'
+                            });
+                        }
+                    // -----------------
+
+                    Usuario.findOne({
+                        where: {
+                            cod_usuario: usuario.cod_usuario
+                        }
+                    })
+                    .then((result) => {
+
+                        if (!result){
+                            return res.status(404).json({
+                                mensagem: 'Não foi possível encontrar os dados do usuário.',
+                                code: 'RESOURCE_NOT_FOUND'
+                            });
+                        }
+
+                        // Início da construção do objeto enviado na resposta.
+
+                            const userData = result.get({ plain: true });
+
+                            // Separando os dados do objeto.
+                                // ...
+                            // Fim da separação dos dados.
+
+                            // Inclusão de atributos essenciais aos clientes.
+                                userData.download_avatar = `${req.protocol}://${req.get('host')}/usuarios/avatars/${result.foto_usuario}`;
+                                userData.download_banner = `${req.protocol}://${req.get('host')}/usuarios/banners/${result.banner_usuario}`;
+                            // Fim da inclusão de atributos essenciais aos clientes.
+
+                            // Unindo os dados em objeto em um objeto.
+                                // ...
+                            // Fim da união dos dados em um objeto.
+
+                        // Fim da construção do objeto enviado na resposta.
+
+                        // Início do envio da Resposta.
+                            return res.status(200).json({
+                                usuario: userData
+                            });
+                        // Fim do envio da Resposta.
+                        
+                    })
+                    .catch((error) => {
+                        console.error('Algo inesperado aconteceu ao buscar os dados do usuário.', error);
+
+                        let customErr = new Error('Algo inesperado aconteceu ao buscar os dados do usuário. Entre em contato com o administrador.');
                         customErr.status = 500;
                         customErr.code = 'INTERNAL_SERVER_ERROR'
                 

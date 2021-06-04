@@ -11,6 +11,7 @@ const router = express.Router();
         const FotoAnimal = require('../models/FotoAnimal');
         const Anuncio = require('../models/Anuncio');
         const Candidatura = require('../models/Candidatura');
+        const DocResponsabilidade = require('../models/DocResponsabilidade');
 
         const Usuario = require('../models/Usuario');
         const Bloqueio = require('../models/Bloqueio');
@@ -281,6 +282,8 @@ router.get('/', async (req, res, next) => {
             });
         }
 
+        // console.log('OPERACAO:', operacao);
+
         if (operacao == 'getAll'){
 
             // Restrições de Uso.
@@ -346,6 +349,7 @@ router.get('/', async (req, res, next) => {
                                 anuncio.download_foto = `GET ${req.protocol}://${req.get('host')}/usuarios/animais/albuns/fotos/${anuncio.uid_foto_animal}`;
 
                                 anuncio.dados_animal = anuncio.Animal;
+                                anuncio.dados_animal.download_foto = `GET ${req.protocol}://${req.get('host')}/usuarios/animais/albuns/fotos/${anuncio.dados_animal.foto}`;
 
                                 anuncio.dados_anunciante = anuncio.Usuario;
                                 anuncio.dados_anunciante.download_foto = `GET ${req.protocol}://${req.get('host')}/usuarios/avatars/${anuncio.Usuario.foto_usuario}`;
@@ -465,6 +469,7 @@ router.get('/', async (req, res, next) => {
                                 anuncio.download_foto = `GET ${req.protocol}://${req.get('host')}/usuarios/animais/albuns/fotos/${anuncio.uid_foto_animal}`;
 
                                 anuncio.dados_animal = anuncio.Animal;
+                                anuncio.dados_animal.download_foto = `GET ${req.protocol}://${req.get('host')}/usuarios/animais/albuns/fotos/${anuncio.dados_animal.foto}`;
 
                                 anuncio.dados_anunciante = anuncio.Usuario;
                                 anuncio.dados_anunciante.download_foto = `GET ${req.protocol}://${req.get('host')}/usuarios/avatars/${anuncio.Usuario.foto_usuario}`;
@@ -580,6 +585,7 @@ router.get('/', async (req, res, next) => {
                                 anuncio.download_foto = `GET ${req.protocol}://${req.get('host')}/usuarios/animais/albuns/fotos/${anuncio.uid_foto_animal}`;
 
                                 anuncio.dados_animal = anuncio.Animal;
+                                anuncio.dados_animal.download_foto = `GET ${req.protocol}://${req.get('host')}/usuarios/animais/albuns/fotos/${anuncio.dados_animal.foto}`;
 
                                 anuncio.dados_anunciante = anuncio.Usuario;
                                 anuncio.dados_anunciante.download_foto = `GET ${req.protocol}://${req.get('host')}/usuarios/avatars/${anuncio.Usuario.foto_usuario}`;
@@ -695,6 +701,7 @@ router.get('/', async (req, res, next) => {
                                 anuncio.download_foto = `GET ${req.protocol}://${req.get('host')}/usuarios/animais/albuns/fotos/${anuncio.uid_foto_animal}`;
 
                                 anuncio.dados_animal = anuncio.Animal;
+                                anuncio.dados_animal.download_foto = `GET ${req.protocol}://${req.get('host')}/usuarios/animais/albuns/fotos/${anuncio.dados_animal.foto}`;
 
                                 anuncio.dados_anunciante = anuncio.Usuario;
                                 anuncio.dados_anunciante.download_foto = `GET ${req.protocol}://${req.get('host')}/usuarios/avatars/${anuncio.Usuario.foto_usuario}`;
@@ -749,16 +756,55 @@ router.get('/', async (req, res, next) => {
             // Listará os anúncios em aberto de usuários ativos.
             // Útil para a listagem geral dos anúncios criados pelos usuários na tela principal das aplicações.
 
+            // -----------------------------------------------------------------------------------------------------
+
+            // Início da verificação da lista de bloqueios e cálculo da quantidade de dados que não serão exibidas.
+                let listaBloqueios = undefined;
+
+                // let qtdAnunciosBloqueados = undefined;
+
+                if (usuario?.e_admin == 0) { 
+
+                    listaBloqueios = await checkUserBlockList(usuario.cod_usuario);
+
+                    // qtdAnunciosBloqueados = await Anuncio.count({
+                    //     include: [{
+                    //         model: Usuario
+                    //     }],
+                    //     where: {
+                    //         estado_anuncio: 'Aberto',
+                    //         '$Usuario.cod_usuario$': listaBloqueios,
+                    //         '$Usuario.esta_ativo$': 1
+                    //     }
+                    // })
+
+                };
+
+                // console.log('\n ListaBloqueios:', listaBloqueios);
+                // console.log('\n QtdAnunciosBloqueados: ', qtdAnunciosBloqueados);
+
+            // Fim da verificação da lista de bloqueios e cálculo da quantidade de dados que não serão exibidas.
+
+            let query = {
+                estado_anuncio: 'Aberto',
+                '$Usuario.esta_ativo$': 1,
+            };
+
+            if (listaBloqueios?.length > 0) {
+                query.cod_anunciante = {
+                    [Op.notIn]: listaBloqueios
+                }
+            }
+
             Anuncio.findAndCountAll({
                 include: [{
                     model: Animal
                 }, {
                     model: Usuario
                 }],
-                where: {
-                    estado_anuncio: 'Aberto',
-                    '$Usuario.esta_ativo$': 1
-                },
+                where: query,
+                limit: paginationLimit,
+                offset: paginationOffset,
                 nest: true,
                 raw: true
             })
@@ -772,31 +818,7 @@ router.get('/', async (req, res, next) => {
 
                 // Início da construção do objeto que será enviado na resposta.
 
-                    // Início da verificação da lista de bloqueios e cálculo da quantidade de dados que não serão exibidas.
-                        let listaBloqueios = undefined;
-
-                        let qtdAnunciosBloqueados = undefined;
-
-                        if (usuario?.e_admin == 0) { 
-
-                            listaBloqueios = await checkUserBlockList(usuario.cod_usuario);
-
-                            qtdAnunciosBloqueados = await Anuncio.count({
-                                include: [{
-                                    model: Usuario
-                                }],
-                                where: {
-                                    estado_anuncio: 'Aberto',
-                                    '$Usuario.cod_usuario$': listaBloqueios,
-                                    '$Usuario.esta_ativo$': 1
-                                }
-                            })
-
-                        };
-
-                    // Fim da verificação da lista de bloqueios e cálculo da quantidade de dados que não serão exibidas.
-
-                    let total_anuncios = resultArr.count - (qtdAnunciosBloqueados || 0); // Se "qtdAnunciosBloqueados" estiver como NULL ou UNDEFINED, atribua zero à operação.
+                    let total_anuncios = resultArr.count;
 
                     let total_paginas = Math.ceil(total_anuncios / paginationLimit);
 
@@ -820,6 +842,8 @@ router.get('/', async (req, res, next) => {
                         });
                     }
 
+                    // console.log(resultArr.rows);
+
                     // Início da inclusão de atributos adicionais ao objeto que será enviado na resposta.
                         resultArr.rows.forEach((anuncio) => {
 
@@ -827,6 +851,7 @@ router.get('/', async (req, res, next) => {
                                 anuncio.download_foto = `GET ${req.protocol}://${req.get('host')}/usuarios/animais/albuns/fotos/${anuncio.uid_foto_animal}`;
 
                                 anuncio.dados_animal = anuncio.Animal;
+                                anuncio.dados_animal.download_foto = `GET ${req.protocol}://${req.get('host')}/usuarios/animais/albuns/fotos/${anuncio.dados_animal.foto}`;
 
                                 anuncio.dados_anunciante = anuncio.Usuario;
                                 anuncio.dados_anunciante.download_foto = `GET ${req.protocol}://${req.get('host')}/usuarios/avatars/${anuncio.Usuario.foto_usuario}`;
@@ -847,16 +872,49 @@ router.get('/', async (req, res, next) => {
                                 delete anuncio.Usuario;
                             // Fim da remoção de atributos que não são mais necessários.
 
-                            if (usuario){
-                                // Se o requisitante for um usuário...
-                                if (!listaBloqueios.includes(anuncio.dados_anunciante.cod_usuario)){
-                                    // E o criador do anúncio não estiver na lista de bloqueios do usuário (Bloqueado/Bloqueante)...
-                                    anuncios.push(anuncio);
-                                }
-                            } else {
-                                // Se o requisitante for uma aplicação...
-                                anuncios.push(anuncio);
-                            }
+                            // console.log(anuncio);
+                            anuncios.push(anuncio);
+
+                            // if (!usuario){                 // Se o requisitante for uma aplicação...
+                            //     anuncios.push(anuncio);
+                            // }
+
+                            // if (usuario.e_admin == '1'){  // Se for um admin, apenas exiba os anúncios.
+                            //     anuncios.push(anuncio);
+                            // }
+
+                            // if (usuario.e_admin == '0'){  // Se for um usuário comum, considere a lista de bloqueios.
+                            //     console.log('\noi!')
+                            //     console.log(anuncio.dados_anunciante.cod_usuario)
+                            //     if (!listaBloqueios.includes(anuncio.dados_anunciante.cod_usuario)){
+                            //         // E o criador do anúncio não estiver na lista de bloqueios do usuário (Bloqueado/Bloqueante)...
+                            //         console.log('oi :D\n');
+                            //         anuncios.push(anuncio);
+                            //     }
+                            // }
+
+                            // if (usuario){
+                            //     // Se o requisitante for um usuário...
+                            //     if (usuario.e_admin == 1){  // Se for um admin, apenas exiba os anúncios.
+
+                            //         anuncios.push(anuncio);
+
+                            //     } else {    // Se não, Considere a lista de bloqueios.
+
+                            //         if (!listaBloqueios.includes(anuncio.dados_anunciante.cod_usuario)){
+                            //             // E o criador do anúncio não estiver na lista de bloqueios do usuário (Bloqueado/Bloqueante)...
+                            //             anuncios.push(anuncio);
+                                        
+                            //         }
+
+                            //     }
+                                
+                            // } else {
+                            //     // Se o requisitante for uma aplicação...
+                            //     anuncios.push(anuncio);
+                            // }
+
+                            
                             
                         });
                     // Fim da inclusão de atributos adicionais ao objeto que será enviado na resposta.
@@ -887,6 +945,201 @@ router.get('/', async (req, res, next) => {
                 return next( customErr );
             });
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+            // -----------------------------------------------------------------------------------------------------
+
+            // Anuncio.findAndCountAll({
+            //     include: [{
+            //         model: Animal
+            //     }, {
+            //         model: Usuario
+            //     }],
+            //     where: {
+            //         estado_anuncio: 'Aberto',
+            //         '$Usuario.esta_ativo$': 1
+            //     },
+            //     limit: paginationLimit,
+            //     offset: paginationOffset,
+            //     nest: true,
+            //     raw: true
+            // })
+            // .then( async (resultArr) => {
+
+            //     if (resultArr.count == 0){
+            //         return res.status(200).json({
+            //             mensagem: 'Nenhum anúncio em aberto de usuários ativos foi encontrado.'
+            //         });
+            //     }
+
+            //     // Início da construção do objeto que será enviado na resposta.
+
+            //         // Início da verificação da lista de bloqueios e cálculo da quantidade de dados que não serão exibidas.
+            //             let listaBloqueios = undefined;
+
+            //             let qtdAnunciosBloqueados = undefined;
+
+            //             if (usuario?.e_admin == 0) { 
+
+            //                 listaBloqueios = await checkUserBlockList(usuario.cod_usuario);
+
+            //                 qtdAnunciosBloqueados = await Anuncio.count({
+            //                     include: [{
+            //                         model: Usuario
+            //                     }],
+            //                     where: {
+            //                         estado_anuncio: 'Aberto',
+            //                         '$Usuario.cod_usuario$': listaBloqueios,
+            //                         '$Usuario.esta_ativo$': 1
+            //                     }
+            //                 })
+
+            //             };
+
+            //             console.log('\n ListaBloqueios:', listaBloqueios);
+            //             console.log('\n QtdAnunciosBloqueados: ', qtdAnunciosBloqueados);
+
+            //         // Fim da verificação da lista de bloqueios e cálculo da quantidade de dados que não serão exibidas.
+
+            //         let total_anuncios = resultArr.count - (qtdAnunciosBloqueados || 0); // Se "qtdAnunciosBloqueados" estiver como NULL ou UNDEFINED, atribua zero à operação.
+
+            //         let total_paginas = Math.ceil(total_anuncios / paginationLimit);
+
+            //         let anuncios = [];
+
+            //         let voltar_pagina = undefined;
+            //         let avancar_pagina = undefined;
+
+            //         if (requestedPage > 1 && requestedPage <= total_paginas){
+            //             voltar_pagina = `${req.protocol}://${req.get('host')}/anuncios/?getAll=open&activeOwner=1&page=${requestedPage - 1}&limit=${paginationLimit}`;
+            //         }
+
+            //         if (requestedPage < total_paginas){
+            //             avancar_pagina = `${req.protocol}://${req.get('host')}/anuncios/?getAll=open&activeOwner=1&page=${requestedPage + 1}&limit=${paginationLimit}`;
+            //         } 
+
+            //         if (requestedPage > total_paginas){
+            //             return res.status(404).json({
+            //                 mensagem: 'Você chegou ao final da lista de anúncios em aberto de usuários ativos.',
+            //                 code: 'RESOURCE_NOT_FOUND'
+            //             });
+            //         }
+
+            //         // console.log(resultArr.rows);
+
+            //         // Início da inclusão de atributos adicionais ao objeto que será enviado na resposta.
+            //             resultArr.rows.forEach((anuncio) => {
+
+            //                 // Início da adição de atributos essenciais aos Clientes.
+            //                     anuncio.download_foto = `GET ${req.protocol}://${req.get('host')}/usuarios/animais/albuns/fotos/${anuncio.uid_foto_animal}`;
+
+            //                     anuncio.dados_animal = anuncio.Animal;
+            //                     anuncio.dados_animal.download_foto = `GET ${req.protocol}://${req.get('host')}/usuarios/animais/albuns/fotos/${anuncio.dados_animal.foto}`;
+
+            //                     anuncio.dados_anunciante = anuncio.Usuario;
+            //                     anuncio.dados_anunciante.download_foto = `GET ${req.protocol}://${req.get('host')}/usuarios/avatars/${anuncio.Usuario.foto_usuario}`;
+
+            //                     anuncio.detalhes_anuncio = `GET ${req.protocol}://${req.get('host')}/anuncios/?getOne=${anuncio.cod_anuncio}`;
+
+            //                     anuncio.add_avaliacao = `POST ${req.protocol}://${req.get('host')}/anuncios/avaliacoes/${anuncio.cod_anuncio}`;
+            //                     anuncio.rmv_avaliacao = `DELETE ${req.protocol}://${req.get('host')}/anuncios/avaliacoes/${anuncio.cod_anuncio}`;
+
+            //                     anuncio.add_favorito = `POST ${req.protocol}://${req.get('host')}/anuncios/favoritos/${anuncio.cod_anuncio}`;
+            //                     anuncio.rmv_favorito = `DELETE ${req.protocol}://${req.get('host')}/anuncios/favoritos/${anuncio.cod_anuncio}`;
+
+            //                     anuncio.add_candidatura = `POST ${req.protocol}://${req.get('host')}/anuncios/candidaturas/${anuncio.cod_anuncio}`;
+            //                 // Fim da adição de atributos essenciais aos Clientes.
+
+            //                 // Início da remoção atributos que não são mais necessários.
+            //                     delete anuncio.Animal;
+            //                     delete anuncio.Usuario;
+            //                 // Fim da remoção de atributos que não são mais necessários.
+
+            //                 // console.log(anuncio);
+
+            //                 if (!usuario){                 // Se o requisitante for uma aplicação...
+            //                     anuncios.push(anuncio);
+            //                 }
+
+            //                 if (usuario.e_admin == '1'){  // Se for um admin, apenas exiba os anúncios.
+            //                     anuncios.push(anuncio);
+            //                 }
+
+            //                 if (usuario.e_admin == '0'){  // Se for um usuário comum, considere a lista de bloqueios.
+            //                     console.log('\noi!')
+            //                     console.log(anuncio.dados_anunciante.cod_usuario)
+            //                     if (!listaBloqueios.includes(anuncio.dados_anunciante.cod_usuario)){
+            //                         // E o criador do anúncio não estiver na lista de bloqueios do usuário (Bloqueado/Bloqueante)...
+            //                         console.log('oi :D\n');
+            //                         anuncios.push(anuncio);
+            //                     }
+            //                 }
+
+            //                 // if (usuario){
+            //                 //     // Se o requisitante for um usuário...
+            //                 //     if (usuario.e_admin == 1){  // Se for um admin, apenas exiba os anúncios.
+
+            //                 //         anuncios.push(anuncio);
+
+            //                 //     } else {    // Se não, Considere a lista de bloqueios.
+
+            //                 //         if (!listaBloqueios.includes(anuncio.dados_anunciante.cod_usuario)){
+            //                 //             // E o criador do anúncio não estiver na lista de bloqueios do usuário (Bloqueado/Bloqueante)...
+            //                 //             anuncios.push(anuncio);
+                                        
+            //                 //         }
+
+            //                 //     }
+                                
+            //                 // } else {
+            //                 //     // Se o requisitante for uma aplicação...
+            //                 //     anuncios.push(anuncio);
+            //                 // }
+
+                            
+                            
+            //             });
+            //         // Fim da inclusão de atributos adicionais ao objeto que será enviado na resposta.
+
+            //     // Fim da construção do objeto que será enviado na resposta.
+
+            //     // Início do envio da resposta.
+
+            //         return res.status(200).json({
+            //             mensagem: 'Lista de anúncios em aberto de usuários ativos.',
+            //             total_anuncios,
+            //             total_paginas,
+            //             anuncios,
+            //             voltar_pagina,
+            //             avancar_pagina
+            //         });
+
+            //     // Fim do envio da resposta.
+                
+            // })
+            // .catch((error) => {
+            //     console.error('Algo inesperado aconteceu ao listar os anúncios em aberto dos usuários ativos.', error);
+    
+            //     let customErr = new Error('Algo inesperado aconteceu ao listar os anúncios em aberto dos usuários ativos. Entre em contato com o administrador.');
+            //     customErr.status = 500;
+            //     customErr.code = 'INTERNAL_SERVER_ERROR'
+        
+            //     return next( customErr );
+            // });
+
         }
 
         if (operacao == 'getAll_Completed_With_ActiveOwner'){
@@ -905,6 +1158,8 @@ router.get('/', async (req, res, next) => {
                     estado_anuncio: 'Concluido',
                     '$Usuario.esta_ativo$': 1
                 },
+                limit: paginationLimit,
+                offset: paginationOffset,
                 nest: true,
                 raw: true
             })
@@ -973,6 +1228,7 @@ router.get('/', async (req, res, next) => {
                                 anuncio.download_foto = `GET ${req.protocol}://${req.get('host')}/usuarios/animais/albuns/fotos/${anuncio.uid_foto_animal}`;
 
                                 anuncio.dados_animal = anuncio.Animal;
+                                anuncio.dados_animal.download_foto = `GET ${req.protocol}://${req.get('host')}/usuarios/animais/albuns/fotos/${anuncio.dados_animal.foto}`;
 
                                 anuncio.dados_anunciante = anuncio.Usuario;
                                 anuncio.dados_anunciante.download_foto = `GET ${req.protocol}://${req.get('host')}/usuarios/avatars/${anuncio.Usuario.foto_usuario}`;
@@ -1057,6 +1313,8 @@ router.get('/', async (req, res, next) => {
                     estado_anuncio: 'Fechado',
                     '$Usuario.esta_ativo$': 1
                 },
+                limit: paginationLimit,
+                offset: paginationOffset,
                 nest: true,
                 raw: true
             })
@@ -1101,6 +1359,7 @@ router.get('/', async (req, res, next) => {
                                 anuncio.download_foto = `GET ${req.protocol}://${req.get('host')}/usuarios/animais/albuns/fotos/${anuncio.uid_foto_animal}`;
 
                                 anuncio.dados_animal = anuncio.Animal;
+                                anuncio.dados_animal.download_foto = `GET ${req.protocol}://${req.get('host')}/usuarios/animais/albuns/fotos/${anuncio.dados_animal.foto}`;
 
                                 anuncio.dados_anunciante = anuncio.Usuario;
                                 anuncio.dados_anunciante.download_foto = `GET ${req.protocol}://${req.get('host')}/usuarios/avatars/${anuncio.Usuario.foto_usuario}`;
@@ -1176,6 +1435,8 @@ router.get('/', async (req, res, next) => {
                     estado_anuncio: 'Aberto',
                     '$Usuario.esta_ativo$': 0
                 },
+                limit: paginationLimit,
+                offset: paginationOffset,
                 nest: true,
                 raw: true
             })
@@ -1220,6 +1481,7 @@ router.get('/', async (req, res, next) => {
                                 anuncio.download_foto = `GET ${req.protocol}://${req.get('host')}/usuarios/animais/albuns/fotos/${anuncio.uid_foto_animal}`;
 
                                 anuncio.dados_animal = anuncio.Animal;
+                                anuncio.dados_animal.download_foto = `GET ${req.protocol}://${req.get('host')}/usuarios/animais/albuns/fotos/${anuncio.dados_animal.foto}`;
 
                                 anuncio.dados_anunciante = anuncio.Usuario;
                                 anuncio.dados_anunciante.download_foto = `GET ${req.protocol}://${req.get('host')}/usuarios/avatars/${anuncio.Usuario.foto_usuario}`;
@@ -1295,6 +1557,8 @@ router.get('/', async (req, res, next) => {
                     estado_anuncio: 'Concluido',
                     '$Usuario.esta_ativo$': 0
                 },
+                limit: paginationLimit,
+                offset: paginationOffset,
                 nest: true,
                 raw: true
             })
@@ -1339,6 +1603,7 @@ router.get('/', async (req, res, next) => {
                                 anuncio.download_foto = `GET ${req.protocol}://${req.get('host')}/usuarios/animais/albuns/fotos/${anuncio.uid_foto_animal}`;
 
                                 anuncio.dados_animal = anuncio.Animal;
+                                anuncio.dados_animal.download_foto = `GET ${req.protocol}://${req.get('host')}/usuarios/animais/albuns/fotos/${anuncio.dados_animal.foto}`;
 
                                 anuncio.dados_anunciante = anuncio.Usuario;
                                 anuncio.dados_anunciante.download_foto = `GET ${req.protocol}://${req.get('host')}/usuarios/avatars/${anuncio.Usuario.foto_usuario}`;
@@ -1414,6 +1679,8 @@ router.get('/', async (req, res, next) => {
                     estado_anuncio: 'Fechado',
                     '$Usuario.esta_ativo$': 0
                 },
+                limit: paginationLimit,
+                offset: paginationOffset,
                 nest: true,
                 raw: true
             })
@@ -1458,6 +1725,7 @@ router.get('/', async (req, res, next) => {
                                 anuncio.download_foto = `GET ${req.protocol}://${req.get('host')}/usuarios/animais/albuns/fotos/${anuncio.uid_foto_animal}`;
 
                                 anuncio.dados_animal = anuncio.Animal;
+                                anuncio.dados_animal.download_foto = `GET ${req.protocol}://${req.get('host')}/usuarios/animais/albuns/fotos/${anuncio.dados_animal.foto}`;
 
                                 anuncio.dados_anunciante = anuncio.Usuario;
                                 anuncio.dados_anunciante.download_foto = `GET ${req.protocol}://${req.get('host')}/usuarios/avatars/${anuncio.Usuario.foto_usuario}`;
@@ -1527,6 +1795,8 @@ router.get('/', async (req, res, next) => {
                     estado_anuncio: 'Aberto',
                     '$Usuario.cod_usuario$': req.query.fromUser
                 },
+                limit: paginationLimit,
+                offset: paginationOffset,
                 nest: true,
                 raw: true
             })
@@ -1602,6 +1872,7 @@ router.get('/', async (req, res, next) => {
                                 anuncio.download_foto = `GET ${req.protocol}://${req.get('host')}/usuarios/animais/albuns/fotos/${anuncio.uid_foto_animal}`;
 
                                 anuncio.dados_animal = anuncio.Animal;
+                                anuncio.dados_animal.download_foto = `GET ${req.protocol}://${req.get('host')}/usuarios/animais/albuns/fotos/${anuncio.dados_animal.foto}`;
 
                                 anuncio.dados_anunciante = anuncio.Usuario;
                                 anuncio.dados_anunciante.download_foto = `GET ${req.protocol}://${req.get('host')}/usuarios/avatars/${anuncio.Usuario.foto_usuario}`;
@@ -1671,6 +1942,8 @@ router.get('/', async (req, res, next) => {
                     estado_anuncio: 'Concluido',
                     '$Usuario.cod_usuario$': req.query.fromUser
                 },
+                limit: paginationLimit,
+                offset: paginationOffset,
                 nest: true,
                 raw: true
             })
@@ -1746,6 +2019,7 @@ router.get('/', async (req, res, next) => {
                                 anuncio.download_foto = `GET ${req.protocol}://${req.get('host')}/usuarios/animais/albuns/fotos/${anuncio.uid_foto_animal}`;
 
                                 anuncio.dados_animal = anuncio.Animal;
+                                anuncio.dados_animal.download_foto = `GET ${req.protocol}://${req.get('host')}/usuarios/animais/albuns/fotos/${anuncio.dados_animal.foto}`;
 
                                 anuncio.dados_anunciante = anuncio.Usuario;
                                 anuncio.dados_anunciante.download_foto = `GET ${req.protocol}://${req.get('host')}/usuarios/avatars/${anuncio.Usuario.foto_usuario}`;
@@ -1821,6 +2095,8 @@ router.get('/', async (req, res, next) => {
                     estado_anuncio: 'Fechado',
                     '$Usuario.cod_usuario$': req.query.fromUser
                 },
+                limit: paginationLimit,
+                offset: paginationOffset,
                 nest: true,
                 raw: true
             })
@@ -1865,6 +2141,7 @@ router.get('/', async (req, res, next) => {
                                 anuncio.download_foto = `GET ${req.protocol}://${req.get('host')}/usuarios/animais/albuns/fotos/${anuncio.uid_foto_animal}`;
 
                                 anuncio.dados_animal = anuncio.Animal;
+                                anuncio.dados_animal.download_foto = `GET ${req.protocol}://${req.get('host')}/usuarios/animais/albuns/fotos/${anuncio.dados_animal.foto}`;
 
                                 anuncio.dados_anunciante = anuncio.Usuario;
                                 anuncio.dados_anunciante.download_foto = `GET ${req.protocol}://${req.get('host')}/usuarios/avatars/${anuncio.Usuario.foto_usuario}`;
@@ -1957,6 +2234,8 @@ router.get('/', async (req, res, next) => {
                     '$Usuario.esta_ativo$': 1
                 },
                 order: [ order ],
+                limit: paginationLimit,
+                offset: paginationOffset,
                 nest: true,
                 raw: true
             })
@@ -2025,6 +2304,7 @@ router.get('/', async (req, res, next) => {
                                 anuncio.download_foto = `GET ${req.protocol}://${req.get('host')}/usuarios/animais/albuns/fotos/${anuncio.uid_foto_animal}`;
 
                                 anuncio.dados_animal = anuncio.Animal;
+                                anuncio.dados_animal.download_foto = `GET ${req.protocol}://${req.get('host')}/usuarios/animais/albuns/fotos/${anuncio.dados_animal.foto}`;
 
                                 anuncio.dados_anunciante = anuncio.Usuario;
                                 anuncio.dados_anunciante.download_foto = `GET ${req.protocol}://${req.get('host')}/usuarios/avatars/${anuncio.Usuario.foto_usuario}`;
@@ -2090,9 +2370,17 @@ router.get('/', async (req, res, next) => {
 
         if (operacao == 'getOne'){
 
-            // Chamada livre para usuários.
-            // Exibirá os dados de um específico.
+            // Chamada exclusiva para usuários.
+            // Exibirá os dados de um anúncio específico.
             // Útil para exibir a página ou card de um anúncio específico.
+
+            // Se o requisitante não for um usuário, não permita o acesso.
+            if (!usuario){
+                return res.status(401).json({
+                    mensagem: 'Requisição inválida - Você não possui o nível de acesso adequado para esse recurso.',
+                    code: 'ACCESS_TO_RESOURCE_NOT_ALLOWED'
+                });
+            };
 
             // Início da atualização da quantidade de visualizações do anúncio.
                 try {
@@ -2120,6 +2408,12 @@ router.get('/', async (req, res, next) => {
                     model: Animal
                 }, {
                     model: Usuario
+                }, {
+                    model: Candidatura,
+                    where: {
+                        cod_candidato: usuario.cod_usuario
+                    },
+                    required: false
                 }],
                 where: {
                     cod_anuncio: req.query.getOne
@@ -2178,6 +2472,8 @@ router.get('/', async (req, res, next) => {
                         delete result.FotoAnimal;
                     let dadosAnunciante = result.Usuario;
                         delete result.Usuario
+                    let dadosCandidatura = result.Candidaturas;
+                        delete result.Candidaturas;
                     let dadosAnuncio = result;
 
                     // Atributos adicionais ao anúncio.
@@ -2208,7 +2504,8 @@ router.get('/', async (req, res, next) => {
                         mensagem: 'Exibindo os dados do anúncio.',
                         anuncio: dadosAnuncio,
                         animal: dadosAnimal,
-                        anunciante: dadosAnunciante
+                        anunciante: dadosAnunciante,
+                        candidatura: dadosCandidatura.cod_candidatura ? dadosCandidatura : null
                     });
 
                 // Fim do envio da resposta.

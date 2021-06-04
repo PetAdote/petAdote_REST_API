@@ -130,8 +130,12 @@
     */
     app.use((error, req, res, next) => {    // Perceba: Middleware com 4 parâmetros, o 1º sendo "error".
 
-        console.error('Um erro inesperado ocorreu!\n', error);
-
+        if (error.message === 'Recurso não encontrado.'){
+            console.log(error.status + ' ' + error.message);
+        } else {
+            console.error('Um erro inesperado ocorreu!\n', error);
+        }
+        
         req.pause();
         res.status(error.status || 500);    // Se o erro gerado não apresentar um código de status http, use 500 - (Internal Server Error).
 

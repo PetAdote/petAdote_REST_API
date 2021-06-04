@@ -13,6 +13,7 @@ module.exports = (req, res, next) => {
         // Início da Lista de end-points modificadores permitidos para usuários inativos.
             let allowedCallsRegEx = [
                 new RegExp(/^\/autenticacoes\/usuarios\/refresh\/{0,1}$/g),                                                     // Ex: (POST:   /autenticacoes/usuarios/refresh/)
+                new RegExp(/^\/autenticacoes\/usuarios\/logout\/{0,1}$/g),                                                     // Ex: (POST:   /autenticacoes/usuarios/logout/)
                 new RegExp(/^\/usuarios\/(?:(?:\d+[/]?)|(?:\d+[?])|(?:\d+[?][^/]+)|(?:\d+[?][^/]+[/]{1}))$/g),                  // Ex: (PATCH:  /usuarios/codUsuario?setDefault=avatar)
                 new RegExp(/^\/usuarios\/enderecos\/(?:(?:\d+[/]?)|(?:\d+[?])|(?:\d+[?][^/]+)|(?:\d+[?][^/]+[/]{1}))$/g),       // Ex: (PATCH:  /usuarios/enderecos/codusuario)
                 new RegExp(/^\/contas\/(?:(?:\d+[/]?)|(?:\d+[?])|(?:\d+[?][^/]+)|(?:\d+[?][^/]+[/]{1}))$/g),                    // Ex: (PATCH:  /contas/codUsuario)
@@ -32,6 +33,7 @@ module.exports = (req, res, next) => {
                     reqAllowed = true
                     break;
                 };
+                
             }
         // ----------------------------------------------------------------------------------------------------
 
@@ -40,8 +42,8 @@ module.exports = (req, res, next) => {
             // console.log('Você não está autorizado à acessar essa rota!');
 
             return res.status(403).json({
-                mensagem: 'Você não possui o nível de acesso adequado.',
-                code: 'NOT_ALLOWED'
+                mensagem: 'Você não está autorizado a utilizar essa chamada.',
+                code: 'ACCESS_NOT_ALLOWED'
             });
         }
 
