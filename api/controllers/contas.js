@@ -1132,7 +1132,8 @@
                         return { 
                             api_error: {
                                 errCode: err.code,
-                                errMessage: err.message
+                                status: error.response.status,
+                                statusText: error.response.statusText
                             }
                         };
                     });
@@ -1146,6 +1147,14 @@
                 
                     if (infoCEP.api_error){
                         console.error('CEP - Algo inesperado aconteceu ao buscar informações sobre o CEP.', infoCEP.api_error);
+
+                        if (infoCEP.api_error.status === 400){
+                            let customErr = new Error('Verifique se o CEP digitado está correto.');
+                            customErr.status = 400;
+                            customErr.code = 'CEP_BAD_REQUEST';
+                
+                            return next( customErr );
+                        }
                 
                         if (!infoCEP.api_error.errCode == 'ETIMEDOUT'){
                             console.error('A API do ViaCEP caiu às ' + new Date().toLocaleString() + '.');

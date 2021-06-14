@@ -108,6 +108,8 @@ router.get('/', async (req, res, next) => {
 
                 break;
             case 3:
+                if (getAllFromUser && page && limit) { operacao = 'getAll_fromUser' };
+
                 if (getAllFromUser && bySpecie && page) { operacao = 'getAll_fromUser_bySpecie' };
                 if (getAllFromUser && byStatus && page) { operacao = 'getAll_fromUser_byStatus' };
                 if (getAllFromUser && byName && page) { operacao = 'getAll_fromUser_byName' };
@@ -327,7 +329,7 @@ router.get('/', async (req, res, next) => {
                             // dadosAnimal.lista_albuns = `${req.protocol}://${req.get('host')}/usuarios/animais/albuns/?getAllFromAnimal=${dadosAnimal.cod_animal}`;
                         // Fim da inclusão de atributos essenciais aos clientes.
 
-                        // Unindo os dados em objeto em um objeto.
+                        // Unindo os dados em um objeto.
                             if (dadosDono) {
                                 dadosAnimal.dono = dadosDono;
                                 dadosAnimal.dono.download_avatar = `${req.protocol}://${req.get('host')}/usuarios/avatars/${dadosDono.foto_usuario}`;
@@ -399,7 +401,7 @@ router.get('/', async (req, res, next) => {
                     attributes: ['cod_usuario', 'esta_ativo']
                 }],
                 where: whereConfig,
-                order: [['ativo', 'DESC']],
+                order: [['ativo', 'DESC'], ['data_criacao', 'DESC']],
                 limit: paginationLimit,
                 offset: paginationOffset
             })

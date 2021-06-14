@@ -481,6 +481,30 @@ router.get('/', async (req, res, next) => {
             // Entregará dados sobre fotos ativas de usuários ativos.
             // Útil para listagem geral de fotos de animais.
 
+            // -----------------------------------------------------------------------------------------------------
+
+            // Início da verificação da lista de bloqueios e cálculo da quantidade de dados que não serão exibidas.
+                let listaBloqueios = undefined;
+
+                if (usuario?.e_admin == 0) { 
+
+                    listaBloqueios = await checkUserBlockList(usuario.cod_usuario);
+
+                };
+
+            // Fim da verificação da lista de bloqueios e cálculo da quantidade de dados que não serão exibidas.
+
+            let query = {
+                ativo: 1,
+                '$AlbumAnimal.Animal.dono.esta_ativo$': 1
+            }
+
+            if (listaBloqueios?.length > 0){
+                query['$AlbumAnimal.Animal.cod_dono$'] = {
+                    [Op.notIn]: listaBloqueios
+                }
+            }
+
             FotoAnimal.findAndCountAll({
                 include: [{
                     model: AlbumAnimal,
@@ -492,10 +516,10 @@ router.get('/', async (req, res, next) => {
                         }]
                     }]
                 }],
-                where: {
-                    ativo: 1,
-                    '$AlbumAnimal.Animal.dono.esta_ativo$': 1
-                },
+                where: query,
+                order: [['data_criacao', 'DESC']],
+                limit: paginationLimit,
+                offset: paginationOffset,
                 nest: true,
                 raw: true
             })
@@ -509,42 +533,7 @@ router.get('/', async (req, res, next) => {
 
                 // Início da construção do objeto enviado na resposta.
 
-                    // Início da verificação da lista de bloqueios e cálculo da quantidade de fotos de animais que não serão exibidas.
-                        let listaBloqueios = undefined;
-
-                        let qtdFotosBloqueadas = undefined;
-
-                        if (usuario?.e_admin == 0) { 
-
-                            listaBloqueios = await checkUserBlockList(usuario.cod_usuario);
-
-                            qtdFotosBloqueadas = await FotoAnimal.count({
-                                include: [{
-                                    model: AlbumAnimal,
-                                    include: [{
-                                        model: Animal,
-                                        include: [{
-                                            model: Usuario,
-                                            as: 'dono'
-                                        }]
-                                    }]
-                                }],
-                                where: {
-                                    ativo: 1,
-                                    '$AlbumAnimal.Animal.cod_dono$': listaBloqueios,
-                                    '$AlbumAnimal.Animal.dono.esta_ativo$': 1
-                                },
-                                // limit: paginationLimit,
-                                // offset: paginationOffset,
-                                // nest: true,
-                                // raw: true
-                            })
-
-                        };
-
-                    // Fim da verificação da lista de bloqueios e calculo da quantidade de fotos de animais que não serão exibidas.
-
-                    let total_fotos = resultArr.count - (qtdFotosBloqueadas || 0); // Se "qtdFotosBloqueadas" estiver como NULL ou UNDEFINED, atribua zero à operação.
+                    let total_fotos = resultArr.count;
 
                     let total_paginas = Math.ceil(total_fotos / paginationLimit);
 
@@ -574,26 +563,7 @@ router.get('/', async (req, res, next) => {
                             foto.download_foto = `${req.protocol}://${req.get('host')}/usuarios/animais/albuns/fotos/${foto.uid_foto}`;
                         // Fim da adição de atributos extras ao objeto.
 
-                        if (usuario){
-                            // Se o requisitante for um usuário...
-                            if (!listaBloqueios.includes(foto.AlbumAnimal.Animal.cod_dono)){
-                                // E o dono do animal não estiver na lista de bloqueios do usuário (Bloqueado/Bloqueante)...
-
-                                // Removendo estruturas que agora são desnecessárias.
-                                    delete foto.AlbumAnimal;
-                                // --------------------------------------------------
-
-                                fotos.push(foto);
-                            }
-                        } else {
-                            // Se o requisitante for uma aplicação...
-
-                            // Removendo estruturas que agora são desnecessárias.
-                                delete foto.AlbumAnimal;
-                            // --------------------------------------------------
-
-                            fotos.push(foto);
-                        }
+                        fotos.push(foto);
                         
                     });
 
@@ -974,6 +944,9 @@ router.get('/', async (req, res, next) => {
                     cod_album: cod_album,
                     ativo: 1
                 },
+                order: [['data_criacao', 'DESC']],
+                limit: paginationLimit,
+                offset: paginationOffset,
                 nest: true,
                 raw: true
             })

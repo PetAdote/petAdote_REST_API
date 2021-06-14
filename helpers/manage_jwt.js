@@ -23,7 +23,7 @@
             };
             const secret = process.env.JWT_ACCESS_TOKEN_SECRET;
             const options = {
-                expiresIn: '1h'
+                expiresIn: '100h'
             };
 
             jwt.sign(payload, secret, options, (error, token) => {
@@ -133,7 +133,7 @@
             };
             const secret = process.env.JWT_ACCESS_TOKEN_SECRET;
             const options = {
-                expiresIn: '20m'
+                expiresIn: '6000m'
             };
 
             jwt.sign(payload, secret, options, (error, token) => {
@@ -475,6 +475,8 @@
                                 return resolve(user);
                             } else {
                                 // Se não, não autorize o acesso.
+                                console.error('[manage_jwt.js] err @ refresh, refresh received:', refreshToken);
+                                console.error('[manage_jwt.js] err @ refresh, result found:', result);
                                 let customErr = new Error('O Token de Renovação do usuário não parece ser válido.');
 
                                 customErr.status = 401;

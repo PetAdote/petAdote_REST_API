@@ -5,8 +5,8 @@
 
     // Models.
         const Usuario = require('../models/Usuario');
-
         const Bloqueio = require('../models/Bloqueio');
+        const EnderecoUsuario = require('../models/EnderecoUsuario');
 
     // Utilidades.
         const fs = require('fs');           // 'fs' do Node para manipular o "file system', gerenciando os arquivos que o servidor receberá.
@@ -703,89 +703,60 @@
             }
         }
 
-        Usuario.findByPk(req.params.codUsuario, { raw: true })
+        Usuario.findOne({
+            include: [{
+                model: EnderecoUsuario,
+                attributes: ['uf', 'cidade']
+            }],
+            where: {
+                cod_usuario: req.params.codUsuario
+            }
+        })
         .then((result) => {
 
-            if (result) {
-
-                // Adicionando o end-point para exibição do Avatar e do Banner do usuário.
-                    result.download_avatar = `${req.protocol}://${req.get('host')}/usuarios/avatars/${result.foto_usuario}`;
-                    result.download_banner = `${req.protocol}://${req.get('host')}/usuarios/banners/${result.banner_usuario}`;
-                // -----------------------------------------------------------------------
-
-                /* Exibir lista de rotas com base nos níveis de acesso.
-                Cliente (API); Usuário Admin; Usuário dono do recurso; Usuário visitante do recurso. */
-
-                if (req.dadosAuthToken.cod_cliente && (!req.dadosAuthToken.usuario || req.dadosAuthToken.usuario.e_admin == 1)) {
-                    // Chamada da API ou de um Admin.
-
-                    return res.status(200).json({
-                        usuario: result,
-                        conta: `${req.protocol}://${req.get('host')}/contas/?codUsuario=${result.cod_usuario}`,
-                        endereco: `${req.protocol}://${req.get('host')}/usuarios/enderecos/?codUsuario=${result.cod_usuario}`,
-                        // seguidos: `${req.protocol}://${req.get('host')}/usuarios/seguidas/?seguidos=${result.cod_usuario}`,
-                        // seguidores: `${req.protocol}://${req.get('host')}/usuarios/seguidas/?seguidores=${result.cod_usuario}`,
-                        // denunciados: `${req.protocol}://${req.get('host')}/usuarios/denuncias/?denunciados=${result.cod_usuario}`,
-                        // denunciantes: `${req.protocol}://${req.get('host')}/usuarios/denuncias/?denunciantes=${result.cod_usuario}`,
-                        // bloqueados: `${req.protocol}://${req.get('host')}/usuarios/bloqueios/?bloqueados=${result.cod_usuario}`,
-                        // bloqueantes: `${req.protocol}://${req.get('host')}/usuarios/bloqueios/?bloqueantes=${result.cod_usuario}`,
-                        animais: `${req.protocol}://${req.get('host')}/usuarios/animais/?getAllFromUser=${result.cod_usuario}`,
-                        // momentos: `${req.protocol}://${req.get('host')}/momentos/?codUsuario=${result.cod_usuario}`,
-                        // postagens: `${req.protocol}://${req.get('host')}/postagens/?codUsuario=${result.cod_usuario}`,
-                        // postagens_avaliadas: `${req.protocol}://${req.get('host')}/postagens/avaliacoes/?codUsuario=${result.cod_usuario}`,
-                        // anuncios: `${req.protocol}://${req.get('host')}/anuncios/?codUsuario=${result.cod_usuario}`,
-                        // anuncios_favoritos: `${req.protocol}://${req.get('host')}/anuncios/favoritos/?codUsuario=${result.cod_usuario}`,
-                        // anuncios_avaliados: `${req.protocol}://${req.get('host')}/anuncios/avaliacoes/?codUsuario=${result.cod_usuario}`,
-                        // candidaturas: `${req.protocol}://${req.get('host')}/anuncios/candidaturas/?codUsuario=${result.cod_usuario}`,
-                        // conversas: `${req.protocol}://${req.get('host')}/conversas/?codUsuario=${result.cod_usuario}`
-                    });
-                } else if (req.dadosAuthToken.usuario && req.dadosAuthToken.usuario.cod_usuario != req.params.codUsuario){
-                    // Chamada de um Usuário visitante.
-
-                    return res.status(200).json({
-                        usuario: result,
-                        // conta: `${req.protocol}://${req.get('host')}/contas/?codUsuario=${result.cod_usuario}`,
-                        // seguidos: `${req.protocol}://${req.get('host')}/usuarios/seguidas/?seguidos=${result.cod_usuario}`,
-                        // seguidores: `${req.protocol}://${req.get('host')}/usuarios/seguidas/?seguidores=${result.cod_usuario}`,
-                        animais: `${req.protocol}://${req.get('host')}/usuarios/animais/?getAllFromUser=${result.cod_usuario}`,
-                        // momentos: `${req.protocol}://${req.get('host')}/momentos/?codUsuario=${result.cod_usuario}`,
-                        // postagens: `${req.protocol}://${req.get('host')}/postagens/?codUsuario=${result.cod_usuario}`,
-                        // postagens_avaliadas: `${req.protocol}://${req.get('host')}/postagens/avaliacoes/?codUsuario=${result.cod_usuario}`,
-                        // anuncios: `${req.protocol}://${req.get('host')}/anuncios/?codUsuario=${result.cod_usuario}`,
-                        // anuncios_favoritos: `${req.protocol}://${req.get('host')}/anuncios/favoritos/?codUsuario=${result.cod_usuario}`,
-                        // anuncios_avaliados: `${req.protocol}://${req.get('host')}/anuncios/avaliacoes/?codUsuario=${result.cod_usuario}`,
-                    });
-
-                } else if (req.dadosAuthToken.usuario && req.dadosAuthToken.usuario.cod_usuario == req.params.codUsuario){
-                    // Chamada do Usuário dono do recurso.
-
-                    return res.status(200).json({
-                        usuario: result,
-                        conta: `${req.protocol}://${req.get('host')}/contas/?codUsuario=${result.cod_usuario}`,
-                        endereco: `${req.protocol}://${req.get('host')}/usuarios/enderecos/?codUsuario=${result.cod_usuario}`,
-                        // seguidos: `${req.protocol}://${req.get('host')}/usuarios/seguidas/?seguidos=${result.cod_usuario}`,
-                        // seguidores: `${req.protocol}://${req.get('host')}/usuarios/seguidas/?seguidores=${result.cod_usuario}`,
-                        // denunciados: `${req.protocol}://${req.get('host')}/usuarios/denuncias/?denunciados=${result.cod_usuario}`,
-                        // bloqueados: `${req.protocol}://${req.get('host')}/usuarios/bloqueios/?bloqueados=${result.cod_usuario}`,
-                        animais: `${req.protocol}://${req.get('host')}/usuarios/animais/?getAllFromUser=${result.cod_usuario}`,
-                        // momentos: `${req.protocol}://${req.get('host')}/momentos/?codUsuario=${result.cod_usuario}`,
-                        // postagens: `${req.protocol}://${req.get('host')}/postagens/?codUsuario=${result.cod_usuario}`,
-                        // postagens_avaliadas: `${req.protocol}://${req.get('host')}/postagens/avaliacoes/?codUsuario=${result.cod_usuario}`,
-                        // anuncios: `${req.protocol}://${req.get('host')}/anuncios/?codUsuario=${result.cod_usuario}`,
-                        // anuncios_favoritos: `${req.protocol}://${req.get('host')}/anuncios/favoritos/?codUsuario=${result.cod_usuario}`,
-                        // anuncios_avaliados: `${req.protocol}://${req.get('host')}/anuncios/avaliacoes/?codUsuario=${result.cod_usuario}`,
-                        // candidaturas: `${req.protocol}://${req.get('host')}/anuncios/candidaturas/?codUsuario=${result.cod_usuario}`,
-                        // conversas: `${req.protocol}://${req.get('host')}/conversas/?codUsuario=${result.cod_usuario}`
-                    });
-
-                }
-
-            } else {
+            if (!result) {
                 return res.status(404).json({
                     mensagem: 'Nenhum usuário com esse ID foi encontrado.',
                     code: 'RESOURCE_NOT_FOUND'
                 });
             }
+
+            // return res.status(200).json({
+            //     result
+            // });
+
+            // Início da construção do objeto enviado na resposta.
+
+                let objDadosUsuario = result.get({ plain: true });
+
+                // Início da inclusão de atributos extra.
+
+                    // Separando os dados do objeto.
+                        let dadosEnderecoUsuario = objDadosUsuario.EnderecoUsuario;
+                            delete objDadosUsuario.EnderecoUsuario;
+                        let dadosUsuario = objDadosUsuario
+                    // Fim da separação dos dados.
+
+                    // Inclusão de atributos essenciais aos clientes.
+                        dadosUsuario.download_avatar = `${req.protocol}://${req.get('host')}/usuarios/avatars/${result.foto_usuario}`;
+                        dadosUsuario.download_banner = `${req.protocol}://${req.get('host')}/usuarios/banners/${result.banner_usuario}`;
+                    // Fim da inclusão de atributos essenciais aos clientes.
+
+                    // Unindo os dados em um objeto.
+                        dadosUsuario.endereco = dadosEnderecoUsuario;
+                    // Fim da união dos dados em um objeto.
+
+                // Fim da inclusão de atributos extra.
+
+            // Fim da construção do objeto enviado na resposta.
+
+            // Início do envio da resposta.
+                return res.status(200).json({
+                    mensagem: `Os dados do usuário foram encontrados.`,
+                    usuario: dadosUsuario
+                });
+            // Fim do envio da resposta.
+            
 
         })
         .catch((error) => {
@@ -797,6 +768,101 @@
 
             return next( customErr );
         });
+
+        // Usuario.findByPk(req.params.codUsuario, { raw: true })
+        // .then((result) => {
+
+        //     if (result) {
+
+        //         // Adicionando o end-point para exibição do Avatar e do Banner do usuário.
+        //             result.download_avatar = `${req.protocol}://${req.get('host')}/usuarios/avatars/${result.foto_usuario}`;
+        //             result.download_banner = `${req.protocol}://${req.get('host')}/usuarios/banners/${result.banner_usuario}`;
+        //         // -----------------------------------------------------------------------
+
+        //         /* Exibir lista de rotas com base nos níveis de acesso.
+        //         Cliente (API); Usuário Admin; Usuário dono do recurso; Usuário visitante do recurso. */
+
+        //         if (req.dadosAuthToken.cod_cliente && (!req.dadosAuthToken.usuario || req.dadosAuthToken.usuario.e_admin == 1)) {
+        //             // Chamada da API ou de um Admin.
+
+        //             return res.status(200).json({
+        //                 usuario: result,
+        //                 conta: `${req.protocol}://${req.get('host')}/contas/?codUsuario=${result.cod_usuario}`,
+        //                 endereco: `${req.protocol}://${req.get('host')}/usuarios/enderecos/?codUsuario=${result.cod_usuario}`,
+        //                 // seguidos: `${req.protocol}://${req.get('host')}/usuarios/seguidas/?seguidos=${result.cod_usuario}`,
+        //                 // seguidores: `${req.protocol}://${req.get('host')}/usuarios/seguidas/?seguidores=${result.cod_usuario}`,
+        //                 // denunciados: `${req.protocol}://${req.get('host')}/usuarios/denuncias/?denunciados=${result.cod_usuario}`,
+        //                 // denunciantes: `${req.protocol}://${req.get('host')}/usuarios/denuncias/?denunciantes=${result.cod_usuario}`,
+        //                 // bloqueados: `${req.protocol}://${req.get('host')}/usuarios/bloqueios/?bloqueados=${result.cod_usuario}`,
+        //                 // bloqueantes: `${req.protocol}://${req.get('host')}/usuarios/bloqueios/?bloqueantes=${result.cod_usuario}`,
+        //                 animais: `${req.protocol}://${req.get('host')}/usuarios/animais/?getAllFromUser=${result.cod_usuario}`,
+        //                 // momentos: `${req.protocol}://${req.get('host')}/momentos/?codUsuario=${result.cod_usuario}`,
+        //                 // postagens: `${req.protocol}://${req.get('host')}/postagens/?codUsuario=${result.cod_usuario}`,
+        //                 // postagens_avaliadas: `${req.protocol}://${req.get('host')}/postagens/avaliacoes/?codUsuario=${result.cod_usuario}`,
+        //                 // anuncios: `${req.protocol}://${req.get('host')}/anuncios/?codUsuario=${result.cod_usuario}`,
+        //                 // anuncios_favoritos: `${req.protocol}://${req.get('host')}/anuncios/favoritos/?codUsuario=${result.cod_usuario}`,
+        //                 // anuncios_avaliados: `${req.protocol}://${req.get('host')}/anuncios/avaliacoes/?codUsuario=${result.cod_usuario}`,
+        //                 // candidaturas: `${req.protocol}://${req.get('host')}/anuncios/candidaturas/?codUsuario=${result.cod_usuario}`,
+        //                 // conversas: `${req.protocol}://${req.get('host')}/conversas/?codUsuario=${result.cod_usuario}`
+        //             });
+        //         } else if (req.dadosAuthToken.usuario && req.dadosAuthToken.usuario.cod_usuario != req.params.codUsuario){
+        //             // Chamada de um Usuário visitante.
+
+        //             return res.status(200).json({
+        //                 usuario: result,
+        //                 // conta: `${req.protocol}://${req.get('host')}/contas/?codUsuario=${result.cod_usuario}`,
+        //                 // seguidos: `${req.protocol}://${req.get('host')}/usuarios/seguidas/?seguidos=${result.cod_usuario}`,
+        //                 // seguidores: `${req.protocol}://${req.get('host')}/usuarios/seguidas/?seguidores=${result.cod_usuario}`,
+        //                 animais: `${req.protocol}://${req.get('host')}/usuarios/animais/?getAllFromUser=${result.cod_usuario}`,
+        //                 // momentos: `${req.protocol}://${req.get('host')}/momentos/?codUsuario=${result.cod_usuario}`,
+        //                 // postagens: `${req.protocol}://${req.get('host')}/postagens/?codUsuario=${result.cod_usuario}`,
+        //                 // postagens_avaliadas: `${req.protocol}://${req.get('host')}/postagens/avaliacoes/?codUsuario=${result.cod_usuario}`,
+        //                 // anuncios: `${req.protocol}://${req.get('host')}/anuncios/?codUsuario=${result.cod_usuario}`,
+        //                 // anuncios_favoritos: `${req.protocol}://${req.get('host')}/anuncios/favoritos/?codUsuario=${result.cod_usuario}`,
+        //                 // anuncios_avaliados: `${req.protocol}://${req.get('host')}/anuncios/avaliacoes/?codUsuario=${result.cod_usuario}`,
+        //             });
+
+        //         } else if (req.dadosAuthToken.usuario && req.dadosAuthToken.usuario.cod_usuario == req.params.codUsuario){
+        //             // Chamada do Usuário dono do recurso.
+
+        //             return res.status(200).json({
+        //                 usuario: result,
+        //                 conta: `${req.protocol}://${req.get('host')}/contas/?codUsuario=${result.cod_usuario}`,
+        //                 endereco: `${req.protocol}://${req.get('host')}/usuarios/enderecos/?codUsuario=${result.cod_usuario}`,
+        //                 // seguidos: `${req.protocol}://${req.get('host')}/usuarios/seguidas/?seguidos=${result.cod_usuario}`,
+        //                 // seguidores: `${req.protocol}://${req.get('host')}/usuarios/seguidas/?seguidores=${result.cod_usuario}`,
+        //                 // denunciados: `${req.protocol}://${req.get('host')}/usuarios/denuncias/?denunciados=${result.cod_usuario}`,
+        //                 // bloqueados: `${req.protocol}://${req.get('host')}/usuarios/bloqueios/?bloqueados=${result.cod_usuario}`,
+        //                 animais: `${req.protocol}://${req.get('host')}/usuarios/animais/?getAllFromUser=${result.cod_usuario}`,
+        //                 // momentos: `${req.protocol}://${req.get('host')}/momentos/?codUsuario=${result.cod_usuario}`,
+        //                 // postagens: `${req.protocol}://${req.get('host')}/postagens/?codUsuario=${result.cod_usuario}`,
+        //                 // postagens_avaliadas: `${req.protocol}://${req.get('host')}/postagens/avaliacoes/?codUsuario=${result.cod_usuario}`,
+        //                 // anuncios: `${req.protocol}://${req.get('host')}/anuncios/?codUsuario=${result.cod_usuario}`,
+        //                 // anuncios_favoritos: `${req.protocol}://${req.get('host')}/anuncios/favoritos/?codUsuario=${result.cod_usuario}`,
+        //                 // anuncios_avaliados: `${req.protocol}://${req.get('host')}/anuncios/avaliacoes/?codUsuario=${result.cod_usuario}`,
+        //                 // candidaturas: `${req.protocol}://${req.get('host')}/anuncios/candidaturas/?codUsuario=${result.cod_usuario}`,
+        //                 // conversas: `${req.protocol}://${req.get('host')}/conversas/?codUsuario=${result.cod_usuario}`
+        //             });
+
+        //         }
+
+        //     } else {
+        //         return res.status(404).json({
+        //             mensagem: 'Nenhum usuário com esse ID foi encontrado.',
+        //             code: 'RESOURCE_NOT_FOUND'
+        //         });
+        //     }
+
+        // })
+        // .catch((error) => {
+        //     console.error(`Algo inesperado aconteceu ao buscar os dados do usuário.`, error);
+
+        //     let customErr = new Error('Algo inesperado aconteceu ao buscar os dados do usuário. Entre em contato com o administrador.');
+        //     customErr.status = 500;
+        //     customErr.code = 'INTERNAL_SERVER_ERROR';
+
+        //     return next( customErr );
+        // });
 
     };
 

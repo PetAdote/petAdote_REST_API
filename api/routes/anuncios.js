@@ -803,6 +803,7 @@ router.get('/', async (req, res, next) => {
                     model: Usuario
                 }],
                 where: query,
+                order: [['data_criacao', 'DESC']],
                 limit: paginationLimit,
                 offset: paginationOffset,
                 nest: true,
