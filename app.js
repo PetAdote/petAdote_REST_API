@@ -64,8 +64,8 @@
     app.use(express.json());                             // Extrai os campos da requisição no formato JSON para o objeto "req.body".
 
     app.use('/favicon.ico', express.static( path.resolve(__dirname, "./api/uploads/images/favicon.ico") ) );
-    app.use('/styles.css', checkLocalRequest, express.static( path.resolve(__dirname, "./api/docs/templates/styles/bootstrap.css") ) );
-    app.use('/styles.js', checkLocalRequest, express.static( path.resolve(__dirname, "./api/docs/templates/styles/bootstrap.bundle.js") ) );
+    app.use('/styles.css', express.static( path.resolve(__dirname, "./api/docs/templates/styles/bootstrap.css") ) );
+    app.use('/styles.js', express.static( path.resolve(__dirname, "./api/docs/templates/styles/bootstrap.bundle.js") ) );
 
 // Rotas que vão gerenciar as requisições.
     app.get('/', async (req, res, next) => {

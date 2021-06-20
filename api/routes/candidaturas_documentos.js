@@ -504,6 +504,7 @@ router.get('/', (req, res, next) => {
                 }],
                 where: {
                     cod_anuncio: req.query.fromAnnouncement,
+                    '$Candidaturas.estado_candidatura$': ['Aprovada', 'Concluida'],
                     [Op.or]: [
                         { '$Candidaturas.DocAnunciante.cod_usuario$': usuario.cod_usuario },
                         { '$Candidaturas.DocCandidato.cod_usuario$': usuario.cod_usuario },
@@ -522,6 +523,8 @@ router.get('/', (req, res, next) => {
                         code: 'RESOURCE_NOT_FOUND'
                     });
                 }
+
+                console.log(result.get({ plain: true }));
 
                 // Início das restrições de uso da chamada.
                     let requesterType = undefined;
@@ -578,6 +581,7 @@ router.get('/', (req, res, next) => {
 
                         return res.status(200).json({
                             mensagem: 'O documento contendo os seus Termos de Responsabilidades foi encontrado.',
+                            cod_adotante: cod_candidato,
                             download_documento: `GET ${req.protocol}://${req.get('host')}/anuncios/candidaturas/documentos/${docAnunciante.uid_doc}`
                         });
                     }
@@ -592,6 +596,7 @@ router.get('/', (req, res, next) => {
 
                         return res.status(200).json({
                             mensagem: 'O documento contendo os seus Termos de Responsabilidades foi encontrado.',
+                            cod_adotante: cod_candidato,
                             download_documento: `GET ${req.protocol}://${req.get('host')}/anuncios/candidaturas/documentos/${docCandidato.uid_doc}`
                         });
 

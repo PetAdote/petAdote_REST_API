@@ -1,4 +1,4 @@
-<% let { anunciante, candidato, anuncio, animal, foto_animal_anuncio, ponto_encontro, qrcode_validacao, tipo_doc } = dataObj[0]; %>
+<% let { anunciante, candidato, anuncio, cod_candidatura, cod_validacao_doc_candidato, cod_validacao_doc_tutor, animal, foto_animal_anuncio, ponto_encontro, qrcode_validacao, tipo_doc } = dataObj[0]; %>
 <% const { styles } = dataObj[1] %>
 <%
     const dashPos_cepAnun = anunciante.EnderecoUsuario.cep.length - 3; // Os CEPS DEVEM chegar como STRING!
@@ -49,6 +49,10 @@
         .simple-text-sz {
             font-size: 8pt;
         } 
+
+        .small-text-sz {
+            font-size: 6pt;
+        }
     </style>
 </head>
 <body>
@@ -239,6 +243,8 @@
                             <div class="col-12 p-0 m-0 text-center">
                                 <p class="simple-text-sz m-0 p-0 font-weight-bold text-justify">Escaneie o QR Code para validar a recepção do animal.</p>
                                 <img src="<%= qrcode_validacao %>" width="125"/>
+                                <p class="small-text-sz m-0 p-0 font-weight-bold text-justify">Cód. Candidatura: <%= cod_candidatura %></p>
+                                <p class="small-text-sz m-0 p-0 font-weight-bold text-justify">Cód. Validação: <%= cod_validacao_doc_tutor %></p>
                             </div>
                             <% } %>
                             <% if (tipo_doc == 'candidato') { %>
@@ -246,6 +252,8 @@
                                 <div class="col-12 p-0 m-0 text-center">
                                     <p class="simple-text-sz m-0 p-0 font-weight-bold text-justify">Escaneie o QR Code para validar a entrega do animal.</p>
                                     <img src="<%= qrcode_validacao %>" width="125"/>
+                                    <p class="small-text-sz m-0 p-0 font-weight-bold text-justify">Cód. Candidatura: <%= cod_candidatura %></p>
+                                    <p class="small-text-sz m-0 p-0 font-weight-bold text-justify">Cód. Validação: <%= cod_validacao_doc_candidato %></p>
                                 </div>
                             <% } %>
                         </div>

@@ -256,7 +256,14 @@ router.get('/', async (req, res, next) => {
                     model: Usuario,
                     as: 'dono_antigo'
                 }, {
-                    model: Anuncio
+                    model: Anuncio,
+                    include: [{
+                        model: Candidatura,
+                        required: false,
+                        where: {
+                            estado_candidatura: 'Concluida'
+                        }
+                    }]
                 }, {
                     model: AlbumAnimal
                 }],

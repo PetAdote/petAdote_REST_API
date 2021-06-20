@@ -754,6 +754,7 @@ router.get('/', async (req, res, next) => {
                 },
                 limit: paginationLimit,
                 offset: paginationOffset,
+                order: [['data_criacao', 'DESC']],
                 nest: true,
                 raw: true 
             })
@@ -1292,6 +1293,7 @@ router.get('/', async (req, res, next) => {
                     // Entregando a resposta de sucesso caso a candidatura tenha sido concluída.
                         return res.status(200).json({
                             mensagem: 'A candidatura está concluída, o animal foi efetivamente adotado, parabéns!',
+                            code: 'ADOPTION_COMPLETE',
                             detalhes_animal_recebido: `${req.protocol}://${req.get('host')}/usuarios/animais/?getOne=${newAnimal.cod_animal}`
                         });
                     // Fim da entrega da resposta de sucesso caso a candidatura tenha sido concluída.
@@ -1300,6 +1302,7 @@ router.get('/', async (req, res, next) => {
                 // Entregando a resposta de sucesso caso o anunciante tenha declarado a entrega do animal, sem que o candidato tenha validado a recepção.
                     return res.status(200).json({
                         mensagem: 'A entrega do animal foi validada, se o candidato do animal validar a recepção, o animal será indexado em seu histórico de animais.',
+                        code: 'ANNOUNCER_CONFIRMED',
                         detalhes_animal_anunciado: `${req.protocol}://${req.get('host')}/usuarios/animais/?getOne=${animalAnunciado.cod_animal}`
                     });
                 // Fim da entrega da resposta de sucesso caso o anunciante tenha declarado a entrega do animal, sem que o candidato tenha validado a recepção
@@ -1457,6 +1460,7 @@ router.get('/', async (req, res, next) => {
                     // Entregando a resposta de sucesso caso a candidatura tenha sido concluída.
                         return res.status(200).json({
                             mensagem: 'A candidatura está concluída, o animal foi efetivamente adotado, parabéns!',
+                            code: 'ADOPTION_COMPLETE',
                             detalhes_animal_recebido: `${req.protocol}://${req.get('host')}/usuarios/animais/?getOne=${newAnimal.cod_animal}`
                         });
                     // Fim da entrega da resposta de sucesso caso a candidatura tenha sido concluída.
@@ -1465,6 +1469,7 @@ router.get('/', async (req, res, next) => {
                 // Entregando a resposta de sucesso caso o candidato tenha declarado a recepção do animal, sem que o anunciante tenha validado a entrega.
                     return res.status(200).json({
                         mensagem: 'A recepção do animal foi validada, se o tutor do animal validar a entrega, você verá o animal em sua lista de animais.',
+                        code: 'CANDIDATE_CONFIRMED',
                         detalhes_animal_anunciado: `${req.protocol}://${req.get('host')}/usuarios/animais/?getOne=${animalAnunciado.cod_animal}`
                     });
                 // Fim da entrega da resposta de sucesso caso o candidato tenha declarado a recepção do animal, sem que o anunciante tenha validado a entrega.
@@ -1879,7 +1884,7 @@ router.patch('/:codCandidatura', async (req, res, next) => {
         let animalAnunciado = candidatura.Anuncio.Animal;
         let anuncio = candidatura.Anuncio;
 
-        if (usuario?.e_admin == 0){
+        if (usuario){
             // Se o requisitante for um usuário comum - Só podera manipular os dados da candidatura se for o anunciante ou o candidato.
 
             let allowedRequester = [
@@ -1912,6 +1917,9 @@ router.patch('/:codCandidatura', async (req, res, next) => {
 
         // let { } = req.query;
 
+        // console.log('Requester Type:', requesterType);
+        // console.log('Req query length:', Object.entries(req.query).length);
+
         switch (Object.entries(req.query).length){
             case 0:
                 if (requesterType == 'announcer') { operacao = 'updateAsAnnouncer' };
@@ -1936,7 +1944,7 @@ router.patch('/:codCandidatura', async (req, res, next) => {
     // Início dos processos de alteração dos dados da candidatura.
 
         if (!operacao){
-            console.error('Algo inesperado aconteceu ao definir a operação de alteração que será realizada.', error);
+            console.error('Algo inesperado aconteceu ao definir a operação de alteração que será realizada.');
 
             let customErr = new Error('Algo inesperado aconteceu ao definir a operação de alteração que será realizada. Entre em contato com o administrador.');
             customErr.status = 500;
@@ -2130,6 +2138,11 @@ router.patch('/:codCandidatura', async (req, res, next) => {
                         if (candidatura.estado_candidatura == 'Aprovada' && req.body.estado_candidatura == 'Em avaliacao') {
                             // Se a candidatura estava como "Aprovada" e foi alterada para "Em avaliacao"...
 
+                            // Reiniciando o estado de validação das partes na adoção.
+                            req.body.anunciante_entregou = 0;
+                            req.body.candidato_recebeu = 0;
+                            // --------------------------------------------------------
+
                             await Animal.update({
                                 estado_adocao: 'Em anuncio',
                                 data_modificacao: dataAtual
@@ -2236,8 +2249,10 @@ router.patch('/:codCandidatura', async (req, res, next) => {
                                     // Fim da criação do "segredo_qrcode".
                                 
                                     // Criação dos QR Codes dos envolvidos na candidatura.
-                                        const qrcode_anunciante = await generate_QRCode(`${req.protocol}://${req.get('host')}/anuncios/candidaturas/?validate=${candidatura.cod_candidatura}&code=${secret_qrcode_anunciante}`);
-                                        const qrcode_candidato = await generate_QRCode(`${req.protocol}://${req.get('host')}/anuncios/candidaturas/?validate=${candidatura.cod_candidatura}&code=${secret_qrcode_candidato}`);
+                                        // const qrcode_anunciante = await generate_QRCode(`${req.protocol}://${req.get('host')}/anuncios/candidaturas/?validate=${candidatura.cod_candidatura}&code=${secret_qrcode_anunciante}`);
+                                        // const qrcode_candidato = await generate_QRCode(`${req.protocol}://${req.get('host')}/anuncios/candidaturas/?validate=${candidatura.cod_candidatura}&code=${secret_qrcode_candidato}`);
+                                        const qrcode_anunciante = await generate_QRCode(`http://web-petadote.ddns.net:4001/validar/?key=${candidatura.cod_candidatura}&code=${secret_qrcode_anunciante}`);
+                                        const qrcode_candidato = await generate_QRCode(`http://web-petadote.ddns.net:4001/validar/?key=${candidatura.cod_candidatura}&code=${secret_qrcode_candidato}`);
                                     // Fim da criação dos QR Codes dos envolvidos na candidatura.
 
                                     // Início do Array de objetos contendo os dados que serão renderizados no PDF do Documento de Responsabilidade.
@@ -2246,6 +2261,9 @@ router.patch('/:codCandidatura', async (req, res, next) => {
                                             anunciante: anunciante,
                                             candidato: candidato,
                                             anuncio: anuncio,
+                                            cod_candidatura: candidatura.cod_candidatura,
+                                            cod_validacao_doc_candidato: secret_qrcode_candidato,
+                                            cod_validacao_doc_tutor: secret_qrcode_anunciante,
                                             animal: animalAnunciado,
                                             foto_animal_anuncio: `${req.protocol}://${req.get('host')}/usuarios/animais/albuns/fotos/${anuncio.uid_foto_animal}`,
                                             ponto_encontro: pontoDeEncontro,
